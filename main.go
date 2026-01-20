@@ -217,6 +217,11 @@ func sliceEx1() {
 	fmt.Println(primes) // [1 2 3 9 5 6]
 	fmt.Println(s)      // [2 3 9]
 	fmt.Println(t)      // [3 9 5 6]
+
+	primes[3] = 99
+	fmt.Println(primes) // [1 2 3 99 5 6]
+	fmt.Println(s)      // [2 3 99]
+	fmt.Println(t)      // [3 99 5 6]
 }
 
 func main() {

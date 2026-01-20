@@ -65,4 +65,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
 
     + `nil` giống với `null` trong c
 - `Arrays`
-- `Slice`: (dynamically-sized) trỏ đến 1 phần trong 1 array, thay đổi slice thì thay đổi array
+- `Slice`:
+    + Slice là view (cửa sổ) trỏ vào array
+    + Không lưu dữ liệu trực tiếp
+    + Có 3 thành phần: pointer (địa chỉ mảng), length (len), capacity (cap)
