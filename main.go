@@ -224,6 +224,167 @@ func sliceEx1() {
 	fmt.Println(t)      // [3 99 5 6]
 }
 
+func sliceEx2() {
+	// Bước 1: Khởi tạo Slice
+	data := [5]int{10, 20, 30, 40, 50}
+	s1 := data[1:4] // Lấy từ index 1 đến 3
+
+	fmt.Println("Buoc 1: ", s1, len(s1), cap(s1))
+	fmt.Println("Buoc 1: ", data, len(data), cap(data))
+
+	// Bước 2: Cắt tiếp từ slice (Reslicing)
+	s2 := s1[1:3] // Lấy từ index 1 đến 2 của s1
+	fmt.Println("Buoc 2: ", s2, len(s2), cap(s2))
+
+	// Bước 3: Trường hợp 1 -> Append khi còn Capacity
+	s2 = append(s2, 100)
+	fmt.Println("Buoc 3: ", s2, len(s2), cap(s2))
+
+	// Bước 4: Trường hợp 2 -> Append khi hết Capacity
+	s2 = append(s2, 200)
+
+	fmt.Println("Buoc 4: ", s2, len(s2), cap(s2))
+
+	fmt.Println(data) // [10 20 30 40 100]
+	s2[0] = 9999
+	fmt.Println("Buoc 4:", s2, len(s2), cap(s2)) // [9999 40 100 200]
+	fmt.Println(data)                            // [10 20 30 40 100]
+}
+
+func sliceEx3() {
+	// Khởi tạo slice có len=3 nhưng cap=10
+	a := make([]int, 3, 10)
+	a[0], a[1], a[2] = 1, 2, 3
+
+	fmt.Println(a) // [1 2 3]
+
+	// a còn dư chỗ, append không tạo mảng mới mà dùng chung mảng của a
+	b := append(a, 4) // b ghi số 4 vào vị trí index 3 của mảng ẩn
+	c := append(a, 5) // c ghi đè số 5 vào đúng vị trí index 3 đó!
+
+	fmt.Println(a) // [1 2 3]
+	fmt.Println(b) // [1 2 3 5] -> Số 4 đã bị biến thành số 5!
+	fmt.Println(c) // [1 2 3 5]
+}
+
+func makeCopyFullSliceEx1() {
+	s := make([]int, 3, 5)
+	fmt.Printf("%T\n", s) // []int
+	fmt.Println(s, len(s), cap(s))
+
+	p := append(s, 3)
+	fmt.Println(p, len(p), cap(p))
+	fmt.Printf("%T\n", p) // []int
+
+	s = append(s, 4)
+	s = append(s, 5)
+	fmt.Println(s, len(s), cap(s))
+
+	s = append(s, 6)
+	fmt.Println(s, len(s), cap(s))
+}
+
+func makeCopyFullSliceEx2() {
+	a := make([]int, 4, 5)
+	fmt.Println(a, len(a), cap(a)) // [0 0 0 0] 4 5
+
+	ptr := append(a, 4)
+	fmt.Println(ptr, len(ptr), cap(ptr)) // [0 0 0 0 4] 5 5
+	fmt.Println(a, len(a), cap(a))       // [0 0 0 0] 4 5
+
+	ptr = append(a, 6)
+	fmt.Println(ptr, len(ptr), cap(ptr)) // [0 0 0 0 6] 5 5
+	fmt.Println(a, len(a), cap(a))       // [0 0 0 0] 4 5
+}
+
+func makeCopyFullSliceEx3() {
+	a := [5]int{1, 2, 3, 4, 5}
+	p := a[1:3]
+	p = append(p, 6)
+	fmt.Println(a, len(a), cap(a)) // [1 2 3 6 5] 5 5
+	fmt.Println(p, len(p), cap(p)) // [2 3 6] 3 4
+
+	t := append(p, 7)
+	fmt.Println(a, len(a), cap(a)) // [1 2 3 6 7] 5 5
+	fmt.Println(p, len(p), cap(p)) // [2 3 6] 3 4
+	fmt.Println(t, len(t), cap(t)) // [2 3 6 7] 4 4
+
+	u := append(t, 8)
+	fmt.Println(a, len(a), cap(a)) // [1 2 3 6 8] 5 5
+	fmt.Println(t, len(t), cap(t)) // [2 3 6] 3 4
+	fmt.Println(u, len(u), cap(u)) // [2 3 6 7 8] 5 8
+}
+
+func makeCopyFullSliceEx4() {
+	src := []int{1, 2, 3}
+	dest := make([]int, len(src)) // Phải tạo dest có cùng len
+	copy(dest, src)
+
+	fmt.Println(src, len(src), cap(src))    // [1 2 3] 3 3
+	fmt.Println(dest, len(dest), cap(dest)) // [1 2 3] 3 3
+
+	src[0] = 99
+	dest[0] = 55
+
+	fmt.Println(src, len(src), cap(src))    // [99 2 3] 3 3
+	fmt.Println(dest, len(dest), cap(dest)) // [55 2 3] 3 3
+}
+
+// append luôn trả về slice header mới, còn array có thể cũ hoặc mới.
+
+// Ví dụ 1: Header mới – array CŨ (không realloc)
+func appendEx1() {
+	a := make([]int, 2, 4)
+	a[0], a[1] = 1, 2
+
+	b := append(a, 3)
+
+	fmt.Println("a:", a, ", len: ", len(a), ", cap: ", cap(a))
+	fmt.Println("b:", b, ", len: ", len(b), ", cap: ", cap(b))
+
+	fmt.Printf("&a = %p\n", &a)
+	fmt.Printf("&b = %p\n", &b)
+
+	fmt.Printf("&a[0] = %p\n", &a[0])
+	fmt.Printf("&b[0] = %p\n", &b[0])
+}
+
+// Ví dụ 2: Header mới – array MỚI (realloc)
+func appendEx2() {
+	a := make([]int, 2, 2)
+	a[0], a[1] = 1, 2
+
+	b := append(a, 3)
+
+	fmt.Println("a:", a, ", len: ", len(a), ", cap: ", cap(a))
+	fmt.Println("b:", b, ", len: ", len(b), ", cap: ", cap(b))
+
+	fmt.Printf("&a = %p\n", &a)
+	fmt.Printf("&b = %p\n", &b)
+
+	fmt.Printf("&a[0] = %p\n", &a[0])
+	fmt.Printf("&b[0] = %p\n", &b[0])
+}
+
+// Ví dụ 3: Header mới – array CŨ nhưng làm “đổi” dữ liệu gốc
+func appendEx3() {
+	a := make([]int, 2, 3)
+	a[0], a[1] = 1, 2
+
+	b := append(a, 99)
+
+	fmt.Printf("&a[0] = %p\n", &a[0])
+	fmt.Printf("&b[0] = %p\n", &b[0])
+
+	fmt.Println("a:", a)
+	fmt.Println("b:", b)
+}
+
+// Ví dụ 4: append mà KHÔNG gán lại → slice cũ không đổi
+// func appendEx4(s []int) {
+// 	append(s, 100)
+// }
+
 func main() {
 	// variables()
 	// typeConversion()
@@ -236,5 +397,11 @@ func main() {
 	// vertexEx2()
 	// vertexEx3()
 	// arrayEx1()
-	sliceEx1()
+	// sliceEx1()
+	// sliceEx2()
+	// sliceEx3()
+	// makeCopyFullSliceEx3()
+	// appendEx1()
+	// appendEx2()
+	appendEx3()
 }
