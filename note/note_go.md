@@ -429,3 +429,9 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
         - `make`:
             + Dùng khi chia nhỏ slice lớn thành các slice nhỏ để xử lý riêng.
             + Mục tiêu chính: Cô lập vùng nhớ, ngăn chặn ghi đè ngoài ý muốn.
+
+6. `Nill`, `Nil slice`
+- The zero value of a slice is `nil`.
+- A nil slice has a length and capacity of 0 and has no underlying array.
+
+7. `Map`

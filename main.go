@@ -385,6 +385,65 @@ func appendEx3() {
 // 	append(s, 100)
 // }
 
+func rangeEx1() {
+	arr := []int{1, 2, 3, 4, 5}
+	for index, value := range arr {
+		fmt.Println(index, value)
+	}
+
+	// omit index
+	for _, value := range arr {
+		fmt.Println(value)
+	}
+
+	// omit value
+	for index, _ := range arr {
+		fmt.Println(index)
+	}
+
+	// omit value
+	for index := range arr {
+		fmt.Println(index)
+	}
+}
+
+func mapEx1() {
+	// Cach 1
+	var mp map[string]Vertex = make(map[string]Vertex)
+	mp["Messi"] = Vertex{1, 2}
+	mp["Ronaldo"] = Vertex{2, 3}
+	fmt.Println(mp["Messi"])
+
+	for key, value := range mp {
+		fmt.Println(key, value)
+	}
+
+	// Cach 2
+	mp2 := make(map[int]string)
+	mp2[1] = "Neymar"
+	mp2[5] = "LM10"
+	mp2[5] = "Cong Phuong"
+
+	fmt.Println(mp2[9]) // key = 9 khong co trong mp2 nen mp2[9] = zerod value
+	for key, value := range mp2 {
+		fmt.Println(key, value)
+	}
+
+	// Cach 3: Map literals
+	var mp3 = map[Vertex]bool{
+		{1, 2}: true,
+		{2, 3}: false,
+		{3, 4}: true,
+	}
+
+	fmt.Println(mp3[Vertex{2, 3}])
+
+	for key, value := range mp3 {
+		fmt.Println(key, value)
+	}
+
+}
+
 func main() {
 	// variables()
 	// typeConversion()
@@ -403,5 +462,7 @@ func main() {
 	// makeCopyFullSliceEx3()
 	// appendEx1()
 	// appendEx2()
-	appendEx3()
+	// appendEx3()
+	// rangeEx1()
+	mapEx1()
 }
