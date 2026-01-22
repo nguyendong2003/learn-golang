@@ -435,3 +435,364 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
 - A nil slice has a length and capacity of 0 and has no underlying array.
 
 7. `Map`
+8. `Function`, `Function closures`
+    - Function Closure (hàm đóng) là một giá trị hàm (function value) mà nó tham chiếu đến các biến nằm bên ngoài phạm vi (body) của chính nó.
+    - Cách thức hoạt động của `Closure`:
+        + Thông thường, khi một hàm kết thúc, các biến cục bộ của nó sẽ bị xóa khỏi bộ nhớ. 
+        + Tuy nhiên, với Closure, Go sẽ giữ lại các biến đó nếu chúng vẫn đang được tham chiếu bởi một hàm ẩn danh (anonymous function).
+        + Mỗi closure có state riêng
+            ```go
+            package main
+
+            import "fmt"
+
+            func intSeq() func() int {
+                i := 0
+                return func() int {
+                    i++
+                    return i
+                }
+            }
+
+            func main() {
+                // nextInt là một closure, nó "nhớ" biến i
+                nextInt := intSeq()
+
+                fmt.Println(nextInt()) // Kết quả: 1
+                fmt.Println(nextInt()) // Kết quả: 2
+                fmt.Println(nextInt()) // Kết quả: 3
+
+                // Nếu ta tạo một bộ đếm mới, nó sẽ có biến i riêng biệt
+                newInts := intSeq()
+                fmt.Println(newInts()) // Kết quả: 1
+            }
+            ```
+    - Tại sao Closure lại quan trọng?
+        + `Duy trì trạng thái (State)`: Như ví dụ trên, closure giúp hàm "nhớ" dữ liệu mà không cần sử dụng biến toàn cục (global variables) — điều vốn dễ gây lỗi trong các ứng dụng lớn hoặc đa luồng.
+        + `Data Isolation (Cô lập dữ liệu)`: Biến i trong ví dụ trên hoàn toàn bị ẩn đi. Không ai có thể thay đổi i ngoại trừ chính hàm closure đó.
+        + `Middleware & Decorators`: Trong lập trình Web (như Gin hoặc Echo), closure thường được dùng để bao bọc các handler nhằm kiểm tra quyền truy cập hoặc ghi log.
+
+10. Method
+- Go does not have classes. However, you can define methods on types.
+- A method is a function with a special receiver argument.
+- Remember: a method is just a function with a receiver argument.
+- You can declare a method on non-struct types, too.
+- You can only declare a method with a receiver whose type is defined in the same package as the method
+- You cannot declare a method with a receiver whose type is defined in another package (which includes the built-in types such as int).
+- Syntax:
+    ```go
+    func (receiver Type) MethodName(params) returnType {
+        // code
+    }
+    ```
+    
+- Trong Go, Method (phương thức) thực chất là một hàm nhưng có một tham số đặc biệt đứng trước tên hàm, được gọi là Receiver (đối tượng nhận).
+- Nó cho phép bạn định nghĩa các hành vi cho một struct hoặc bất kỳ kiểu dữ liệu nào bạn tự định nghĩa, tạo cảm giác giống như lập trình hướng đối tượng (OOP).
+- Ví dụ:
+    ```go
+    package main
+
+    import "fmt"
+
+    type Rect struct {
+        width, height int
+    }
+
+    // the Area method has a receiver of type Rect named r
+    func (r Rect) Area() int {
+        return r.width * r.height
+    }
+
+    func main() {
+        r := Rect{width: 10, height: 5}
+        fmt.Println("Diện tích:", r.Area()) // Gọi method giống như trong OOP
+    }
+    ```
+
+- `Pointer receiver`
+    + You can declare methods with pointer receivers.
+    + This means the receiver type has the literal syntax *T for some type T. (Also, T cannot itself be a pointer such as *int.)
+    + Methods with pointer receivers can modify the value to which the receiver points
+    + There are two reasons to use a pointer receiver:
+        1. The first is so that the method can modify the value that its receiver points to.
+        2. The second is to avoid copying the value on each method call. This can be more efficient if the receiver is a large struct, for example.
+
+11. `Interface`, `nil interface value`, `empty interface` 
+- An interface type is defined as a set of method signatures
+- A value of interface type can hold any value that implements those methods
+
+    1. Interface là gì?
+    - Interface là một tập hợp các chữ ký phương thức (`method signatures`). 
+    - Một kiểu dữ liệu (thường là struct) được coi là "triển khai" (implement) một interface nếu nó định nghĩa tất cả các phương thức mà interface đó yêu cầu.
+    - Đặc điểm đặc biệt nhất: Trong Go, bạn không cần dùng từ khóa `implements`. Việc triển khai là ngầm định (`implicit`).
+    - `empty interface`:
+        +  `any` là bí danh cho `interface{}`. 
+        + Một `interface rỗng` là interface không có phương thức nào, điều đó có nghĩa là mọi kiểu dữ liệu đều thỏa mãn nó.
+        + Một `interface rỗng` có thể chứa bất cứ `value` thuộc `concrete type` nào
+
+    - Chú ý: 
+        1. Một `biến interface` luôn gồm 2 phần:
+        `(interface value) = (concrete type, value)` (concrete type là kiểu cụ thể)
+        - Ví dụ:
+            ```go
+            type MyFloat float64
+            type Abser interface {
+                Abs() float64
+            }
+            type Vertex struct {
+                X, Y float64
+            }
+
+            func (v *Vertex) Abs() float64 {
+                return math.Sqrt(v.X*v.X + v.Y*v.Y)
+            }
+            
+            func main() {
+                var a Abser     // Lúc này: a = (nil, nil)
+                a = MyFloat(-3) // Lúc này: a = (MyFloat, -3)
+                v := Vertex{3, 4}
+                a = &v          // Lúc này: a = (*Vertex, &{3,4})
+            }
+            ```
+        2. Interface chứa nil ≠ interface là nil
+        - Ví dụ:
+            ```go
+            var a Abser
+            fmt.Println(a == nil)   // true. Vì a = (nil, nil)
+
+            var v *Vertex = nil
+            a = v
+            fmt.Println(a == nil)   // false. Vì: a = (*Vertex, nil)
+            ```
+        3. Interface là nil đang là nil thì nếu gọi method trong interface chương trình sẽ bị panic (runtime error) bởi vì không biết concrete type bên trong interface để biết gọi method nào
+
+    - Ví dụ 1:
+        ```go
+        package main
+
+        import "fmt"
+
+        // Định nghĩa Interface Speaker
+        type Speaker interface {
+            Speak() string
+        }
+
+        // Walking là interface rỗng
+        type Walking interface {
+        }
+
+        // Hearing là interface rỗng
+        type Hearing any
+
+        // Struct Dog
+        type Dog struct{}
+
+        func (d Dog) Speak() string {
+            return "Woof!"
+        }
+
+        // Struct Cat
+        type Cat struct{}
+
+        func (c Cat) Speak() string {
+            return "Meow!"
+        }
+
+        func makeItSpeak(s Speaker) {
+            fmt.Println(s.Speak())
+        }
+
+        func makeItWalking(w Walking) {
+            fmt.Println(w)
+        }
+
+        func makeItHearing(h Hearing) {
+            fmt.Println(h)
+        }
+
+        func main() {
+            d := Dog{}
+            c := Cat{}
+
+            makeItSpeak(d) // Woof! (Chạy tốt vì Dog có method Speak() )
+            makeItSpeak(c) // Meow! (Chạy tốt vì Cat có method Speak() )
+
+            makeItWalking(d) // {}
+            makeItWalking(c) // {}
+
+            makeItHearing(d) // {}
+            makeItHearing(c) // {}
+        }
+        ```
+
+    - Ví dụ 2: 
+        ```go
+        package main
+
+        import (
+            "fmt"
+            "math"
+        )
+
+        type Abser interface {
+            Abs() float64
+        }
+
+        func main() {
+            var a Abser                     // a là biến kiểu interface Abser.
+            f := MyFloat(-math.Sqrt2)       // f là biến kiểu MyFloat
+            v := Vertex{3, 4}               // v là biến kiểu Vertex
+
+            /*
+                a KHÔNG BAO GIỜ đổi kiểu (a luôn có kiểu interface Abser)
+                - Khi gán a = f thì bên trong a chứa: (concrete type = MyFloat, value = f)
+                - Khi gán a = &v thì bên trong a chứa: (concrete type = *Vertex, value = &v)
+            */
+            a = f  // a MyFloat implements Abser
+            a = &v // a *Vertex implements Abser
+
+
+            /*
+                a = v lỗi vì:
+                + v có kiểu Vertex
+                + Vertex không có method Abs()
+                + Chỉ *Vertex mới có method Abs()
+            */
+            // In the following line, v is a Vertex (not *Vertex) and does NOT implement Abser.
+            a = v   // Error here
+
+            fmt.Println(a.Abs())
+        }
+
+        type MyFloat float64
+
+        func (f MyFloat) Abs() float64 {
+            if f < 0 {
+                return float64(-f)
+            }
+            return float64(f)
+        }
+
+        type Vertex struct {
+            X, Y float64
+        }
+
+        func (v *Vertex) Abs() float64 {
+            return math.Sqrt(v.X*v.X + v.Y*v.Y)
+        }
+        ```
+
+12. `Type Assertion`
+- `Type Assertion` (khẳng định kiểu) là cách để bạn lấy lại giá trị với kiểu dữ liệu cụ thể từ một biến đang được giữ dưới dạng interface.
+- Vì `interface` có thể chứa bất kỳ giá trị nào, nên `Type Assertion` đóng vai trò như một lời xác nhận: "Tôi tin rằng cái interface này đang chứa kiểu dữ liệu X, hãy lấy nó ra cho tôi".
+
+    1. Cú pháp:
+        `v = i.(T)`
+        - Trong đó:
+            + i: Là một biến kiểu interface
+            + T: Là kiểu dữ liệu mà bạn muốn khẳng định (ví dụ: int, string, hoặc một struct)
+            + v: Biến mới sẽ giữ giá trị của i nhưng với kiểu T
+
+    2. Hai cách sử dụng Type Assertion
+        - Cách 1: Phản ứng dữ dội (Panic)
+            + Nếu bạn khẳng định sai kiểu dữ liệu mà không kiểm tra, chương trình sẽ bị panic (dừng đột ngột).
+                ```go
+                var i interface{} = "Hello"
+
+                s := i.(string) // Thành công, s là "Hello" (kiểu string)
+                f := i.(float64) // PANIC: interface conversion: interface {} is string, not float64
+                ```
+        - Cách 2: Kiểm tra an toàn (Comma-ok)
+            + Đây là cách được khuyến khích sử dụng trong thực tế. 
+            + Nó trả về thêm một giá trị boolean (ok) để báo cho bạn biết việc khẳng định có thành công hay không.
+                ```go
+                var i interface{} = "Hello"
+
+                s, ok := i.(string)
+                if ok {
+                    fmt.Println("Giá trị chuỗi là:", s)
+                } else {
+                    fmt.Println("Không phải là string!")
+                }
+                ```
+
+- Docs:
+    ```text
+    - A type assertion provides access to an interface value's underlying concrete value.
+        t := i.(T)
+
+    - This statement asserts that the interface value i holds the concrete type T and assigns the underlying T value to the variable t.
+
+    - If i does not hold a T, the statement will trigger a panic.
+
+    - To test whether an interface value holds a specific type, a type assertion can return two values: the underlying value and a boolean value that reports whether the assertion succeeded.
+        t, ok := i.(T)
+    
+    - If i holds a T, then t will be the underlying value and ok will be true.
+    - If not, ok will be false and t will be the zero value of type T, and no panic occurs.
+    - Note the similarity between this syntax and that of reading from a map.
+    ```
+
+13. `Type Switch`
+- `Type Switch` là một cấu trúc điều khiển trong Go cho phép bạn so sánh kiểu dữ liệu của một interface với nhiều kiểu dữ liệu khác nhau trong một khối lệnh duy nhất.
+- Nó giống như một lệnh switch thông thường, nhưng thay vì so sánh giá trị (ví dụ: x == 5), nó so sánh loại của dữ liệu (ví dụ: x có phải là string không?).
+
+- Ví dụ 1:
+    ```go
+    package main
+
+    import "fmt"
+
+    func do(i interface{}) {
+        switch v := i.(type) {
+        case int, int32, int64:
+            fmt.Printf("Twice %v is %v\n", v, v*2)
+        case string:
+            fmt.Printf("%q is %v bytes long\n", v, len(v))
+        default:
+            fmt.Printf("I don't know about type %T!\n", v)
+        }
+    }
+
+    func main() {
+        do(21)
+        do("hello")
+        do(true)
+    }
+
+    ```
+
+14. `Stringer`
+- `Stringer` là một trong những `interface` phổ biến và hữu ích nhất. 
+- Nó được định nghĩa trong `package fmt` và cho phép bạn tự quyết định cách một đối tượng (struct) hiển thị khi được in ra dưới dạng chuỗi.
+    1. Định nghĩa Interface Stringer
+    - Interface Stringer cực kỳ đơn giản, nó chỉ yêu cầu một phương thức duy nhất:
+        ```go
+        type Stringer interface {
+            String() string
+        }
+        ```
+    - A Stringer is a type that can describe itself as a string. 
+    - The fmt package (and many others) look for this interface to print values.
+
+15. `Error`
+- Go programs express error state with `error` values.
+- The `error` type is a built-in interface similar to `fmt.Stringer`:
+    ```go
+    type error interface {
+        Error() string
+    }
+    ```
+- (As with `fmt.Stringer`, the fmt package looks for the `error` interface when printing values.)
+
+- Functions often return an `error` value, and calling code should handle errors by testing whether the error equals `nil`.
+    ```go
+    i, err := strconv.Atoi("42")
+    if err != nil {
+        fmt.Printf("couldn't convert number: %v\n", err)
+        return
+    }
+    fmt.Println("Converted integer:", i)
+    ```
+
+- A nil error denotes success; a non-nil error denotes failure.

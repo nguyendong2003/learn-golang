@@ -1,11 +1,13 @@
 /*
   - fmt.Printf():
     %T :  type
-    %v :  value
+    %v :  value		(%v chỉ in ra giá trị của các giá trị của field trong struct)
+    %+v: dùng để in giá trị chi tiết hơn so với %v (%+v in cả tên field + giá trị của field trong struct)
     %q :  In ra string hoặc rune kèm dấu " hoặc '
     %d : so nguyen
     %f : so thuc
     %.2d : float 2 chữ số thập phân
+    %c : In ra 1 ký tự (character)
     %s: string
     %p : địa chỉ con trỏ
     %g : format verb dùng cho số thực (float)
@@ -16,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/cmplx"
 	"runtime"
 )
@@ -407,6 +410,7 @@ func rangeEx1() {
 	}
 }
 
+// Khai bao map
 func mapEx1() {
 	// Cach 1
 	var mp map[string]Vertex = make(map[string]Vertex)
@@ -441,7 +445,364 @@ func mapEx1() {
 	for key, value := range mp3 {
 		fmt.Println(key, value)
 	}
+}
 
+func mapEx2() {
+	mp := make(map[string]int)
+	mp["Messi"] = 100
+	fmt.Println(mp["Messi"])
+
+	mp["Messi"] = 200
+	fmt.Println(mp["Messi"])
+
+	delete(mp, "Messi")
+	fmt.Println(mp["Messi"])
+
+	value, ok := mp["Messi"]
+	fmt.Println(value, ok)
+
+	a := 'h'
+	fmt.Printf("%T %c %v\n", a, a, a)
+
+	t := "messi"
+	for _, value := range t {
+		fmt.Printf("%T %c %v\n", value, value, value)
+	}
+}
+
+// Function Example
+func compute(fn func(float64, float64) float64) float64 {
+	return fn(3, 4)
+}
+
+func calculator(a, b float64, fn func(a, b float64) float64) float64 {
+	return fn(a, b)
+}
+
+func add1(a, b float64) float64 {
+	return a + b
+}
+
+func sub1(a, b float64) float64 {
+	return math.Abs(a - b)
+}
+
+//
+
+func funcEx1() {
+	// Function cũng là giá trị (value)
+	func1 := func(x, y float64) float64 {
+		return math.Sqrt(x*x + y*y)
+	}
+	fmt.Println(compute(func1))
+	fmt.Println(compute(math.Pow))
+
+	product := func(x, y float64) float64 {
+		return x * y
+	}
+
+	divide := func(x, y float64) float64 {
+		return x / y
+	}
+
+	fmt.Println(calculator(3, 4, add1))
+	fmt.Println(calculator(3, 4, sub1))
+	fmt.Println(calculator(3, 4, product))
+	fmt.Println(calculator(3, 4, divide))
+}
+
+// Function Closure
+func counter() func() int {
+	i := 0
+	return func() int {
+		i++
+		return i
+	}
+}
+
+func funcClosureEx1() {
+	fmt.Println("Vi du 1:")
+	c1 := counter()
+	fmt.Println(c1()) // 1
+	fmt.Println(c1()) // 2
+	fmt.Println(c1()) // 3
+
+	c2 := counter()
+	fmt.Println(c2()) // 1
+	fmt.Println(c2()) // 2
+
+	////
+	fmt.Println("Vi du 2:")
+	counter := func() func() int {
+		i := 0
+		return func() int {
+			i++
+			return i
+		}
+	}
+
+	cnt1 := counter()
+	fmt.Println(cnt1()) // 1
+	fmt.Println(cnt1()) // 2
+	fmt.Println(cnt1()) // 3
+
+	cnt2 := counter()
+	fmt.Println(cnt2()) // 1
+	fmt.Println(cnt2()) // 2
+
+	////
+	fmt.Println("Vi du 3:")
+	multiplyBy := func(n int) func(int) int {
+		// n = 5
+		return func(x int) int {
+			return x * n
+		}
+	}
+
+	// double, triple la mot closure function, nó nhớ biến n được truyền vào hàm multiplyBy
+	double := multiplyBy(2)
+	triple := multiplyBy(3)
+
+	fmt.Println(double(5), triple(20)) // 10 60
+}
+
+func funcClosureEx2() {
+	adder := func() func(int) int {
+		sum := 0
+		return func(x int) int {
+			sum += x
+			return sum
+		}
+	}
+
+	pos, neg := adder(), adder()
+	fmt.Println(pos(1), neg(-2)) // 1 -2
+	fmt.Println(pos(2), neg(-3)) // 3 -5
+	fmt.Println(pos(4), neg(-5)) // 7 -10
+}
+
+// Fibonacci closure (cach 1)
+func funcClosureEx3() {
+	fibonacci := func() func() int {
+		a, b := 0, 1
+		return func() int {
+			res := a
+			a, b = b, a+b
+			return res
+		}
+	}
+
+	fibo := fibonacci()
+	for i := 0; i < 10; i++ {
+		fmt.Print(fibo(), " ")
+	}
+	fmt.Println()
+}
+
+// Fibonacci closure (cach 2)
+func funcClosureEx4() {
+	fibonacci := func() func() int {
+		fibo := []int{0, 1}
+		i := 0
+
+		return func() int {
+			if i < len(fibo) {
+				value := fibo[i]
+				i++
+				return value
+			}
+
+			n := len(fibo)
+			next := fibo[n-1] + fibo[n-2]
+			fibo = append(fibo, next)
+			i++
+			return next
+		}
+	}
+
+	fibo := fibonacci()
+	for i := 0; i < 10; i++ {
+		fmt.Print(fibo(), " ")
+	}
+	fmt.Println()
+}
+
+// Fibonacci closure (cach 1) => sinh so fibonacci sau do dua vao mang (slice)
+func funcClosureEx5() {
+	fibonacci := func() func() int {
+		a, b := 0, 1
+		return func() int {
+			value := a
+			a, b = b, a+b
+			return value
+		}
+	}
+
+	f := fibonacci()
+	fibo := make([]int, 0, 50)
+	for i := 0; i < 50; i++ {
+		fibo = append(fibo, f())
+	}
+
+	for _, value := range fibo {
+		fmt.Print(value, " ")
+	}
+	fmt.Println()
+}
+
+// Fibonacci khong dung function closure (cach 1)
+func fibonacciEx6() {
+	fibonacci := func() []int {
+		n := 50
+		fibo := make([]int, n)
+		// fmt.Println(len(fibo), cap(fibo))		// 50 50
+		fibo[0] = 0
+		fibo[1] = 1
+		for i := 2; i < n; i++ {
+			fibo[i] = fibo[i-1] + fibo[i-2]
+		}
+		return fibo
+	}
+
+	fibo := fibonacci()
+	for _, value := range fibo {
+		fmt.Print(value, " ")
+	}
+	fmt.Println()
+}
+
+// Fibonacci khong dung function closure (cach 2)
+func fibonacciEx7() {
+	fibonacci := func() []int {
+		n := 50
+		fibo := make([]int, 0, n)
+		// fmt.Println(len(fibo), cap(fibo)) // 0 50
+		fibo = append(fibo, 0)
+		fibo = append(fibo, 1)
+
+		for i := 2; i < n; i++ {
+			fibo = append(fibo, fibo[i-1]+fibo[i-2])
+		}
+
+		return fibo
+	}
+
+	fibo := fibonacci()
+	for _, value := range fibo {
+		fmt.Print(value, " ")
+	}
+	fmt.Println()
+}
+
+// Ví dụ 1: method với receiver type la struct
+type Rect struct {
+	width, height int
+}
+
+// Day la method
+func (r Rect) Area() int {
+	return r.width * r.height
+}
+
+// Day la function
+func Area2(r Rect) int {
+	return r.width * r.height
+}
+
+func methodEx1() {
+	r := Rect{3, 4}
+	fmt.Println("Dien tich: ", r.Area()) // Gọi method giống như trong OOP. Day la method
+	fmt.Println("Dien tich: ", Area2(r)) // Day la function
+}
+
+// Ví dụ 2: method với receiver type khong phai struct
+type MyFloat float64
+
+func (f MyFloat) Abs() float64 {
+	if f < 0 {
+		return float64(-f)
+	}
+	return float64(f)
+}
+
+func methodEx2() {
+	f := MyFloat(-2.5)
+	fmt.Println(f.Abs())
+}
+
+// Ví dụ 3: method với Pointer receiver
+type CustomVertex struct {
+	x, y int
+}
+
+func (v CustomVertex) notChange() {
+	v.x += 10
+	v.y += 10
+}
+
+func (v *CustomVertex) increase() {
+	v.x += 20
+	v.y += 20
+}
+
+func methodEx3() {
+	v := CustomVertex{3, 4}
+	fmt.Println(v) // {3 4}
+
+	v.notChange()
+	fmt.Println(v) // {3 4}
+
+	v.increase()
+	fmt.Println(v) // {23 24}
+}
+
+// Ví dụ 4: Methods and pointer indirection
+type CustomVertex2 struct {
+	x, y int
+}
+
+func (v CustomVertex2) notChange2(f int) {
+	v.x *= f
+	v.y *= f
+}
+
+func (v *CustomVertex2) scale2(f int) {
+	v.x *= f
+	v.y *= f
+}
+
+func ScaleFunc2(v *CustomVertex2, f int) {
+	v.x *= f
+	v.y *= f
+}
+
+func methodEx4() {
+	v := CustomVertex2{3, 4}
+	fmt.Println(v) // {3 4}
+
+	v.notChange2(2)
+	fmt.Println(v) // {3 4}
+
+	v.scale2(2)
+	fmt.Println(v) // {6 8}
+
+	ScaleFunc2(&v, 2)
+	fmt.Println(v) // {12 16}
+
+	//
+	p := &v
+
+	p.notChange2(2)
+	fmt.Println(v, *p) // {12 16} {12 16}
+
+	p.scale2(2)        // được thông dịch (interpreted) thành: (*p).scale2(2)
+	fmt.Println(v, *p) // {24 32} {24 32}
+
+	(*p).scale2(2)
+	fmt.Println(v, *p) // {48 64} {48 64}
+
+	ScaleFunc2(p, 2)
+	fmt.Println(v, *p) // {96 128} {96 128}
 }
 
 func main() {
@@ -464,5 +825,18 @@ func main() {
 	// appendEx2()
 	// appendEx3()
 	// rangeEx1()
-	mapEx1()
+	// mapEx1()
+	// mapEx2()
+	// funcEx1()
+	// funcClosureEx1()
+	// funcClosureEx2()
+	// funcClosureEx3()
+	// funcClosureEx4()
+	// funcClosureEx5()
+	// fibonacciEx6()
+	// fibonacciEx7()
+	// methodEx1()
+	// methodEx2()
+	// methodEx3()
+	methodEx4()
 }
