@@ -1,3 +1,8 @@
+# Repo
+```text
+https://github.com/mschwarzmueller/go-complete-guide-resources
+```
+
 # Cai dat go
 
 ```bash
@@ -60,6 +65,64 @@ for { ... if !cond { break } }  // do {} while(condition)
     + Ứng dụng phổ biến: Đóng tài nguyên, Cleanup Code
     + defer giúp đảm bảo cleanup code luôn chạy, kể cả khi panic,
 chạy theo LIFO và tham số được evaluate ngay lúc defer."
+
+0. `module, package, import`
+    1. `Package (Gói)`
+
+    - Package là cấp độ cơ bản nhất để tổ chức code. Một package bao gồm tất cả các file `.go` nằm trong cùng một thư mục.
+    - Mục đích: Gom nhóm các chức năng liên quan (ví dụ: package `math` chứa các hàm tính toán).
+    - Khai báo: Mọi file .go phải bắt đầu bằng dòng `package <tên_package>`
+    - Quy tắc: Các file trong cùng một thư mục phải có cùng tên package.
+    - Tính đóng gói (Visibility):
+        + Tên hàm/biến bắt đầu bằng `chữ in hoa` (Vd: Calculate): `Public` (có thể dùng ở package khác).
+        + Tên bắt đầu bằng `chữ thường` (Vd: getRate): `Private` (chỉ dùng nội bộ trong package đó).
+    
+    2. `Module`
+
+    - `Module` là một tập hợp các package liên quan được phân phối cùng nhau. Đây là đơn vị quản lý phiên bản (versioning) và phụ thuộc (dependency).
+    - File `go.mod`: Mỗi module phải có một file `go.mod` ở thư mục gốc. File này định nghĩa:
+        + Tên của module (thường là đường dẫn URL như github.com/user/project).
+        + Phiên bản Go.
+        + Các thư viện bên ngoài (dependencies) mà dự án cần.
+    - Khởi tạo: Dùng lệnh `go mod init <tên-module>`
+
+    3. `Import`
+    - Để sử dụng code từ một package khác, bạn dùng từ khóa `import`.
+
+    - Cách sử dụng cơ bản:
+        ```go
+        package main
+
+        import (
+            "fmt"       // Package từ thư viện chuẩn của Go
+            "math/rand"  // Package con
+            "github.com/google/uuid" // Package từ bên ngoài (thư viện bên thứ 3)
+        )
+
+        func main() {
+            fmt.Println(uuid.New())
+        }
+        ```
+    - Các kiểu Import đặc biệt:
+        + `Alias Import`: Đặt tên khác để tránh trùng lặp.
+
+            ```go
+            import m "math"
+            // Sử dụng: m.Sin(0)
+            ```
+
+        + `Blank Import (_)`: Chỉ chạy hàm init() của package đó mà không gọi trực tiếp các hàm khác. Thường dùng cho các driver database.
+
+            ```go
+            import _ "github.com/lib/pq"
+            ```
+
+    4. `Build and run project`:
+        ```bash
+        go build
+        
+        ./learngo
+        ```
 
 1. `Pointers`: 
 - Không giống C, Go KHÔNG cho phép làm toán trực tiếp trên con trỏ. (nếu trong mảng thi Go chỉ cho phép truy cập bằng index, không dùng pointer arithmetic)
@@ -873,3 +936,69 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
         + `Không dùng với struct, Interface`: Bạn không thể viết `~error` vì `error` là một `interface`, không phải là một kiểu dữ liệu cơ sở.
 
         + `Vị trí sử dụng`: Dấu `~` chỉ có thể xuất hiện bên trong các `Interface` dùng làm constraint.
+
+18. `Struct Embedding`
+- `Struct Embedding` (nhúng struct) là một kỹ thuật cho phép bạn lồng một struct này vào trong một struct khác. 
+- Đây là cách Go thực hiện việc tái sử dụng mã nguồn và chia sẻ hành vi giữa các đối tượng thay vì sử dụng cơ chế kế thừa (inheritance) truyền thống như trong Java hay C++.
+    1. `Cách hoạt động của Struct Embedding`
+    - Khi bạn nhúng một struct vào struct khác mà `không đặt tên trường`, struct được nhúng sẽ trở thành một `Anonymous Field` (trường ẩn danh).
+
+    ```go
+    type Person struct {
+        Name string
+        Age  int
+    }
+
+    func (p Person) Greet() {
+        fmt.Printf("Hi, I'm %s\n", p.Name)
+    }
+
+    type Employee struct {
+        Person // Đây là Struct Embedding
+        ID     int
+    }
+    ```
+    - Đặc điểm quan trọng:
+        + `Promoted Fields`: Các trường của `Person (như Name, Age)` được "đưa lên" và có thể truy cập trực tiếp từ `Employee`.
+
+        + `Promoted Methods`: Các phương thức của `Person (như Greet())` cũng được đưa lên và có thể gọi trực tiếp từ biến kiểu `Employee`.
+        ```go
+        e := Employee{
+            Person: Person{Name: "An", Age: 30},
+            ID:     101,
+        }
+
+        fmt.Println(e.Name) // Truy cập trực tiếp thay vì e.Person.Name
+        e.Greet()           // Gọi trực tiếp phương thức của Person
+        ```
+    2. `Composition over Inheritance (Hợp thành thay vì Kế thừa)`
+    - Go không có từ khóa `extends`, `super`. 
+    - `Struct Embedding` dựa trên nguyên lý `Composition`. Mối quan hệ ở đây không phải là `"Is-a"` (là một) mà là `"Has-a"` (có một), nhưng với khả năng truy cập thuận tiện như `"Is-a"`.
+
+    3. Ghi đè phương thức (Method Overriding)
+    - Nếu struct bên ngoài có phương thức trùng tên với struct bên trong, phương thức của struct bên ngoài sẽ được ưu tiên. Đây gọi là `Shadowing`.
+
+    ```Go
+    func (e Employee) Greet() {
+        fmt.Printf("I'm employee #%d\n", e.ID)
+    }
+    // Khi gọi e.Greet(), nó sẽ chạy hàm của Employee thay vì Person.
+    ```
+    4. `Embedding Interface`
+    - Bạn không chỉ nhúng được `struct` mà còn có thể nhúng cả `Interface` vào `struct`. 
+    - Điều này cực kỳ hữu ích khi bạn muốn một `struct` thỏa mãn một `interface` mà không cần cài đặt lại toàn bộ các phương thức của nó.
+
+    ```Go
+    type Job struct {
+        io.Reader // Nhúng interface Reader
+    }
+    ```
+    - Bất kỳ struct nào chứa `Job` giờ đây cũng mặc định có phương thức `Read()` từ `io.Reader`
+    5. `Những lưu ý quan trọng (Best Practices)`
+    - `Tránh nhầm lẫn với Kế thừa`: Dù `Employee` có các trường của `Person`, nhưng bạn không thể dùng `Employee` ở nơi yêu cầu kiểu `Person`. Chúng vẫn là hai kiểu dữ liệu khác nhau hoàn toàn.
+    
+    - `Tránh đặt tên trùng lặp (Ambiguity)`: Nếu bạn nhúng 2 struct khác nhau vào cùng 1 struct mà cả 2 struct đó đều có trường cùng tên (ví dụ đều có trường `ID`), bạn buộc phải truy cập qua tên struct đầy đủ (ví dụ `e.Person.ID`) để tránh lỗi biên dịch.
+
+    - `Sử dụng khi thực sự cần thiết`: Đừng lạm dụng embedding chỉ để viết code ngắn hơn. Chỉ dùng khi struct bên ngoài thực sự mang bản chất hoặc hành vi mở rộng của struct bên trong.
+
+    

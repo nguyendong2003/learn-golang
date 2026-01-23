@@ -18,6 +18,10 @@ package main
 
 import (
 	"fmt"
+	"learngo/2-example/0-package/product"
+	structembedding11 "learngo/2-example/11-struct-embedding"
+	structembedding12 "learngo/2-example/12-struct-embedding"
+	profitrevenue "learngo/2-example/13-profit-revenue"
 	"math"
 	"math/cmplx"
 	"runtime"
@@ -805,6 +809,91 @@ func methodEx4() {
 	fmt.Println(v, *p) // {96 128} {96 128}
 }
 
+func importPackageEx1() {
+	product.RunProduct()
+}
+
+// Ví dụ: đọc dữ liệu từ bàn phím và chuỗi sử dụng fmt.Scanln, fmt.Scanf, fmt.Scan, fmt.Sscanf
+/*
+	fmt.Scan: đọc dữ liệu từ bàn phím, kết thúc khi gặp ký tự trắng (space, tab, newline)
+	fmt.Scanln: đọc dữ liệu từ bàn phím, kết thúc khi gặp ký tự xuống dòng (Enter)
+	fmt.Scanf: đọc dữ liệu từ bàn phím với định dạng cụ thể
+	fmt.Sscanf: đọc dữ liệu từ chuỗi với định dạng cụ thể
+*/
+func fmtScanEx1() {
+	// Su dung ffmt.Scan, fmt.Scanln, fmt.Scanf
+	var a int
+	var b float64
+	var s string
+
+	fmt.Print("Nhap so nguyen: ")
+	fmt.Scan(&a)
+
+	fmt.Print("Nhap so thuc: ")
+	fmt.Scanln(&b)
+
+	fmt.Print("Nhap chuoi: ")
+	fmt.Scanf("%s", &s)
+
+	fmt.Printf("Ban vua nhap: a = %d, b = %.2f, s = %q\n", a, b, s)
+
+	// Su dung fmt.Sscanf
+	var x int
+	var y float64
+	var str string
+
+	input := "100 3.14 HelloGo"
+	n, err := fmt.Sscanf(input, "%d %f %s", &x, &y, &str)
+	if err != nil {
+		fmt.Println("Loi:", err)
+	} else {
+		fmt.Printf("Da doc duoc %d gia tri: x = %d, y = %.2f, str = %q\n", n, x, y, str)
+	}
+}
+
+// Nhap du lieu tu ban phim vao array
+func fmtScanEx2() {
+	var n int
+	fmt.Scan(&n)
+
+	var arr [100]int // array cố định
+
+	for i := 0; i < n; i++ {
+		fmt.Scan(&arr[i])
+	}
+
+	for i := 0; i < n; i++ {
+		fmt.Print(arr[i], " ")
+	}
+}
+
+// Nhap du lieu tu ban phim vao slice
+func fmtScanEx3() {
+	var n int
+	fmt.Scan(&n)
+
+	arr := make([]int, n) // tạo slice
+
+	for i := 0; i < n; i++ {
+		fmt.Scan(&arr[i])
+	}
+
+	fmt.Println(arr)
+}
+
+// struct embedding
+func structEmbeddingEx1() {
+	structembedding11.ExampleEmbedding()
+}
+
+func structEmbeddingEx2() {
+	structembedding12.Main()
+}
+
+func profitRevenueEx1() {
+	profitrevenue.Main()
+}
+
 func main() {
 	// variables()
 	// typeConversion()
@@ -838,5 +927,12 @@ func main() {
 	// methodEx1()
 	// methodEx2()
 	// methodEx3()
-	methodEx4()
+	// methodEx4()
+	// importPackageEx1()
+	// fmtScanEx1()
+	// fmtScanEx2()
+	// fmtScanEx3()
+	// structEmbeddingEx1()
+	structEmbeddingEx2()
+	// profitRevenueEx1()
 }
