@@ -20,7 +20,7 @@ go run .
 
 # Kiến thức Golang
 - Tên package viết thường hết, tổ chức theo kiểu thư mục  (vd: fmt, math/rand) (fmt là viết tắt của format)
-- Exported Names là biến được import từ 1 package khác, nó phải đươc viết hoa chữ cái đầu.  Nếu biến không được viết hoa chữ cái đầu thì là Unexported Names
+- `Exported Names` là biến được import từ 1 package khác, nó phải đươc viết hoa chữ cái đầu.  Nếu biến không được viết hoa chữ cái đầu thì là `Unexported Names`
 - Kiểu dữ liệu của biến nằm ở đằng sau biến
 - Trong Go kiểu int dài 32 bit hay 64 bit tùy theo kiến trúc máy tính, 
     + Nếu máy tính 32 bit thì int dài 32 bit (int32)
@@ -46,7 +46,7 @@ for {}                          // while(true) {}
 for { ... if !cond { break } }  // do {} while(condition)
 ```
 
-- Mặc định switch case đã có câu lệnh break trong mỗi case rồi, nên không cần thêm câu lệnh break vào các case
+- Mặc định `switch case` đã có câu lệnh break trong mỗi case rồi, nên không cần thêm câu lệnh `break` vào các case
 - Từ khóa `defer` trong Go 
     + Dùng để trì hoãn việc gọi một hàm cho đến khi hàm bao quanh kết thúc.
     + Chạy khi: return, panic, kết thúc function
@@ -81,7 +81,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
         a := [3]string{"Go", "Rust", "C++"}
         b := a          // copy
         ```
-    + Hệ quả: Nếu mảng của bạn có 1 triệu phần tử, việc gán mảng sẽ rất tốn kém tài nguyên và làm chậm chương trình. Đây là lý do vì sao chúng ta thường dùng Slice hoặc truyền Con trỏ mảng (Array Pointer).
+    + Hệ quả: Nếu mảng của bạn có 1 triệu phần tử, việc gán mảng sẽ rất tốn kém tài nguyên và làm chậm chương trình. Đây là lý do vì sao chúng ta thường dùng `Slice` hoặc `truyền Con trỏ mảng (Array Pointer)`.
     + Duyệt mảng với `range`
         ```go
         fruits := [3]string{"Apple", "Banana", "Cherry"}
@@ -423,10 +423,10 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
         - `make`:
             + Dùng khi bắt đầu tạo slice và biết trước kích thước.
             + Mục tiêu chính: Tối ưu hiệu năng (tránh re-allocation).
-        - `make`:
+        - `copy`:
             + Dùng khi muốn nhân bản dữ liệu ra một vùng nhớ độc lập.
             + Mục tiêu chính: An toàn dữ liệu, tránh Memory Leak.
-        - `make`:
+        - `Full Slice Expression`:
             + Dùng khi chia nhỏ slice lớn thành các slice nhỏ để xử lý riêng.
             + Mục tiêu chính: Cô lập vùng nhớ, ngăn chặn ghi đè ngoài ý muốn.
 
@@ -796,3 +796,80 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
     ```
 
 - A nil error denotes success; a non-nil error denotes failure.
+
+16. `Generic`
+
+    2. `Type parameter`
+    - `Type Parameter` là một loại tham số đặc biệt được đặt trong dấu ngoặc vuông []. Nó đóng vai trò như một "chỗ trống" sẽ được lấp đầy bởi một kiểu dữ liệu cụ thể khi hàm hoặc cấu trúc dữ liệu được sử dụng.
+    - Cấu trúc cơ bản:
+        ```go
+        func TenHam[T AnyType](thamSo T) T {
+            // code
+        }
+        ```
+
+        + Trong đó:
+            - `T`: Là tên của Type Parameter (bạn có thể đặt tên bất kỳ, nhưng thường dùng T, V, K).
+
+            - `AnyType`: Là Type Constraint (Ràng buộc kiểu) – giới hạn những kiểu dữ liệu nào T có thể nhận.
+
+    - Ví dụ generic:
+        ```go
+        type List[T any] struct {
+            elements []T
+        }
+
+        func main() {
+            // Danh sách số nguyên
+            intList := List[int]{elements: []int{1, 2, 3}}
+            
+            // Danh sách chuỗi
+            stringList := List[string]{elements: []string{"A", "B"}}
+        }
+        ```
+    
+    3. `Type Constraints (Ràng buộc kiểu)`
+    - Để tránh việc người dùng truyền vào những kiểu dữ liệu không phù hợp (ví dụ: truyền một struct vào hàm yêu cầu thực hiện phép toán +), 
+    - Go sử dụng Constraints:
+        + any: Cho phép bất kỳ kiểu dữ liệu nào (tương đương interface{}).
+        + comparable: Các kiểu có thể so sánh bằng == hoặc !=.
+        + Custom Interface: Bạn có thể tự định nghĩa tập hợp các kiểu cho phép.
+    - Ví dụ:
+        ```go
+        // Chỉ chấp nhận int hoặc int64 hoặc float64
+        type Number interface {
+            int | int64 | float64
+        }
+
+        func Sum[T Number](a, b T) T {
+            return a + b
+        }
+        ```
+    
+    4. `Type Approximation (~)`
+    - Nó cho phép một Type Constraint không chỉ chấp nhận một kiểu dữ liệu chính xác, mà còn chấp nhận tất cả các kiểu dữ liệu có kiểu cơ sở (underlying type) là kiểu đó.
+    - Dấu ~ nói với trình biên dịch rằng: "Hãy chấp nhận bất kỳ kiểu nào có kiểu cơ sở là..."
+    ```go
+    type Number interface {
+        ~int | ~float64 // Chấp nhận int, float64 và mọi kiểu định nghĩa dựa trên chúng
+    }
+
+    type MyID int
+
+    func PrintInt[T ~int](v T) {
+        fmt.Println(v)
+    }
+
+    func main() {
+        var x MyID = 100
+        PrintInt(x) // Hợp lệ!
+    }
+    ```
+    - Quy tắc và Hạn chế:
+        + `Chỉ dùng với kiểu cơ sở (Underlying types)`: Bạn không thể dùng `~` với các kiểu phức hợp như `struct` hoặc `interface` một cách tùy tiện. Nó thường được dùng với các kiểu dữ liệu cơ bản như `int, string, float64, bool`,...
+            + Hợp lệ: `~int, ~string, ~[]byte`
+            + Không hợp lệ: `~MyStruct` (vì `MyStruct` không phải là kiểu cơ sở của ngôn ngữ).
+
+        + `Không dùng với struct, Interface`: Bạn không thể viết `~error` vì `error` là một `interface`, không phải là một kiểu dữ liệu cơ sở.
+
+        + `Vị trí sử dụng`: Dấu `~` chỉ có thể xuất hiện bên trong các `Interface` dùng làm constraint.
