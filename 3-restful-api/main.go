@@ -34,6 +34,24 @@ type TodoItemCreation struct {
 
 func (TodoItemCreation) TableName() string { return TodoItem{}.TableName() }
 
+/*
+# Lưu ý: Hoạt động của gorm:
+- Truyền lên trường nào thì mới cật nhật trường đó, còn các trường không truyền thì giữ nguyên
+
+- Nếu các trường title, description chỉ dùng string thì nếu client truyền lên title="" hoặc description="" hoặc title=nil hoặc description=nil hoặc không truyền title, description
+thì gorm mặc định sẽ xem nó như không có giá trị và bỏ qua việc cập nhật database các trường đó
+
+- Nên nếu muốn khi client truyền lên title="" hoặc description="" thì cập nhật các trường đó về chuỗi rỗng ""
+thì các trường đó phải đổi từ string sang *string. Khi chuyển qua *string thì nếu trường đó truyền lên giá trị khác nil thì nó sẽ cập nhật
+*/
+type TodoItemUpdate struct {
+	Title       *string `json:"title" gorm:"column:title"`
+	Description *string `json:"description" gorm:"column:description"`
+	Status      *string `json:"status" gorm:"column:status"`
+}
+
+func (TodoItemUpdate) TableName() string { return TodoItem{}.TableName() }
+
 func ex1() {
 	now := time.Now().UTC()
 
@@ -144,7 +162,7 @@ func main() {
 			items.POST("", CreatItem(db))
 			items.GET("")
 			items.GET("/:id", GetItem(db))
-			items.PATCH("/:id")
+			items.PATCH("/:id", UpdateItem(db))
 			items.DELETE("/:id")
 		}
 	}
@@ -201,18 +219,19 @@ func GetItem(db *gorm.DB) func(*gin.Context) {
 
 		/*
 			// Cách 1:
-			if err := db.Where("id = ?", id).First(&data).Error; err != nil {
-				c.JSON(http.StatusOK, gin.H{
+			data.Id = id
+			if err := db.First(&data).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
 					"error": err.Error(),
 				})
 
 				return
 			}
+
 		*/
 
 		// Cách 2:
-		data.Id = id
-		if err := db.First(&data).Error; err != nil {
+		if err := db.Where("id = ?", id).First(&data).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
@@ -222,6 +241,45 @@ func GetItem(db *gorm.DB) func(*gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{
 			"data": data,
+		})
+
+	}
+}
+
+// Truyền trường nào lên thì mới cập nhật trường đó, còn lại giữ nguyên
+func UpdateItem(db *gorm.DB) func(*gin.Context) {
+	return func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		//
+		var data TodoItemUpdate
+
+		if err := c.ShouldBind(&data); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		if err := db.Where("id = ?", id).Updates(&data).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": true,
 		})
 
 	}
