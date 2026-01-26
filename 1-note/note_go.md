@@ -23,6 +23,12 @@ go run main.go
 go run .
 ```
 
+# Cai dat Postman
+```bash
+sudo snap install postman
+```
+
+
 # Kiến thức Golang
 - Tên package viết thường hết, tổ chức theo kiểu thư mục  (vd: fmt, math/rand) (fmt là viết tắt của format)
 - `Exported Names` là biến được import từ 1 package khác, nó phải đươc viết hoa chữ cái đầu.  Nếu biến không được viết hoa chữ cái đầu thì là `Unexported Names`

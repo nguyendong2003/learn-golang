@@ -18,10 +18,10 @@ package main
 
 import (
 	"fmt"
-	"learngo/2-example/0-package/product"
-	structembedding11 "learngo/2-example/11-struct-embedding"
-	structembedding12 "learngo/2-example/12-struct-embedding"
-	profitrevenue "learngo/2-example/13-profit-revenue"
+	"learngo/0-package/product"
+	structembedding11 "learngo/11-struct-embedding"
+	structembedding12 "learngo/12-struct-embedding"
+	profitrevenue "learngo/13-profit-revenue"
 	"math"
 	"math/cmplx"
 	"runtime"

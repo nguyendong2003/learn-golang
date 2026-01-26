@@ -5,6 +5,7 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
             "name": "Launch Package",
             "type": "go",
@@ -12,7 +13,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}",
             "env": {
-                "APP_NAME":"My first app"
+                "APP_NAME":"My first app",
             }
         }
     ]

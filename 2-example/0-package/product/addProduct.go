@@ -2,7 +2,7 @@ package product
 
 import (
 	"fmt"
-	"learngo/2-example/0-package/calculator"
+	"learngo/0-package/calculator"
 )
 
 func AddProduct(a, b int) int {
