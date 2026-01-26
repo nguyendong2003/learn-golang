@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,21 +16,23 @@ import (
 )
 
 type TodoItem struct {
-	Id          int        `json:"id"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Status      string     `json:"status"`
-	CreatedAt   *time.Time `json:"created_at"`
-	UpdatedAt   *time.Time `json:"updated_at,omitempty"` // omitempty: BỎ QUA field khi marshal nếu field đó rỗng / giá trị mặc định
+	Id          int        `json:"id" gorm:"column:id"`
+	Title       string     `json:"title" gorm:"column:title"`
+	Description string     `json:"description" gorm:"column:description"`
+	Status      string     `json:"status" gorm:"column:status"`
+	CreatedAt   *time.Time `json:"created_at" gorm:"created_at"`
+	UpdatedAt   *time.Time `json:"updated_at,omitempty" gorm:"updated_at"` // omitempty: BỎ QUA field khi marshal nếu field đó rỗng / giá trị mặc định
 }
+
+func (TodoItem) TableName() string { return "todo_items" }
 
 type TodoItemCreation struct {
-	Id          int    `json:"-" gorm:"column:id;"`
-	Title       string `json:"title" gorm:"column:title;"`
-	Description string `json:"description" gorm:"column:description;"`
+	Id          int    `json:"-" gorm:"column:id"`
+	Title       string `json:"title" gorm:"column:title"`
+	Description string `json:"description" gorm:"column:description"`
 }
 
-func (TodoItemCreation) TableName() string { return "todo_items" }
+func (TodoItemCreation) TableName() string { return TodoItem{}.TableName() }
 
 func ex1() {
 	now := time.Now().UTC()
@@ -140,7 +143,7 @@ func main() {
 		{
 			items.POST("", CreatItem(db))
 			items.GET("")
-			items.GET("/:id")
+			items.GET("/:id", GetItem(db))
 			items.PATCH("/:id")
 			items.DELETE("/:id")
 		}
@@ -155,7 +158,7 @@ func main() {
 
 }
 
-func CreatItem(db *gorm.DB) func(c *gin.Context) {
+func CreatItem(db *gorm.DB) func(*gin.Context) {
 	return func(c *gin.Context) {
 		var data TodoItemCreation
 
@@ -178,5 +181,48 @@ func CreatItem(db *gorm.DB) func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"data": data.Id,
 		})
+	}
+}
+
+func GetItem(db *gorm.DB) func(*gin.Context) {
+	return func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		//
+		var data TodoItem
+
+		/*
+			// Cách 1:
+			if err := db.Where("id = ?", id).First(&data).Error; err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"error": err.Error(),
+				})
+
+				return
+			}
+		*/
+
+		// Cách 2:
+		data.Id = id
+		if err := db.First(&data).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": data,
+		})
+
 	}
 }
