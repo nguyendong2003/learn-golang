@@ -7,7 +7,6 @@ import (
 	"restfulapi/common"
 	"restfulapi/module/item/model"
 	ginitem "restfulapi/module/item/transport/ginitem"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -49,7 +48,7 @@ func main() {
 			items.GET("", ListItem(db))
 			items.GET("/:id", ginitem.GetItem(db))
 			items.PATCH("/:id", ginitem.UpdateItem(db))
-			items.DELETE("/:id", DeleteItem(db))
+			items.DELETE("/:id", ginitem.DeleteItem(db))
 		}
 	}
 
@@ -60,43 +59,6 @@ func main() {
 	})
 	router.Run() // listens on 0.0.0.0:8080 by default // or: router.Run(":8000") // change port 8000
 
-}
-
-func DeleteItem(db *gorm.DB) func(*gin.Context) {
-	return func(c *gin.Context) {
-		id, err := strconv.Atoi(c.Param("id"))
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		/*
-			// Code như này là xóa luôn row đó luôn
-			if err := db.Table(TodoItem{}.TableName()).Where("id = ?", id).Delete(nil).Error; err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": err.Error(),
-				})
-
-				return
-			}
-		*/
-
-		// Soft delete -> chỉ thay đổi status sang Deleted
-		if err := db.Table(model.TodoItem{}.TableName()).Where("id = ?", id).Updates(map[string]interface{}{"status": "Deleted"}).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		c.JSON(http.StatusOK, common.SimpleSuccessResponse(true))
-
-	}
 }
 
 func ListItem(db *gorm.DB) func(*gin.Context) {
