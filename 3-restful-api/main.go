@@ -163,7 +163,7 @@ func main() {
 			items.GET("")
 			items.GET("/:id", GetItem(db))
 			items.PATCH("/:id", UpdateItem(db))
-			items.DELETE("/:id")
+			items.DELETE("/:id", DeleteItem(db))
 		}
 	}
 
@@ -271,6 +271,45 @@ func UpdateItem(db *gorm.DB) func(*gin.Context) {
 		}
 
 		if err := db.Where("id = ?", id).Updates(&data).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": true,
+		})
+
+	}
+}
+
+func DeleteItem(db *gorm.DB) func(*gin.Context) {
+	return func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		/*
+			// Code như này là xóa luôn row đó luôn
+			if err := db.Table(TodoItem{}.TableName()).Where("id = ?", id).Delete(nil).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+
+				return
+			}
+		*/
+
+		// Soft delete -> chỉ thay đổi status sang Deleted
+		if err := db.Table(TodoItem{}.TableName()).Where("id = ?", id).Updates(map[string]interface{}{"status": "Deleted"}).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
