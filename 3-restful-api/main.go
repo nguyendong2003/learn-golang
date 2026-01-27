@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,13 +15,79 @@ import (
 	"gorm.io/gorm"
 )
 
+/* Luồng chạy
+DB (status = "Doing")
+   ↓
+Scan()
+   ↓
+ItemStatus = 0
+   ↓
+MarshalJSON()
+   ↓
+JSON trả về: "Doing"
+*/
+
+type ItemStatus int
+
+/*
+iota là một hằng số đặc biệt trong Go, dùng để tự động tăng số khi khai báo const. Nó chỉ dùng được trong const block.
+Trong const block, nếu bỏ trống giá trị, Go sẽ tự dùng lại biểu thức ở dòng trên, nhưng iota thì tự tăng.
+*/
+const (
+	ItemStatusDoing   ItemStatus = iota // 0
+	ItemStatusDone                      // iota -> 1
+	ItemStatusDeleted                   // iota -> 2
+)
+
+var allItemStatuses = [3]string{"Doing", "Done", "Deleted"}
+
+// String() – dùng khi in / trả JSON (map từ số 0,1,2 sang "Doing", "Done", "Deleted")
+func (item ItemStatus) String() string {
+	return allItemStatuses[item]
+}
+
+func parseStrToItemStatus(s string) (ItemStatus, error) {
+	for index := range allItemStatuses {
+		if allItemStatuses[index] == s {
+			return ItemStatus(index), nil
+		}
+	}
+
+	return ItemStatus(0), errors.New("Invalid status string")
+}
+
+// convert string → enum (GORM tự động gọi khi: db.First(&todo))
+func (item *ItemStatus) Scan(value interface{}) error {
+	bytes, ok := value.([]byte)
+
+	if !ok {
+		return fmt.Errorf("Fail to scan data from sql: %s", value)
+	}
+
+	v, err := parseStrToItemStatus(string(bytes))
+
+	if err != nil {
+		return errors.New(err.Error())
+	}
+
+	*item = v // *item = 0,1,2
+
+	return nil
+}
+
+// Nếu không có method này thì khi gọi api get item thì status sẽ trả về số 0,1,2 thay vì "Doing", "Done", "Deleted" (GORM gọi hàm này)
+func (item *ItemStatus) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("\"%s\"", item.String())), nil
+}
+
+// Status dùng *ItemStatus thay vì ItemStatus vì nếu vì lí do nào đó mà Status là null thì không bị lỗi
 type TodoItem struct {
-	Id          int        `json:"id" gorm:"column:id"`
-	Title       string     `json:"title" gorm:"column:title"`
-	Description string     `json:"description" gorm:"column:description"`
-	Status      string     `json:"status" gorm:"column:status"`
-	CreatedAt   *time.Time `json:"created_at" gorm:"created_at"`
-	UpdatedAt   *time.Time `json:"updated_at,omitempty" gorm:"updated_at"` // omitempty: BỎ QUA field khi marshal nếu field đó rỗng / giá trị mặc định
+	Id          int         `json:"id" gorm:"column:id"`
+	Title       string      `json:"title" gorm:"column:title"`
+	Description string      `json:"description" gorm:"column:description"`
+	Status      *ItemStatus `json:"status" gorm:"column:status"`
+	CreatedAt   *time.Time  `json:"created_at" gorm:"created_at"`
+	UpdatedAt   *time.Time  `json:"updated_at,omitempty" gorm:"updated_at"` // omitempty: BỎ QUA field khi marshal nếu field đó rỗng / giá trị mặc định
 }
 
 func (TodoItem) TableName() string { return "todo_items" }
@@ -68,83 +134,6 @@ func (p *Paging) Process() {
 	if p.Limit <= 0 || p.Limit >= 100 {
 		p.Limit = 10
 	}
-}
-
-func ex1() {
-	now := time.Now().UTC()
-
-	item := TodoItem{
-		Id:          1,
-		Title:       "This is item 1",
-		Description: "This is description for item 1",
-		Status:      "pending",
-		CreatedAt:   &now,
-		UpdatedAt:   nil,
-	}
-
-	// json.Marshal(item): Biến dữ liệu Go → JSON
-	jsonData, err := json.Marshal(item)
-
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	fmt.Println(string(jsonData))
-
-	// json.Unmarshal(): Biến JSON → dữ liệu Go
-	jsonStr := "{\"id\":1,\"title\":\"This is item 1\",\"description\":\"This is description for item 1\",\"status\":\"pending\",\"created_at\":\"2026-01-26T07:09:33.33976644Z\",\"updated_at\":null}"
-	var item2 TodoItem
-	if err := json.Unmarshal([]byte(jsonStr), &item2); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	fmt.Println(item2)
-}
-
-// Create api
-func ex2() {
-	now := time.Now().UTC()
-
-	item := TodoItem{
-		Id:          1,
-		Title:       "This is item 1",
-		Description: "This is description for item 1",
-		Status:      "pending",
-		CreatedAt:   &now,
-		UpdatedAt:   nil,
-	}
-
-	// Gin
-	router := gin.Default()
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": item,
-		})
-	})
-	router.Run() // listens on 0.0.0.0:8080 by default
-	// router.Run(":8000") // change port 8000
-
-}
-
-// Connection database
-func ex3() {
-	// Load the .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	// Connect to database
-	dsn := os.Getenv("DB_CONNECTION")
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	fmt.Println(db)
 }
 
 func main() {
