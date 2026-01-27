@@ -48,7 +48,7 @@ func main() {
 			items.POST("", ginitem.CreatItem(db))
 			items.GET("", ListItem(db))
 			items.GET("/:id", ginitem.GetItem(db))
-			items.PATCH("/:id", UpdateItem(db))
+			items.PATCH("/:id", ginitem.UpdateItem(db))
 			items.DELETE("/:id", DeleteItem(db))
 		}
 	}
@@ -60,43 +60,6 @@ func main() {
 	})
 	router.Run() // listens on 0.0.0.0:8080 by default // or: router.Run(":8000") // change port 8000
 
-}
-
-// Truyền trường nào lên thì mới cập nhật trường đó, còn lại giữ nguyên
-func UpdateItem(db *gorm.DB) func(*gin.Context) {
-	return func(c *gin.Context) {
-		id, err := strconv.Atoi(c.Param("id"))
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		//
-		var data model.TodoItemUpdate
-
-		if err := c.ShouldBind(&data); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		if err := db.Where("id = ?", id).Updates(&data).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		c.JSON(http.StatusOK, common.SimpleSuccessResponse(true))
-
-	}
 }
 
 func DeleteItem(db *gorm.DB) func(*gin.Context) {

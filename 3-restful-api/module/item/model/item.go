@@ -7,6 +7,7 @@ import (
 
 var (
 	ErrTitleIsBlank = errors.New("Title cannot be blank")
+	ErrItemDeleted  = errors.New("Item is deleted. Cannot update it")
 )
 
 // Status dùng *ItemStatus thay vì ItemStatus vì nếu vì lí do nào đó mà Status là null thì không bị lỗi
