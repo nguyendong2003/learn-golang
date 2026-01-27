@@ -1,12 +1,14 @@
 package main
 
 import (
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,16 +17,38 @@ import (
 	"gorm.io/gorm"
 )
 
+/*
+| Interface                              | Ai gọi              | Khi nào                |
+| -------------------------------------- | ------------------- | ---------------------- |
+| `sql.Scanner` → `Scan()`               | GORM                | **SELECT từ DB**       |
+| `driver.Valuer` → `Value()`            | GORM                | **INSERT / UPDATE DB** |
+| `json.Marshaler` → `MarshalJSON()`     | Gin / encoding/json | **Trả response**       |
+| `json.Unmarshaler` → `UnmarshalJSON()` | Gin                 | **Nhận request JSON**  |
+
+*/
+
 /* Luồng chạy
-DB (status = "Doing")
+REQUEST JSON
    ↓
-Scan()
+UnmarshalJSON()   ← Gin gọi
    ↓
-ItemStatus = 0
+ItemStatus (0,1,2)
    ↓
-MarshalJSON()
+Value()           ← GORM gọi
    ↓
-JSON trả về: "Doing"
+DB ("Doing")
+
+----------------------------
+
+DB ("Doing")
+   ↓
+Scan()            ← GORM gọi
+   ↓
+ItemStatus (0,1,2)
+   ↓
+MarshalJSON()     ← Gin gọi
+   ↓
+RESPONSE JSON
 */
 
 type ItemStatus int
@@ -42,8 +66,8 @@ const (
 var allItemStatuses = [3]string{"Doing", "Done", "Deleted"}
 
 // String() – dùng khi in / trả JSON (map từ số 0,1,2 sang "Doing", "Done", "Deleted")
-func (item ItemStatus) String() string {
-	return allItemStatuses[item]
+func (item *ItemStatus) String() string {
+	return allItemStatuses[*item]
 }
 
 func parseStrToItemStatus(s string) (ItemStatus, error) {
@@ -56,7 +80,7 @@ func parseStrToItemStatus(s string) (ItemStatus, error) {
 	return ItemStatus(0), errors.New("Invalid status string")
 }
 
-// convert string → enum (GORM tự động gọi khi: db.First(&todo))
+// convert string → enum (GORM tự động gọi khi: SELECT từ DB)
 func (item *ItemStatus) Scan(value interface{}) error {
 	bytes, ok := value.([]byte)
 
@@ -75,9 +99,35 @@ func (item *ItemStatus) Scan(value interface{}) error {
 	return nil
 }
 
+func (item *ItemStatus) Value() (driver.Value, error) {
+	if item == nil {
+		return nil, nil
+	}
+
+	return item.String(), nil
+}
+
 // Nếu không có method này thì khi gọi api get item thì status sẽ trả về số 0,1,2 thay vì "Doing", "Done", "Deleted" (GORM gọi hàm này)
 func (item *ItemStatus) MarshalJSON() ([]byte, error) {
+	if item == nil {
+		return nil, nil
+	}
+
 	return []byte(fmt.Sprintf("\"%s\"", item.String())), nil
+}
+
+func (item *ItemStatus) UnmarshalJSON(data []byte) error {
+	str := strings.ReplaceAll(string(data), "\"", "")
+
+	itemValue, err := parseStrToItemStatus(str)
+
+	if err != nil {
+		return err
+	}
+
+	*item = itemValue
+
+	return nil
 }
 
 // Status dùng *ItemStatus thay vì ItemStatus vì nếu vì lí do nào đó mà Status là null thì không bị lỗi
@@ -93,9 +143,10 @@ type TodoItem struct {
 func (TodoItem) TableName() string { return "todo_items" }
 
 type TodoItemCreation struct {
-	Id          int    `json:"-" gorm:"column:id"`
-	Title       string `json:"title" gorm:"column:title"`
-	Description string `json:"description" gorm:"column:description"`
+	Id          int         `json:"-" gorm:"column:id"`
+	Title       string      `json:"title" gorm:"column:title"`
+	Description string      `json:"description" gorm:"column:description"`
+	Status      *ItemStatus `json:"status" gorm:"column:status"`
 }
 
 func (TodoItemCreation) TableName() string { return TodoItem{}.TableName() }
