@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"restfulapi/common"
 	"restfulapi/module/item/model"
 )
 
@@ -12,7 +13,7 @@ func (s *sqlStore) DeleteItem(ctx context.Context, condition map[string]interfac
 		Where(condition).
 		Updates(map[string]interface{}{"status": deletedStatus.String()}).Error; err != nil {
 
-		return err
+		return common.ErrDB(err)
 	}
 
 	return nil

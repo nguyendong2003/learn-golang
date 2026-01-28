@@ -5,9 +5,13 @@ import (
 	"restfulapi/common"
 )
 
+const (
+	EntityName = "Item"
+)
+
 var (
 	ErrTitleIsBlank = errors.New("Title cannot be blank")
-	ErrItemDeleted  = errors.New("Item is deleted. Cannot update/delete it")
+	ErrItemDeleted  = errors.New("Item is deleted")
 )
 
 // Status dùng *ItemStatus thay vì ItemStatus vì nếu vì lí do nào đó mà Status là null thì không bị lỗi
@@ -26,6 +30,7 @@ type TodoItem struct {
 
 func (TodoItem) TableName() string { return "todo_items" }
 
+// Thay đổi thành: Title       string      `json:"title" gorm:"column:titlee"` để thấy lỗi
 type TodoItemCreation struct {
 	Id          int         `json:"-" gorm:"column:id"`
 	Title       string      `json:"title" gorm:"column:title"`

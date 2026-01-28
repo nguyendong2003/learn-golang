@@ -31,7 +31,7 @@ func (business *listItemBusiness) ListItem(
 	data, err := business.store.ListItem(ctx, filter, paging)
 
 	if err != nil {
-		return nil, err
+		return nil, common.ErrCannotGetEntity(model.EntityName, err)
 	}
 
 	return data, nil

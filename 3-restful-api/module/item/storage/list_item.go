@@ -23,8 +23,7 @@ func (s *sqlStore) ListItem(
 	}
 
 	if err := db.Table(model.TodoItem{}.TableName()).Count(&paging.Total).Error; err != nil {
-
-		return nil, err
+		return nil, common.ErrDB(err)
 	}
 
 	if err := db.Order("id desc").
@@ -32,7 +31,7 @@ func (s *sqlStore) ListItem(
 		Limit(paging.Limit).
 		Find(&result).Error; err != nil {
 
-		return nil, err
+		return nil, common.ErrDB(err)
 	}
 
 	return result, nil

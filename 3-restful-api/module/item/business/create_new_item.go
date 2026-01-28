@@ -2,6 +2,7 @@ package business
 
 import (
 	"context"
+	"restfulapi/common"
 	"restfulapi/module/item/model"
 	"strings"
 )
@@ -22,11 +23,11 @@ func (business *createItemBusiness) CreateNewItem(ctx context.Context, data *mod
 	title := strings.TrimSpace(data.Title)
 
 	if title == "" {
-		return model.ErrTitleIsBlank
+		return common.ErrInvalidRequest(model.ErrTitleIsBlank)
 	}
 
 	if err := business.store.CreateItem(ctx, data); err != nil {
-		return err
+		return common.ErrCannotCreateEntity(model.EntityName, err)
 	}
 
 	return nil

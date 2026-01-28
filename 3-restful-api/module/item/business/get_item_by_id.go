@@ -2,6 +2,7 @@ package business
 
 import (
 	"context"
+	"restfulapi/common"
 	"restfulapi/module/item/model"
 )
 
@@ -21,7 +22,7 @@ func (business *getItemBusiness) GetItemById(ctx context.Context, id int) (*mode
 	data, err := business.store.GetItem(ctx, map[string]interface{}{"id": id})
 
 	if err != nil {
-		return nil, err
+		return nil, common.ErrCannotGetEntity(model.EntityName, err)
 	}
 
 	return data, nil
