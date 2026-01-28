@@ -1,7 +1,6 @@
 # Repo
-```text
-https://github.com/mschwarzmueller/go-complete-guide-resources
-```
+
+[Udemy: Go - The Complete Guide - Maximilian Schwarzmüller] <https://github.com/mschwarzmueller/go-complete-guide-resources>
 
 # Cai dat go
 
