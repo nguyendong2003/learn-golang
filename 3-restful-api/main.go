@@ -38,10 +38,14 @@ func main() {
 	*/
 	router := gin.Default()
 
+	// router.Use(middleware.Recovery())
+
+	// v1 := router.Group("/v1", middleware.Recovery())
 	v1 := router.Group("/v1")
 	{
 		items := v1.Group("/items")
 		{
+			// items.POST("", middleware.Recovery(), ginitem.CreatItem(db))
 			items.POST("", ginitem.CreatItem(db))
 			items.GET("", ginitem.ListItem(db))
 			items.GET("/:id", ginitem.GetItem(db))
@@ -51,6 +55,11 @@ func main() {
 	}
 
 	router.GET("/ping", func(c *gin.Context) {
+		// go func() {
+		// 	defer common.Recovery()
+		// 	fmt.Println([]int{}[0])
+		// }()
+
 		c.JSON(http.StatusOK, gin.H{
 			"message": "ping sucessfully",
 		})

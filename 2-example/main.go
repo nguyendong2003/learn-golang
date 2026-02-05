@@ -25,6 +25,7 @@ import (
 	"math"
 	"math/cmplx"
 	"runtime"
+	"time"
 )
 
 func add(x int, y int) int {
@@ -894,6 +895,22 @@ func profitRevenueEx1() {
 	profitrevenue.Main()
 }
 
+// goroutine
+func sayHello(name string) {
+	for i := 0; i <= 5; i++ {
+		fmt.Printf("Hello %s\n", name)
+	}
+}
+func goroutineEx1() {
+	// Goroutine
+	go sayHello("Viet")
+
+	// normal function
+	sayHello("Nam")
+
+	time.Sleep(time.Second)
+}
+
 func main() {
 	// variables()
 	// typeConversion()
@@ -933,6 +950,7 @@ func main() {
 	// fmtScanEx2()
 	// fmtScanEx3()
 	// structEmbeddingEx1()
-	structEmbeddingEx2()
+	// structEmbeddingEx2()
 	// profitRevenueEx1()
+	goroutineEx1()
 }
