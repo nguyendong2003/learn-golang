@@ -18,3 +18,28 @@ go get -u gorm.io/driver/mysql
 go get github.com/joho/godotenv
 ```
 
+
+## Postman API
+- Create item: http://localhost:8080/v1/items
+Body:
+{
+    "title": "This is a new item 99",
+    "description": "Item description 99",
+    "status": "Done"
+}
+
+- Get item by id: http://localhost:8080/v1/items/:id
+
+- Update item by id: http://localhost:8080/v1/items/:id
+Body: 
+{
+    "title": "abc22",
+    "description": "description 22",
+    "status":"Done"
+}
+
+- Delete item by id: http://localhost:8080/v1/items/:id
+
+- Get items: http://localhost:8080/v1/items?page=2&limit=5&status=Done
+
+
