@@ -1,8 +1,18 @@
 package cmd
 
-import "github.com/joho/godotenv"
+import (
+	"os"
+
+	"github.com/joho/godotenv"
+)
 
 func (server *ApiServer) loadEnv() error {
-	err := godotenv.Load()
-	return err
+	if err := godotenv.Load(); err!= nil {
+		return err
+	}
+
+	dsn := os.Getenv("DB_CONNECTION")
+	server.config.Database.Dsn = dsn
+
+	return nil
 }

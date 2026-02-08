@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type Category struct {
@@ -12,6 +13,7 @@ type Category struct {
 	Name      string `gorm:"size:255"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
 type GetDetailCategoryParams struct {

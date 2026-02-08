@@ -8,23 +8,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type CategoryHandler struct {
-	categoryService interfaces.CategoryServiceInterface
+type ProductHandler struct {
+	productService interfaces.ProductServiceInterface
 }
 
-func NewCategoryHandler(
-	categoryService interfaces.CategoryServiceInterface,
-) interfaces.CategoryHandlerInterface {
-	return &CategoryHandler{
-		categoryService: categoryService,
+func NewProductHandler(
+	productService interfaces.ProductServiceInterface,
+) interfaces.ProductHandlerInterface {
+	return &ProductHandler{
+		productService: productService,
 	}
 }
 
-func (h *CategoryHandler) GetList() gin.HandlerFunc {
+func (h *ProductHandler) GetList() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := dto.NewApiResponse(c.FullPath())
 
-		var request dto.GetListCategoryRequest
+		var request dto.GetListProductRequest
 		var errs []error
 
 		// ShouldBindQuery để bind dữ liệu từ URL Query String (dùng với tag 'form' trong struct)
@@ -36,7 +36,7 @@ func (h *CategoryHandler) GetList() gin.HandlerFunc {
 
 		response.Request = request
 
-		data, errs := h.categoryService.GetList(c.Request.Context(), request)
+		data, errs := h.productService.GetList(c.Request.Context(), request)
 		if errs != nil {
 			errorResponse(c, response, errs)
 			return
@@ -48,11 +48,11 @@ func (h *CategoryHandler) GetList() gin.HandlerFunc {
 	}
 }
 
-func (h *CategoryHandler) GetDetail() gin.HandlerFunc {
+func (h *ProductHandler) GetDetail() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := dto.NewApiResponse(c.FullPath())
 
-		var request dto.GetCategoryDetailRequest
+		var request dto.GetProductDetailRequest
 		var errs []error
 
 		// ShouldBind để bind dữ liệu từ URL Path Param (dùng với tag 'uri' trong struct)
@@ -64,7 +64,7 @@ func (h *CategoryHandler) GetDetail() gin.HandlerFunc {
 
 		response.Request = request
 
-		data, errs := h.categoryService.GetDetail(c.Request.Context(), request)
+		data, errs := h.productService.GetDetail(c.Request.Context(), request)
 		if errs != nil {
 			errorResponse(c, response, errs)
 			return
@@ -76,11 +76,11 @@ func (h *CategoryHandler) GetDetail() gin.HandlerFunc {
 	}
 }
 
-func (h *CategoryHandler) Create() gin.HandlerFunc {
+func (h *ProductHandler) Create() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := dto.NewApiResponse(c.FullPath())
 
-		var request dto.CreateCategoryRequest
+		var request dto.CreateProductRequest
 		var errs []error
 		if err := c.ShouldBind(&request); err != nil {
 			errs = append(errs, err)
@@ -88,7 +88,7 @@ func (h *CategoryHandler) Create() gin.HandlerFunc {
 			return
 		}
 
-		data, errs := h.categoryService.Create(c.Request.Context(), request)
+		data, errs := h.productService.Create(c.Request.Context(), request)
 		if errs != nil {
 			errorResponse(c, response, errs)
 			return

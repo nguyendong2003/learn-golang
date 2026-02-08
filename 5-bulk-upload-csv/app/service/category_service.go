@@ -19,8 +19,8 @@ func NewCategoryService(
 	}
 }
 
-func (s *CategoryService) GetList(ctx context.Context) ([]dto.CategoryResponse, []error) {
-	categories, errs := s.categoryRepository.GetList(ctx)
+func (s *CategoryService) GetList(ctx context.Context, params dto.GetListCategoryRequest) ([]dto.CategoryResponse, []error) {
+	categories, errs := s.categoryRepository.GetList(ctx, params)
 
 	if errs != nil {
 		return nil, errs

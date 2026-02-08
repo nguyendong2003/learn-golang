@@ -10,25 +10,25 @@ import (
 	"gorm.io/gorm"
 )
 
-type CategoryRepository struct {
+type WarehouseRepository struct {
 	db *gorm.DB
 }
 
-func NewCategoryRepository(db *gorm.DB) interfaces.CategoryRepositoryInterface {
-	return &CategoryRepository{
+func NewWarehouseRepository(db *gorm.DB) interfaces.WarehouseRepositoryInterface {
+	return &WarehouseRepository{
 		db: db,
 	}
 }
 
-func (r CategoryRepository) GetList(ctx context.Context, params dto.GetListCategoryRequest) ([]model.Category, []error) {
+func (r WarehouseRepository) GetList(ctx context.Context, params dto.GetListWarehouseRequest) ([]model.Warehouse, []error) {
 	limit := params.Limit
 	offset := params.GetOffset()
 
-	var result []model.Category
+	var result []model.Warehouse
 	var errs []error
 
 	query := r.db.WithContext(ctx).
-		Model(model.Category{}).
+		Model(model.Warehouse{}).
 		Order("updated_at desc").
 		Limit(limit).
 		Offset(offset).
@@ -41,8 +41,8 @@ func (r CategoryRepository) GetList(ctx context.Context, params dto.GetListCateg
 	return result, nil
 }
 
-func (r CategoryRepository) GetDetail(ctx context.Context, params model.GetDetailCategoryParams) (*model.Category, []error) {
-	var result *model.Category
+func (r WarehouseRepository) GetDetail(ctx context.Context, params model.GetDetailWarehouseParams) (*model.Warehouse, []error) {
+	var result *model.Warehouse
 	var errs []error
 
 	paramsMap, err := params.Map()
@@ -65,7 +65,7 @@ func (r CategoryRepository) GetDetail(ctx context.Context, params model.GetDetai
 
 }
 
-func (r CategoryRepository) Create(ctx context.Context, data model.Category) (*model.Category, []error) {
+func (r WarehouseRepository) Create(ctx context.Context, data model.Warehouse) (*model.Warehouse, []error) {
 	var errs []error
 
 	if err := r.db.WithContext(ctx).Create(&data).Error; err != nil {

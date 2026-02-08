@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type InventoryTransaction struct {
@@ -15,4 +16,5 @@ type InventoryTransaction struct {
 	TransactionType string    `gorm:"size:10;not null"`
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	DeletedAt       gorm.DeletedAt `gorm:"index"`
 }

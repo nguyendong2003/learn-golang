@@ -6,7 +6,7 @@ import (
 )
 
 type CategoryServiceInterface interface {
-	GetList(ctx context.Context) ([]dto.CategoryResponse, []error)
+	GetList(ctx context.Context, params dto.GetListCategoryRequest) ([]dto.CategoryResponse, []error)
 	GetDetail(ctx context.Context, params dto.GetCategoryDetailRequest) (*dto.CategoryResponse, []error)
 	Create(ctx context.Context, data dto.CreateCategoryRequest) (*dto.CategoryResponse, []error)
 }

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type Product struct {
@@ -12,4 +13,23 @@ type Product struct {
 	CategoryID uuid.UUID `gorm:"type:uuid;not null;index"`
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	DeletedAt  gorm.DeletedAt `gorm:"index"`
+}
+
+type GetDetailProductParams struct {
+	Id *string
+}
+
+func (p GetDetailProductParams) Map() (Product, error) {
+	var product Product
+	if p.Id != nil {
+		id, err := uuid.Parse(*p.Id)
+		if err != nil {
+			return product, err
+		}
+
+		product.ID = id
+	}
+
+	return product, nil
 }
