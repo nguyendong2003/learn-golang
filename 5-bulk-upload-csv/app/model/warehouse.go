@@ -15,6 +15,11 @@ type Warehouse struct {
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
+type WarehouseIDAndCode struct {
+	ModelUUID
+	Code string `gorm:"size:50;uniqueIndex;not null"`
+}
+
 type GetDetailWarehouseParams struct {
 	Id *string
 }

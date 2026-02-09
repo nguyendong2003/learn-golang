@@ -2,7 +2,7 @@ package cmd
 
 func (server *ApiServer) route() {
 	server.router.GET("/api/v1/healthy", server.mainHandler.HealthCheck())
-	server.router.GET("/api/generate", server.generateHandler.Generate())
+	server.router.POST("/api/generate", server.generateHandler.Generate())
 	{
 		categoryGroup := server.router.Group("/api/v1/categories")
 		categoryGroup.GET("", server.categoryHandler.GetList())
@@ -22,5 +22,10 @@ func (server *ApiServer) route() {
 		productGroup.GET("", server.productHandler.GetList())
 		productGroup.GET("/:id", server.productHandler.GetDetail())
 		productGroup.POST("", server.productHandler.Create())
+	}
+
+	{
+		inventoryTransactionGroup := server.router.Group("/api/v1/inventory-transactions")
+		inventoryTransactionGroup.POST("/bulk-upload", server.inventoryTransactionHandler.ProcessBulkUpload())
 	}
 }

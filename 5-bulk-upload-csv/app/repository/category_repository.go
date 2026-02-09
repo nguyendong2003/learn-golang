@@ -41,6 +41,36 @@ func (r CategoryRepository) GetList(ctx context.Context, params dto.GetListCateg
 	return result, nil
 }
 
+func (r CategoryRepository) GetCategoriesCodes(ctx context.Context, codes []string) ([]model.CategoryIDAndCode, []error) {
+	var result []model.CategoryIDAndCode
+	var errs []error
+
+	query := r.db.WithContext(ctx).
+		Select("id, code").
+		Where("code IN ?", codes).
+		Find(&result)
+
+	if err := query.Error; err != nil {
+		errs = append(errs, err)
+		return nil, errs
+	}
+
+	return result, nil
+}
+
+func (r CategoryRepository) GetAllCategories(ctx context.Context) ([]model.CategoryIDAndCode, error) {
+	var result []model.CategoryIDAndCode
+
+	if err := r.db.WithContext(ctx).
+		Model(&model.Category{}).
+		Select("id, code").
+		Find(&result).Error; err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 func (r CategoryRepository) GetDetail(ctx context.Context, params model.GetDetailCategoryParams) (*model.Category, []error) {
 	var result *model.Category
 	var errs []error

@@ -29,4 +29,7 @@ func (server *ApiServer) dependenciesInjection() {
 	server.productService = service.NewProductService(server.productRepository)
 	server.productHandler = handler.NewProductHandler(server.productService)
 
+	server.inventoryTransactionRepository = repository.NewInventoryTransactionRepository(server.dbRepository.GetDB())
+	server.inventoryTransactionService = service.NewInventoryTransactionService(server.inventoryTransactionRepository)
+	server.inventoryTransactionHandler = handler.NewInventoryTransactionHandler(server.inventoryTransactionService)
 }

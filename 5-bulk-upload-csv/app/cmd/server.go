@@ -29,6 +29,10 @@ type ApiServer struct {
 	productService    interfaces.ProductServiceInterface
 	productHandler    interfaces.ProductHandlerInterface
 
+	inventoryTransactionRepository interfaces.InventoryTransactionRepositoryInterface
+	inventoryTransactionService    interfaces.InventoryTransactionServiceInterface
+	inventoryTransactionHandler    interfaces.InventoryTransactionHandlerInterface
+
 	router *gin.Engine
 }
 

@@ -41,6 +41,36 @@ func (r WarehouseRepository) GetList(ctx context.Context, params dto.GetListWare
 	return result, nil
 }
 
+func (r WarehouseRepository) GetWarehousesByCodes(ctx context.Context, codes []string) ([]model.WarehouseIDAndCode, []error) {
+	var result []model.WarehouseIDAndCode
+	var errs []error
+
+	query := r.db.WithContext(ctx).
+		Select("id, code").
+		Where("code IN ?", codes).
+		Find(&result)
+
+	if err := query.Error; err != nil {
+		errs = append(errs, err)
+		return nil, errs
+	}
+
+	return result, nil
+}
+
+func (r WarehouseRepository) GetAllWarehouses(ctx context.Context) ([]model.WarehouseIDAndCode, error) {
+	var result []model.WarehouseIDAndCode
+
+	if err := r.db.WithContext(ctx).
+		Model(&model.Warehouse{}).
+		Select("id, code").
+		Find(&result).Error; err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 func (r WarehouseRepository) GetDetail(ctx context.Context, params model.GetDetailWarehouseParams) (*model.Warehouse, []error) {
 	var result *model.Warehouse
 	var errs []error

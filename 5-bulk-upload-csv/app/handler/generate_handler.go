@@ -70,7 +70,7 @@ func GenerateSeedFiles() (string, string, error) {
 	   SQL FILE
 	======================= */
 
-	sqlPath := "./generate_data.sql"
+	sqlPath := "./script/generate_data.sql"
 	sqlFile, err := os.Create(sqlPath)
 	if err != nil {
 		return "", "", err
@@ -176,7 +176,7 @@ func GenerateSeedFiles() (string, string, error) {
 	   CSV FILE
 	======================= */
 
-	csvPath := "./inventory_transactions.csv"
+	csvPath := "./script/inventory_transactions.csv"
 	csvFile, err := os.Create(csvPath)
 	if err != nil {
 		return "", "", err
