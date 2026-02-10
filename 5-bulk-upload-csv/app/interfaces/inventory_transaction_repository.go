@@ -4,14 +4,13 @@ import (
 	"bulk-upload-csv/model"
 	"context"
 
-	"gorm.io/gorm"
+	"github.com/google/uuid"
 )
 
 type InventoryTransactionRepositoryInterface interface {
-	BatchInsertTransactions(ctx context.Context, data []model.InventoryTransaction) error
-	BatchInsertTransactionsWithTx(ctx context.Context, tx *gorm.DB, data []model.InventoryTransaction) error
-	GetAllProducts(ctx context.Context) ([]model.ProductIDAndSku, error)
-	GetAllCategories(ctx context.Context) ([]model.CategoryIDAndCode, error)
-	GetAllWarehouses(ctx context.Context) ([]model.WarehouseIDAndCode, error)
-	BeginTx(ctx context.Context) *gorm.DB
+	BatchInsert(ctx context.Context, data []model.InventoryTransaction) error
+	InventoryWorker(jobs <-chan []model.InventoryTransaction, errCh chan<- error)
+	LoadCategoryCache(ctx context.Context) (map[string]uuid.UUID, error)
+	LoadWarehouseCache(ctx context.Context) (map[string]uuid.UUID, error)
+	LoadProductCache(ctx context.Context) (map[string]uuid.UUID, error)
 }

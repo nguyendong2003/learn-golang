@@ -41,36 +41,6 @@ func (r ProductRepository) GetList(ctx context.Context, params dto.GetListProduc
 	return result, nil
 }
 
-func (r ProductRepository) GetProductsSkus(ctx context.Context, skus []string) ([]model.ProductIDAndSku, []error) {
-	var result []model.ProductIDAndSku
-	var errs []error
-
-	query := r.db.WithContext(ctx).
-		Select("id, sku").
-		Where("sku IN ?", skus).
-		Find(&result)
-
-	if err := query.Error; err != nil {
-		errs = append(errs, err)
-		return nil, errs
-	}
-
-	return result, nil
-}
-
-func (r ProductRepository) GetAllProducts(ctx context.Context) ([]model.ProductIDAndSku, error) {
-	var result []model.ProductIDAndSku
-
-	if err := r.db.WithContext(ctx).
-		Model(&model.Product{}).
-		Select("id, sku").
-		Find(&result).Error; err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
 func (r ProductRepository) GetDetail(ctx context.Context, params model.GetDetailProductParams) (*model.Product, []error) {
 	var result *model.Product
 	var errs []error

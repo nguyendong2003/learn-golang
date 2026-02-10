@@ -23,7 +23,7 @@ CREATE TABLE products (
     updated_at TIMESTAMP NOT NULL,
     deleted_at TIMESTAMP
 );
-CREATE INDEX idx_products_category_id ON products (category_id);
+-- CREATE INDEX idx_products_category_id ON products (category_id);
 CREATE INDEX idx_products_deleted_at ON products (deleted_at);
 
 CREATE TABLE warehouses (
@@ -46,7 +46,7 @@ CREATE TABLE inventory_transactions (
     updated_at TIMESTAMP NOT NULL,
     deleted_at TIMESTAMP
 );
-CREATE INDEX idx_inv_product_id ON inventory_transactions (product_id);
-CREATE INDEX idx_inv_category_id ON inventory_transactions (category_id);
-CREATE INDEX idx_inv_warehouse_id ON inventory_transactions (warehouse_id);
+-- CREATE INDEX idx_inv_product_id ON inventory_transactions (product_id);
+-- CREATE INDEX idx_inv_category_id ON inventory_transactions (category_id);
+-- CREATE INDEX idx_inv_warehouse_id ON inventory_transactions (warehouse_id);
 CREATE INDEX idx_inv_deleted_at ON inventory_transactions (deleted_at);

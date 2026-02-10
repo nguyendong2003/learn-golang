@@ -16,11 +16,6 @@ type Product struct {
 	DeletedAt  gorm.DeletedAt `gorm:"index"`
 }
 
-type ProductIDAndSku struct {
-	ModelUUID
-	Sku string `gorm:"size:50;uniqueIndex;not null"`
-}
-
 type GetDetailProductParams struct {
 	Id *string
 }

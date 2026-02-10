@@ -16,11 +16,6 @@ type Category struct {
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
-type CategoryIDAndCode struct {
-	ModelUUID
-	Code string `gorm:"size:50;uniqueIndex;not null"`
-}
-
 type GetDetailCategoryParams struct {
 	Id *string
 }

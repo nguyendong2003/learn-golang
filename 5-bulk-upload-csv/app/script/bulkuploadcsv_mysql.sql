@@ -23,7 +23,7 @@ CREATE TABLE products (
     updated_at DATETIME NOT NULL,
     deleted_at DATETIME,
     
-    INDEX idx_products_category_id (category_id),
+    -- INDEX idx_products_category_id (category_id),
     INDEX idx_products_deleted_at (deleted_at),
     
     FOREIGN KEY(category_id) REFERENCES categories(id)
@@ -54,9 +54,9 @@ CREATE TABLE inventory_transactions (
     FOREIGN KEY (category_id) REFERENCES categories(id),
     FOREIGN KEY (warehouse_id) REFERENCES warehouses(id),
     
-    INDEX idx_inv_product_id (product_id),
-    INDEX idx_inv_category_id (category_id),
-    INDEX idx_inv_warehouse_id (warehouse_id),
+    -- INDEX idx_inv_product_id (product_id),
+    -- INDEX idx_inv_category_id (category_id),
+    -- INDEX idx_inv_warehouse_id (warehouse_id),
     INDEX idx_inv_deleted_at (deleted_at)
 );
 

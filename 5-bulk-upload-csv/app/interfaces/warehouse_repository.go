@@ -8,8 +8,6 @@ import (
 
 type WarehouseRepositoryInterface interface {
 	GetList(ctx context.Context, params dto.GetListWarehouseRequest) ([]model.Warehouse, []error)
-	GetWarehousesByCodes(ctx context.Context, codes []string) ([]model.WarehouseIDAndCode, []error)
-	GetAllWarehouses(ctx context.Context) ([]model.WarehouseIDAndCode, error)
 	GetDetail(ctx context.Context, params model.GetDetailWarehouseParams) (*model.Warehouse, []error)
 	Create(ctx context.Context, data model.Warehouse) (*model.Warehouse, []error)
 }

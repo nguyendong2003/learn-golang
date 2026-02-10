@@ -7,5 +7,6 @@ import (
 )
 
 type InventoryTransactionServiceInterface interface {
-	ProcessBulkUpload(ctx context.Context, fileReader io.Reader) (*dto.BulkUploadResponse, error)
+	ProcessBulkUpload(ctx context.Context, file io.Reader) (*dto.BulkUploadResponse, error)
+	ProcessBulkUploadGoroutine(ctx context.Context, file io.Reader) (*dto.BulkUploadResponse, error)
 }
