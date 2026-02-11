@@ -200,6 +200,79 @@ func vertexEx3() {
 	fmt.Println(v1, v2, v3, p)
 }
 
+func (v *Vertex) Scale(f int) {
+	v.X = v.X * f
+	v.Y = v.Y * f
+}
+
+func vertexEx4() {
+	v := Vertex{3, 4}
+	fmt.Printf("%T\n", v)
+
+	/*
+	   v.Scale(10) chạy được vì:
+
+	   	👉 Lý do:
+	   	- Go có cơ chế tự động lấy địa chỉ (auto-addressing) khi:
+	   	+ Bạn gọi method có receiver là pointer (*Vertex)
+	   	+ Trên một biến có thể lấy địa chỉ được (addressable value)
+	   	+ Go sẽ tự hiểu thành:
+	   	(&v).Scale(10)
+	*/
+	v.Scale(10)
+	fmt.Println(v) // {30 40}
+
+	(&v).Scale(10)
+	fmt.Println(v) // {300 400}
+
+	/*
+		- Go chỉ auto & khi giá trị có thể lấy địa chỉ được (addressable value)
+		* Ví dụ không được:
+		- Ví dụ 1: Vertex{3, 4}.Scale(10) lỗi vì:
+			+ Vertex{3,4} là literal tạm thời, Không có địa chỉ cố định
+			+ Go không thể biến thành (&Vertex{3,4}).Scale(10)
+
+		- Ví dụ 2: Lỗi vì giá trị trả về từ function cũng không addressable.
+
+					getVertex:= func() Vertex {
+						return Vertex{3, 4}
+					}
+
+					getVertex().Scale(10)
+
+		- Ví dụ 3: Khi struct nằm trong map vì:
+			+ Giá trị trong map không addressable
+			+ Map có thể relocate dữ liệu
+			+ Không thể lấy địa chỉ &m["a"]
+
+					m := map[string]Vertex{
+						"a": {3,4},
+					}
+
+					m["a"].Scale(10) // ❌ lỗi
+
+		- Ví dụ 4: Interface + method set lỗi vì:
+			+ Scale chỉ tồn tại trong method set của *Vertex
+			+ Vertex không có method đó trong method set của nó
+
+				type Scaler interface {
+					Scale(float64)
+				}
+
+				func (v *Vertex) Scale(f float64)
+
+				// Thì:
+				var v Vertex
+				var s Scaler = v   // ❌ lỗi
+
+				// Nhưng:
+				var s Scaler = &v  // ✅ đúng
+	*/
+
+}
+
+//
+
 func arrayEx1() {
 	var a [2]string
 	a[0] = "Hello"
@@ -911,6 +984,20 @@ func goroutineEx1() {
 	time.Sleep(time.Second)
 }
 
+func test() {
+	a := [3]int{1, 2, 3}
+	b := a
+	fmt.Printf("%T %p %v\n", a, &a, a)
+	fmt.Printf("%T %p %v\n", b, &b, b)
+
+	fmt.Println(len(a), cap(a))
+	fmt.Println(len(b), cap(b))
+
+	c := make([]int, 5)
+	fmt.Printf("%T %p %v\n", c, &c, c)
+	fmt.Println(len(c), cap(c))
+}
+
 func main() {
 	// variables()
 	// typeConversion()
@@ -922,6 +1009,7 @@ func main() {
 	// vertexEx1()
 	// vertexEx2()
 	// vertexEx3()
+	vertexEx4()
 	// arrayEx1()
 	// sliceEx1()
 	// sliceEx2()
@@ -952,5 +1040,6 @@ func main() {
 	// structEmbeddingEx1()
 	// structEmbeddingEx2()
 	// profitRevenueEx1()
-	goroutineEx1()
+	// goroutineEx1()
+	test()
 }
