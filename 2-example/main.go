@@ -996,6 +996,44 @@ func test() {
 	c := make([]int, 5)
 	fmt.Printf("%T %p %v\n", c, &c, c)
 	fmt.Println(len(c), cap(c))
+
+	fmt.Println(5 + 'A')               // 5 + 65 = 70
+	fmt.Println('A' + 5)               // 65 + 5 = 70
+	fmt.Println(3.5 + 'A')             // 3.5 + 65 = 68.5
+	fmt.Println('A' + 3.5)             // 65 + 3.5 = 68.5
+	fmt.Println(3 + float64('A'))      // 3 + 65 = 68
+	fmt.Println(float64('A') + 3)      // 65 + 3 = 68
+	fmt.Printf("%T\n", 3+float64('A')) // float64
+}
+
+func test2() {
+	// Trong cú pháp a := [...]int{0, 1, 2, 3}, dấu ... (được gọi là ellipsis) có một ý nghĩa rất cụ thể: Nó yêu cầu trình biên dịch tự động đếm số lượng phần tử để xác định độ dài của Array.
+	a := [...]int{0, 1, 2, 3} // a là array, không phải slice
+	x := a[:1]
+	y := a[2:]
+	x = append(x, y...) // y.. là Variadic Expansion (hoặc phổ biến hơn là Unpacking)
+	x = append(x, y...)
+	fmt.Println(a, x) // [0 2 3 3] [0 2 3 3 3]
+
+	/*
+		Vị trí					Tên gọi						Ý nghĩa
+		[...]int{1, 2}			Array Ellipsis				Tự đếm phần tử để xác định kích thước Array.
+		func f(s ...int)		Variadic Parameter			Gom nhiều tham số lẻ vào thành 1 slice.
+		append(x, y...)			Unpacking / Expansion		Trải các phần tử của slice ra thành các tham số lẻ.
+	*/
+}
+
+func test3() {
+	var x = []string{"A", "B", "C"}
+
+	for i, s := range x {
+		print(i, s, ",")
+		x[i+1] = "M"
+		x = append(x, "Z")
+		x[i+1] = "Z"
+	}
+
+	// OUTPUT: 0A,1M,2C,
 }
 
 func main() {
@@ -1009,7 +1047,7 @@ func main() {
 	// vertexEx1()
 	// vertexEx2()
 	// vertexEx3()
-	vertexEx4()
+	// vertexEx4()
 	// arrayEx1()
 	// sliceEx1()
 	// sliceEx2()
@@ -1041,5 +1079,7 @@ func main() {
 	// structEmbeddingEx2()
 	// profitRevenueEx1()
 	// goroutineEx1()
-	test()
+	// test()
+	// test2()
+	test3()
 }
