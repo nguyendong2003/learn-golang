@@ -71,7 +71,7 @@ for { ... if !cond { break } }  // do {} while(condition)
     + defer giúp đảm bảo cleanup code luôn chạy, kể cả khi panic,
 chạy theo LIFO và tham số được evaluate ngay lúc defer."
 
-0. `module, package, import`
+### 1. `module, package, import`
     1. `Package (Gói)`
 
     - Package là cấp độ cơ bản nhất để tổ chức code. Một package bao gồm tất cả các file `.go` nằm trong cùng một thư mục.
@@ -129,7 +129,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
         ./learngo
         ```
 
-1. `Pointers`: 
+### 2. `Pointers`: 
 - Không giống C, Go KHÔNG cho phép làm toán trực tiếp trên con trỏ. (nếu trong mảng thi Go chỉ cho phép truy cập bằng index, không dùng pointer arithmetic)
     ```go
     s := []int{10, 20, 30}
@@ -161,7 +161,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
 
 
 
-3. `Slice`:
+### 3. `Slice`:
 - Slice là view (cửa sổ) trỏ vào array
 - Slice không phải là một mảng (array). Nó là một Descriptor (bản mô tả) nằm trên một mảng ẩn (backing array)
 - Không lưu dữ liệu trực tiếp
@@ -227,7 +227,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
             3. Thêm 200 vào
         + Kết quả: s2 bây giờ trỏ sang một vùng nhớ hoàn toàn khác. Mọi thay đổi trên s2 từ nay về sau không ảnh hưởng đến data hay s1 nữa.
 
-4. Cách hoạt động của `append`
+### 4.  Cách hoạt động của `append`
 - `append` không chỉ đơn giản là "thêm một phần tử". Nó là một hàm thông minh có khả năng tự động quản lý bộ nhớ
 - `appen` luôn trả về một `Slice Header`
 -  Quy trình 3 bước mà append thực hiện mỗi khi được gọi:
@@ -416,7 +416,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
         [1 2]
         ```
 
-5. Cách hoạt động của `make`, `copy`, `Full Slice Expression`
+### 5. Cách hoạt động của `make`, `copy`, `Full Slice Expression`
     1. Hàm `make`
         - Tác dụng: 
             + `make` dùng để khởi tạo một Slice và cấp phát bộ nhớ cho mảng ẩn ngay từ đầu
@@ -498,12 +498,12 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
             + Dùng khi chia nhỏ slice lớn thành các slice nhỏ để xử lý riêng.
             + Mục tiêu chính: Cô lập vùng nhớ, ngăn chặn ghi đè ngoài ý muốn.
 
-6. `Nill`, `Nil slice`
+### 6. `Nill`, `Nil slice`
 - The zero value of a slice is `nil`.
 - A nil slice has a length and capacity of 0 and has no underlying array.
 
-7. `Map`
-8. `Function`, `Function closures`
+### 7. `Map`
+### 8. `Function`, `Function closures`
     - Function Closure (hàm đóng) là một giá trị hàm (function value) mà nó tham chiếu đến các biến nằm bên ngoài phạm vi (body) của chính nó.
     - Cách thức hoạt động của `Closure`:
         + Thông thường, khi một hàm kết thúc, các biến cục bộ của nó sẽ bị xóa khỏi bộ nhớ. 
@@ -540,7 +540,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
         + `Data Isolation (Cô lập dữ liệu)`: Biến i trong ví dụ trên hoàn toàn bị ẩn đi. Không ai có thể thay đổi i ngoại trừ chính hàm closure đó.
         + `Middleware & Decorators`: Trong lập trình Web (như Gin hoặc Echo), closure thường được dùng để bao bọc các handler nhằm kiểm tra quyền truy cập hoặc ghi log.
 
-10. Method
+### 10. Method
 - Go does not have classes. However, you can define methods on types.
 - A method is a function with a special receiver argument.
 - Remember: a method is just a function with a receiver argument.
@@ -585,7 +585,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
         1. The first is so that the method can modify the value that its receiver points to.
         2. The second is to avoid copying the value on each method call. This can be more efficient if the receiver is a large struct, for example.
 
-11. `Interface`, `nil interface value`, `empty interface` 
+### 11. `Interface`, `nil interface value`, `empty interface` 
 - An interface type is defined as a set of method signatures
 - A value of interface type can hold any value that implements those methods
 
@@ -750,7 +750,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
         }
         ```
 
-12. `Type Assertion`
+### 12. `Type Assertion`
 - `Type Assertion` (khẳng định kiểu) là cách để bạn lấy lại giá trị với kiểu dữ liệu cụ thể từ một biến đang được giữ dưới dạng interface.
 - Vì `interface` có thể chứa bất kỳ giá trị nào, nên `Type Assertion` đóng vai trò như một lời xác nhận: "Tôi tin rằng cái interface này đang chứa kiểu dữ liệu X, hãy lấy nó ra cho tôi".
 
@@ -801,7 +801,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
     - Note the similarity between this syntax and that of reading from a map.
     ```
 
-13. `Type Switch`
+### 13. `Type Switch`
 - `Type Switch` là một cấu trúc điều khiển trong Go cho phép bạn so sánh kiểu dữ liệu của một interface với nhiều kiểu dữ liệu khác nhau trong một khối lệnh duy nhất.
 - Nó giống như một lệnh switch thông thường, nhưng thay vì so sánh giá trị (ví dụ: x == 5), nó so sánh loại của dữ liệu (ví dụ: x có phải là string không?).
 
@@ -830,7 +830,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
 
     ```
 
-14. `Stringer`
+### 14. `Stringer`
 - `Stringer` là một trong những `interface` phổ biến và hữu ích nhất. 
 - Nó được định nghĩa trong `package fmt` và cho phép bạn tự quyết định cách một đối tượng (struct) hiển thị khi được in ra dưới dạng chuỗi.
     1. Định nghĩa Interface Stringer
@@ -843,7 +843,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
     - A Stringer is a type that can describe itself as a string. 
     - The fmt package (and many others) look for this interface to print values.
 
-15. `Error`
+### 15. `Error`
 - Go programs express error state with `error` values.
 - The `error` type is a built-in interface similar to `fmt.Stringer`:
     ```go
@@ -865,7 +865,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
 
 - A nil error denotes success; a non-nil error denotes failure.
 
-16. `Generic`
+### 16. `Generic`
 
     2. `Type parameter`
     - `Type Parameter` là một loại tham số đặc biệt được đặt trong dấu ngoặc vuông []. Nó đóng vai trò như một "chỗ trống" sẽ được lấp đầy bởi một kiểu dữ liệu cụ thể khi hàm hoặc cấu trúc dữ liệu được sử dụng.
@@ -942,7 +942,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
 
         + `Vị trí sử dụng`: Dấu `~` chỉ có thể xuất hiện bên trong các `Interface` dùng làm constraint.
 
-18. `Struct Embedding`
+### 18. `Struct Embedding`
 - `Struct Embedding` (nhúng struct) là một kỹ thuật cho phép bạn lồng một struct này vào trong một struct khác. 
 - Đây là cách Go thực hiện việc tái sử dụng mã nguồn và chia sẻ hành vi giữa các đối tượng thay vì sử dụng cơ chế kế thừa (inheritance) truyền thống như trong Java hay C++.
     1. `Cách hoạt động của Struct Embedding`
@@ -1006,4 +1006,380 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
 
     - `Sử dụng khi thực sự cần thiết`: Đừng lạm dụng embedding chỉ để viết code ngắn hơn. Chỉ dùng khi struct bên ngoài thực sự mang bản chất hoặc hành vi mở rộng của struct bên trong.
 
+### 19. `Defer`, `Panic`, `Recover` (https://go.dev/blog/defer-panic-and-recover)
+- Trong Go, panic và recover là cơ chế xử lý lỗi đặc biệt dùng cho các tình huống nghiêm trọng (runtime error hoặc lỗi không thể tiếp tục). 
+- Tuy nhiên, trong thực tế, Go khuyến khích dùng error thay vì panic cho các lỗi thông thường.
+    1. `Panic`
+    - `panic` là một hàm build-in dùng để dừng luồng thực thi bình thường của chương trình.
+    - `panic` dùng để:
+        + Dừng chương trình ngay lập tức   
+        + In ra stack trace
+        + Thực thi các hàm defer trước khi thoát
+        + Sau đó thoát chương trình (nếu không được recover)
+    - Ví dụ:
+        ```go
+        package main
+
+        import "fmt"
+
+        func main() {
+            fmt.Println("Start")
+            panic("Something went wrong!")
+            fmt.Println("End") // không chạy
+        }
+
+        ```
+        📌 Output:
+        ```bash
+        Start
+        panic: Something went wrong!
+        ```
+    2. Khi nào `Panic` xảy ra:
+    * `Panic` do runtime (tự động)
+        - Ví dụ: 
+            Chia cho 0, Truy cập index ngoài phạm vi slice, Dereference nil pointer
+        ```go
+        var a []int
+        fmt.Println(a[1]) // panic: index out of range
+        ```    
+    * `Panic` do lập trình viên chủ động
+        ```go
+        if user == nil {
+            panic("user is nil")
+        }
+        ```
+    3. `Defer` hoạt động thế nào khi có `panic`?
+    - Khi panic xảy ra:
+        + Bước 1: Hàm hiện tại dừng lại
+        + Bước 2: Các defer trong hàm đó được gọi theo thứ tự ngược lại (LIFO)
+        + Bước 3: Sau đó panic tiếp tục lan lên stack    
+        ```go
+        func main() {
+            defer fmt.Println("world")
+            fmt.Println("hello")
+            panic("oops")
+        }
+        ```
+        📌 Output:
+        ```go
+        hello
+        world
+        panic: oops
+        ```
+    4. `Recover` là gì?
+    - `recover` là hàm (built-in function) dùng để giành lại quyền kiểm soát của một goroutine đang bị panic
+    - `recover()` dùng để:
+        + Bắt panic
+        + Ngăn chương trình bị crash
+        + Chỉ hoạt động bên trong `defer`
+    - Ví dụ dùng `recover`:
+        ```go
+        package main
+
+        import "fmt"
+
+        func main() {
+            defer func() {
+                if r := recover(); r != nil {
+                    fmt.Println("Recovered from:", r)
+                }
+            }()
+
+            panic("something bad happened")
+            fmt.Println("This will not run")
+        }
+        ```   
+        📌 Output:
+        ```go
+        Recovered from: something bad happened
+        ```
+    5. `Panic lan truyền (Stack Unwinding)`
+    - Ví dụ:
+        ```go
+        func a() {
+            panic("error in a")
+        }
+
+        func b() {
+            a()
+        }
+
+        func main() {
+            b()
+        }
+        ```
+        📌 Hoạt động:
+        ```go
+        Panic sẽ lan từ a() → b() → main() → crash.
+        Nếu main() có recover, panic sẽ được chặn lại.
+        ```
+    6. Khi nào nên dùng panic?
+    * ✅ Nên dùng khi:
+        - Lỗi nghiêm trọng không thể tiếp tục
+        - Sai logic nghiêm trọng (bug)
+        - Khởi tạo thất bại (ví dụ: config sai, không load được file quan trọng)
+        - Trong package nội bộ (assert-like)
+
+        - Ví dụ:
+            ```go
+            func MustConnect() *DB {
+                db, err := Connect()
+                if err != nil {
+                    panic(err)
+                }
+                return db
+            }
+            ```
+
+    * ❌ Không nên dùng khi:
+        - Lỗi nghiệp vụ (business logic)
+        - Lỗi có thể xử lý được
+        - Lỗi từ input người dùng
+        - Thay vào đó nên dùng error:
+            ```go
+            func divide(a, b int) (int, error) {
+                if b == 0 {
+                    return 0, errors.New("division by zero")
+                }
+                return a / b, nil
+            }
+            ```
+
+    7. `Lưu ý quan trọng`
+    - recover chỉ hoạt động nếu:
+        + Được gọi trong hàm defer
+        + Cùng goroutine với panic
+    - recover() được gọi bên ngoài defer func không lỗi, nó chỉ trả về nil và không làm gì cả, không bắt được panic
+    - Nếu panic xảy ra trong goroutine khác, bạn phải recover trong goroutine đó.
+    - Ví dụ sai:
+        ```go
+        go func() {
+            panic("boom")
+        }()
+        ```
+        👉 Nếu không recover trong chính goroutine đó → chương trình crash.
+
+
+### 20. Sâu hơn về `panic`
     
+1. `Panic` là gì ở mức runtime?
+- `panic` là cơ chế dừng bất thường (abrupt termination) của một goroutine.
+- Khi `panic(x)` xảy ra:
+    + Bước 1: Goroutine hiện tại dừng thực thi bình thường
+    + Bước 2: Runtime bắt đầu `stack unwinding`
+    + Bước 3: Các defer được gọi theo thứ tự LIFO
+    + Bước 4: Nếu không có recover() → chương trình crash
+    + Bước 5: Runtime in stack trace của goroutine bị panic
+
+- Quan trọng:
+    + Panic chỉ ảnh hưởng đến goroutine đang chạy.
+    + Nhưng nếu đó là main goroutine và không recover → toàn bộ chương trình kết thúc. 
+
+2. `Stack Unwinding` chi tiết
+- Ví dụ:
+    ```go
+    func c() {
+        panic("boom")
+    }
+
+    func b() {
+        defer fmt.Println("defer in b")
+        c()
+    }
+
+    func a() {
+        defer fmt.Println("defer in a")
+        b()
+    }
+
+    func main() {
+        a()
+    }
+
+    ```
+- Thứ tự xảy ra:
+    + B1: panic trong c
+    + B2: c không có defer → quay về b
+    + B3: Chạy defer trong b
+    + B4: Quay về a
+    + B5: Chạy defer trong a
+    + Không có recover → crash
+- Output:
+    ```go
+    defer in b
+    defer in a
+    panic: boom
+    ```
+👉 Đây gọi là `stack unwinding`
+
+3. Panic là per-goroutine
+- Ví dụ:
+    ```go
+    go func() {
+        panic("worker crashed")
+    }()
+    ```
+- Nếu không recover trong goroutine đó → toàn bộ chương trình crash.
+- Vì: Nếu bất kỳ goroutine nào panic mà không recover → runtime kết thúc chương trình.
+
+### 21. Sâu hơn về `recover`
+1. `recover` thực sự là gì?
+
+- `recover()` là một built-in function dùng để:
+    + Chặn (intercept) một panic
+    + Dừng quá trình unwinding stack
+    + Trả về giá trị được truyền vào panic(...)
+
+- Signature:
+    ```go
+    func recover() interface{}
+    ```
+- Nếu không có panic đang diễn ra → recover() trả về nil.
+
+2. Cơ chế hoạt động bên trong (stack unwinding)
+- Khi panic xảy ra:
+    + B1: Hàm hiện tại dừng thực thi
+    + B2: Runtime bắt đầu stack unwinding
+    + B3: Các defer được gọi theo LIFO
+    + B4: Nếu trong một defer có gọi recover():
+        + Panic bị chặn
+        + Stack unwinding dừng lại
+        + Hàm chứa defer đó tiếp tục chạy sau defer
+    + B5: Nếu không có recover → chương trình crash
+
+3. Điều kiện để recover hoạt động
+- Recover chỉ có tác dụng nếu:
+    + ✅ 1. Được gọi trong defer
+    + ✅ 2. Được gọi trực tiếp trong hàm defer (không phải hàm lồng)
+    + ✅ 3. Cùng goroutine với panic
+
+4. Ví dụ:
+- Ví dụ đúng:
+    ```go
+    func main() {
+        defer func() {
+            if r := recover(); r != nil {
+                fmt.Println("Recovered:", r)
+            }
+        }()
+
+        panic("boom")
+    }
+    ```
+
+- Ví dụ sai – không gọi trực tiếp trong defer:
+    ```go
+    func handle() {
+        recover() // vô dụng
+    }
+
+    func main() {
+        defer handle()
+        panic("boom")
+    }
+    ```
+    👉 Không hoạt động. Vì `recover()` không được gọi trực tiếp trong function literal của defer.
+
+- Cách đúng nếu tách hàm:
+    ```go
+    func handle() {
+        if r := recover(); r != nil {
+            fmt.Println("Recovered:", r)
+        }
+    }
+
+    func main() {
+        defer handle() // OK vì handle được gọi bởi defer
+        panic("boom")
+    }
+    ```
+    Điểm khác biệt: recover() phải được gọi trong call stack của deferred function đang chạy do panic.
+
+- Ví dụ sai:
+    ```go
+    func main() {
+        defer func() {
+            if r := recover(); r != nil {
+                fmt.Println("Recovered:", r)
+            }
+        }()
+
+        go func() {
+            panic("goroutine panic")
+        }()
+
+        time.Sleep(time.Second)
+    }
+    ```
+    👉 Chương trình vẫn crash. Vì panic xảy ra trong goroutine khác.
+
+- Ví dụ đúng:
+    ```go
+    func main() {
+        defer func() {
+            if r := recover(); r != nil {
+                fmt.Println("Recovered:", r)
+            }
+        }()
+
+        go func() {
+            defer func() {
+                if r := recover(); r != nil {
+                    fmt.Println("Recovered in goroutine:", r)
+                }
+            }()
+
+            panic("goroutine panic")
+        }()
+
+        time.Sleep(time.Second)
+    }
+    ```
+    📌 Nguyên tắc quan trọng: Goroutine nào panic → goroutine đó phải recover.
+
+5. Recover dừng panic như thế nào?
+- Khi recover thành công:
+    + Stack unwinding dừng lại
+    + Hàm chứa defer tiếp tục thực thi
+    + Các hàm bên trên không bị ảnh hưởng
+- Ví dụ:
+    ```go
+    func test() {
+        defer func() {
+            if r := recover(); r != nil {
+                fmt.Println("Recovered")
+            }
+        }()
+
+        panic("boom")
+        fmt.Println("After panic") // không chạy
+    }
+
+    func main() {
+        test()
+        fmt.Println("Program continues")
+    }
+    ```
+    Output:
+    ```yaml
+    Recovered
+    Program continues
+    ```
+
+6. Giá trị trả về của recover
+- recover() trả về đúng giá trị truyền vào panic
+- Ví dụ: panic("string error"), panic(errors.New("error object")), panic(123)
+
+- Ví dụ:
+    ```go
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Printf("Type: %T, Value: %v\n", r, r)
+        }
+    }()
+    panic(errors.New("db failed"))
+    ```
+    Output:
+    ```yaml
+    Type: *errors.errorString, Value: db failed
+    ```

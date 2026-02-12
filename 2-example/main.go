@@ -22,6 +22,7 @@ import (
 	structembedding11 "learngo/11-struct-embedding"
 	structembedding12 "learngo/12-struct-embedding"
 	profitrevenue "learngo/13-profit-revenue"
+	deferPanicRecover "learngo/14-defer-panic-recover"
 	"math"
 	"math/cmplx"
 	"runtime"
@@ -1036,6 +1037,153 @@ func test3() {
 	// OUTPUT: 0A,1M,2C,
 }
 
+func test4() {
+	// var wg sync.WaitGroup
+	// for i := 0; i < 5; i++ {
+	// 	wg.Add(1)
+	// 	go func() {
+	// 		fmt.Print(i)
+	// 		wg.Done()
+	// 	}()
+	// }
+	// wg.Wait()
+
+	//////////////////////////////
+	// ch := make(chan int, 1)
+	// ch <- 1
+	// select {
+	// case ch <- 2:
+	// 	fmt.Print("A")
+	// case v := <-ch:
+	// 	fmt.Print(v)
+	// default:
+	// 	fmt.Print("D")
+	// }
+
+	/////////////
+	// x := 0
+	// fn := func() {
+	// 	x++
+	// 	fmt.Print(x)
+	// }
+	// x = 5
+	// fn()
+
+	////////////
+	// ch := make(chan int, 2)
+	// ch <- 1
+	// ch <- 2
+	// close(ch)
+	// for v := range ch {
+	// 	fmt.Print(v)
+	// }
+
+	////////////////
+	s := []int{1, 2, 3}
+	s = append(s[:1], s[2:]...)
+	fmt.Println(s) // [1 3]
+
+	///////////////
+	arr := []int{1, 2, 3, 4, 5}
+	changeSlice(arr)
+	fmt.Println(arr[0]) // 100
+
+	///////////////
+	r := recover()
+	fmt.Println(r) // <nil>
+
+	///////////////
+}
+
+type Person struct {
+	name *string
+}
+
+func changeSlice(slice []int) {
+	slice[0] = 100
+}
+
+func c() (i int) {
+	defer func() {
+		i++ // sửa biến return
+	}()
+	return 3 // tương đương: i = 3; return
+
+	/*
+		Hàm c khởi tạo biến return i với giá trị mặc định là 0.
+		Khi thực hiện return 3, giá trị 3 được gán cho biến i.
+		Sau đó, hàm defer được gọi, làm tăng giá trị của i lên 1 (i trở thành 4).
+		Cuối cùng, hàm c trả về giá trị của i, là 4.
+	*/
+}
+
+func deferPanicRecoverEx1() {
+	// Các hàm defer có thể đọc và thay đổi giá trị của biến return (nếu biến return đó được đặt tên).
+	// Hàm được defer có thể truy cập và thay đổi các biến return được đặt tên của hàm bao ngoài trước khi hàm đó thực sự kết thúc
+	fmt.Println(c()) // 4
+}
+
+func deferPanicRecoverEx2() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered:", r)
+		}
+	}()
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("Recovered in goroutine:", r)
+			}
+		}()
+
+		panic("goroutine panic")
+	}()
+
+	time.Sleep(time.Second)
+}
+
+func deferPanicRecoverEx3() {
+	funcC := func() {
+		// defer func() {
+		// 	if r := recover(); r != nil {
+		// 		fmt.Println("Recovered in funcC:", r)
+		// 	}
+		// }()
+
+		panic("panic in funcC")
+		fmt.Println("End of funcC") // không bao giờ được in ra
+	}
+
+	funcB := func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("Recovered in funcB:", r)
+			}
+		}()
+
+		funcC()
+		fmt.Println("End of funcB") // bỏ qua
+	}
+
+	funcA := func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("Recovered in funcA:", r)
+			}
+		}()
+
+		funcB()
+		fmt.Println("End of funcA")
+	}
+
+	funcA()
+}
+
+func deferPanicRecoverEx4() {
+	deferPanicRecover.RunMain()
+}
+
 func main() {
 	// variables()
 	// typeConversion()
@@ -1081,5 +1229,10 @@ func main() {
 	// goroutineEx1()
 	// test()
 	// test2()
-	test3()
+	// test3()
+	// test4()
+	// deferPanicRecoverEx1()
+	// deferPanicRecoverEx2()
+	// deferPanicRecoverEx3()
+	deferPanicRecoverEx4()
 }
