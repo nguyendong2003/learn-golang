@@ -867,7 +867,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
 
 ### 16. `Generic`
 
-    2. `Type parameter`
+2. `Type parameter`
     - `Type Parameter` là một loại tham số đặc biệt được đặt trong dấu ngoặc vuông []. Nó đóng vai trò như một "chỗ trống" sẽ được lấp đầy bởi một kiểu dữ liệu cụ thể khi hàm hoặc cấu trúc dữ liệu được sử dụng.
     - Cấu trúc cơ bản:
         ```go
@@ -896,7 +896,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
         }
         ```
     
-    3. `Type Constraints (Ràng buộc kiểu)`
+3. `Type Constraints (Ràng buộc kiểu)`
     - Để tránh việc người dùng truyền vào những kiểu dữ liệu không phù hợp (ví dụ: truyền một struct vào hàm yêu cầu thực hiện phép toán +), 
     - Go sử dụng Constraints:
         + any: Cho phép bất kỳ kiểu dữ liệu nào (tương đương interface{}).
@@ -914,7 +914,7 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
         }
         ```
     
-    4. `Type Approximation (~)`
+4. `Type Approximation (~)`
     - Nó cho phép một Type Constraint không chỉ chấp nhận một kiểu dữ liệu chính xác, mà còn chấp nhận tất cả các kiểu dữ liệu có kiểu cơ sở (underlying type) là kiểu đó.
     - Dấu ~ nói với trình biên dịch rằng: "Hãy chấp nhận bất kỳ kiểu nào có kiểu cơ sở là..."
     ```go
@@ -1382,4 +1382,184 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
     Output:
     ```yaml
     Type: *errors.errorString, Value: db failed
+    ```
+
+### 22. Garbage Collector (GC) KHÔNG dọn dẹp Stack
+1. Ai dọn dẹp Stack và dọn khi nào?
+
+- Garbage Collector (GC) KHÔNG dọn dẹp Stack
+- Stack được dọn dẹp bởi CPU (thông qua các chỉ thị được trình biên dịch tạo ra), và nó diễn ra ngay lập tức khi hàm kết thúc.
+
+- Cơ chế: Mỗi khi một hàm được gọi, một khối bộ nhớ (gọi là Stack Frame) được "đẩy" vào Stack. Khi hàm đó chạy xong (return), toàn bộ Stack Frame đó bị "loại bỏ".
+
+- Thao tác: Việc "dọn dẹp" này thực chất chỉ là thay đổi giá trị của một thanh ghi CPU gọi là Stack Pointer (SP). CPU chỉ cần di chuyển con trỏ này lên hoặc xuống. Nó không cần đi tìm từng biến để xóa, nó chỉ đơn giản là đánh dấu: "Vùng nhớ này bây giờ là trống, ai muốn ghi đè lên thì ghi".
+
+2. Sự khác biệt giữa Dọn dẹp Stack và Dọn dẹp Heap
+
+| Đặc điểm       | Stack (Ngăn xếp)                              | Heap (Đống)                                                  |
+|---------------|-----------------------------------------------|--------------------------------------------------------------|
+| **Người dọn** | CPU (Tự động theo cấu trúc hàm)               | Garbage Collector (Một chương trình chạy ngầm)               |
+| **Thời điểm** | Ngay lập tức khi hàm return                   | Định kỳ (Khi bộ nhớ đầy hoặc theo thuật toán của Go)         |
+| **Chi phí**   | Gần như bằng 0 (chỉ là 1 lệnh CPU)            | Rất đắt (phải quét toàn bộ bộ nhớ, tìm con trỏ...)           |
+| **Cách dọn**  | Di chuyển Stack Pointer (ghi đè)              | Đánh dấu và thu hồi (Mark and Sweep)                         |
+
+### 23. Garbage Collector (GC) thu dọn Heap như thế nào
+
+- Go sử dụng thuật toán gọi là Mark and Sweep (Đánh dấu và Quét) với cơ chế Concurrent Collector (chạy song song với chương trình).
+
+1. GC thu dọn Heap như thế nào? (Cơ chế Mark & Sweep)
+- Quy trình này gồm 3 giai đoạn chính, được thiết kế để không làm "đứng hình" (Stop The World) chương trình quá lâu:
+
+- `Giai đoạn 1`: Mark Preparation (Chuẩn bị) - Stop The World (STW)
+    + Go tạm dừng tất cả Goroutines trong một khoảng thời gian cực ngắn (thường là vài micro giây) để bật Write Barrier (một cơ chế theo dõi xem có con trỏ nào thay đổi trong lúc GC đang chạy không).
+
+- `Giai đoạn 2`: Marking (Đánh dấu) - Concurrent
+    + Đây là giai đoạn tốn sức nhất. GC sẽ đi theo các con trỏ từ "Root" (biến toàn cục, các biến trên Stack) để tìm xem những vật thể nào trên Heap còn đang được sử dụng.
+
+    + Go sử dụng mô hình Tricolor Marking (Đánh dấu 3 màu: Trắng, Xám, Đen).
+        + Màu Trắng: Các đối tượng có thể là rác (chưa được quét tới).
+        + Màu Xám: Các đối tượng đang được quét, nhưng các con trỏ bên trong nó chưa được kiểm tra (các đối tượng mà con trỏ trỏ tới chưa được kiểm tra.)
+        + Màu Đen: Các đối tượng chắc chắn không phải là rác (chắc chắn đang được sử dụng) (đã quét xong cả nó và các con trỏ nó trỏ tới).
+
+- `Giai đoạn 3`: Sweeping (Quét) - Concurrent
+    + Sau khi đánh dấu xong, những vật thể nào vẫn là Màu Trắng chính là rác. GC sẽ giải phóng vùng nhớ này để sẵn sàng cho các lần cấp phát sau. Quá trình này diễn ra âm thầm khi chương trình của bạn vẫn đang chạy.
+
+2. Khi nào GC tiến hành thu dọn?
+- Go không dọn dẹp theo một khung giờ cố định (như "cứ mỗi 5 phút"). Thay vào đó, nó dựa trên 3 tín hiệu chính (Có 3 kịch bản chính khiến GC bắt đầu làm việc):
+
+    + `Tín hiệu 1`: Dựa trên bộ nhớ tăng thêm (GOGC - Quy tắc chính)
+        + Mặc định, Go có một biến môi trường là `GOGC=100`. Điều này có nghĩa là:
+            + Nếu bộ nhớ Heap hiện tại sau lần dọn trước là 10MB.
+            + Go sẽ đợi cho đến khi bộ nhớ Heap tăng lên thêm 100% nữa (tức là chạm ngưỡng 20MB) thì nó sẽ kích hoạt GC lần tiếp theo.
+        + Bạn có thể chỉnh `GOGC` lên cao hơn để tiết kiệm CPU (nhưng tốn RAM) hoặc thấp hơn để tiết kiệm RAM (nhưng tốn CPU).
+
+    + `Tín hiệu 2`: Dựa trên thời gian (2 phút)
+        + Nếu trong vòng 2 phút mà bộ nhớ vẫn chưa tăng đến ngưỡng để kích hoạt GC, Go vẫn sẽ tự động chạy một lần dọn dẹp để đảm bảo tài nguyên không bị chiếm dụng quá lâu.
+
+    + `Tín hiệu 3`: Kích hoạt thủ công
+        + Bạn có thể ép Go dọn dẹp bằng cách gọi lệnh `runtime.GC()` trong code, nhưng điều này cực kỳ không khuyến khích trừ khi bạn đang làm kiểm thử hiệu năng.
+
+3. Thay đổi biến môi trường `GOGC` ảnh hưởng như thế nào đến `CPU, RAM`
+
+- `TH1`: Khi bạn đặt GOGC cao (Ví dụ: GOGC=200)
+    + Ý nghĩa: Go sẽ đợi bộ nhớ Heap tăng thêm 200% so với mức sau khi dọn lần trước mới chạy GC tiếp.
+
+    + Tại sao tốn RAM? 
+        + Nếu bộ nhớ sau khi dọn là 10MB, nó sẽ đợi đến khi chạm 30MB mới dọn. Thay vì dọn ở mức 20MB (như mặc định 100), bạn cho phép nó "bày bừa" ra thêm 10MB nữa. Do đó, ứng dụng chiếm nhiều RAM hơn.
+
+    + Tại sao tiết kiệm CPU?
+        + Vì ngưỡng dọn dẹp cao hơn, nên khoảng thời gian giữa hai lần chạy GC sẽ dài ra. Thay vì cứ 5 phút phải đi dọn rác một lần, bây giờ 10 phút bạn mới dọn một lần. CPU không phải tốn chu kỳ để đi "đánh dấu" và "quét" rác thường xuyên, nên nó rảnh tay để chạy logic nghiệp vụ của bạn hơn.
+
+- `TH2`: Khi bạn đặt GOGC thấp (Ví dụ: GOGC=50)
+    + Ý nghĩa: Go chỉ đợi bộ nhớ tăng thêm 50% là đã lo đi dọn dẹp rồi.
+
+    + Tại sao tiết kiệm RAM?
+        + Vừa mới bày ra một chút (từ 10MB lên 15MB) là nhân viên vệ sinh đã vào quét dọn ngay. Bộ nhớ Heap luôn được giữ ở mức thấp nhất có thể.
+
+    + Tại sao tốn CPU?
+        + Nhân viên vệ sinh phải làm việc liên tục. Tần suất GC chạy sẽ rất dày đặc. Việc "đánh dấu" (Marking) hàng triệu vật thể trên Heap cực kỳ tốn CPU. CPU của bạn sẽ bị chia sẻ đáng kể cho bộ dọn rác thay vì chạy code của bạn.
+
+4. Vậy khi nào nên chỉnh `GOGC`?
+
+- `Kịch bản A (Server cấu hình mạnh, nhiều RAM)`: Bạn có một con server 64GB RAM nhưng ứng dụng chỉ dùng 4GB. Bạn nên tăng GOGC=200 hoặc 300. Tại sao phải để RAM trống phí phạm trong khi có thể giảm tải cho CPU để nó xử lý nhiều request hơn?
+
+- `Kịch bản B (Server yếu, ít RAM)`: Bạn chạy Go trên một thiết bị nhúng hoặc container chỉ có 512MB RAM. Bạn nên giảm GOGC=50 để đảm bảo ứng dụng không bị hệ điều hành "giết" (OOM - Out of Memory) do chiếm quá nhiều RAM.
+
+5. Một thông số mới: `GOMEMLIMIT` (Từ Go 1.19)
+
+- Trước đây, chỉ có GOGC nên rất khó kiểm soát. Nếu bộ nhớ sau khi dọn là 1.1GB, GOGC=100 sẽ đợi đến 2.2GB. Nhưng nếu server (Docker Container) của bạn chỉ có 2GB RAM thì sao? Crash!
+
+- Vì vậy, Go đã ra thêm GOMEMLIMIT (ví dụ: GOMEMLIMIT=1.8GiB cho docker container 2GB):
+    + Go vẫn theo dõi GOGC để dọn dẹp định kỳ.
+    + Nếu bộ nhớ tăng nhanh và sắp chạm mức GOMEMLIMIT=1.8GB, Go sẽ tự động kích hoạt GC ngay lập tức, bất chấp việc GOGC đã cho phép hay chưa => để cứu ứng dụng khỏi bị chết do hết RAM.
+
+=> `GOMEMLIMIT Ngăn chặn lỗi OOM (Out of Memory)`.
+
+### 24. Lập trình đồng thời (Concurrency) và song song (Parallelism)
+- Cách tốt nhất để hiểu là thông qua sự khác biệt về cấu trúc và thực thi:
+    + `Đồng thời (Concurrency)`: Là khả năng xử lý nhiều việc cùng một lúc. Nó giống như một đầu bếp đang nấu súp: họ bật bếp, trong lúc đợi nước sôi thì quay sang thái hành, sau đó lại quay lại kiểm tra nồi súp. Đầu bếp chỉ có một đôi tay, nhưng họ đang điều phối nhiều công việc xen kẽ nhau.
+
+    + `Song song (Parallelism)`: Là khả năng thực hiện nhiều việc cùng một lúc. Nó giống như có hai đầu bếp: một người chuyên nấu súp và một người chuyên thái hành. Cả hai việc diễn ra tại cùng một thời điểm vật lý.
+
+1. Lập trình đồng thời (Concurrent Programming)
+- Định nghĩa
+    + Lập trình đồng thời là kỹ thuật cho phép nhiều tác vụ (tasks) được xử lý chồng lấn về mặt thời gian, nhưng không nhất thiết phải chạy cùng lúc.
+    + Trên hệ thống 1 CPU, hệ điều hành sẽ chuyển đổi qua lại rất nhanh giữa các tác vụ → tạo cảm giác chúng chạy đồng thời.
+
+    👉 Mục tiêu chính:
+    + Tăng khả năng phản hồi (responsive)
+    + Xử lý I/O hiệu quả
+    + Quản lý nhiều tác vụ cùng lúc
+
+    📌 Ví dụ
+    + Server web xử lý nhiều request cùng lúc.
+    + Ứng dụng chat: vừa gửi tin nhắn, vừa nhận tin nhắn, vừa tải file.
+
+2. Lập trình song song (Parallel Programming)
+- Định nghĩa
+    + Lập trình song song là kỹ thuật cho phép nhiều tác vụ chạy thực sự cùng lúc trên:
+        + Nhiều CPU
+        + Nhiều core
+        + GPU
+
+    👉 Mục tiêu chính:
+    + Tăng tốc độ tính toán
+    + Giải quyết bài toán lớn (AI, Big Data, mô phỏng)
+
+    📌 Ví dụ
+    + Chia mảng lớn thành nhiều phần và tính tổng cùng lúc.
+    + Huấn luyện mô hình Deep Learning trên nhiều GPU.
+
+3. Kết hợp đồng thời và song song
+✅ Định nghĩa
+- Là mô hình kết hợp cả:
+    + Đồng thời → quản lý nhiều tác vụ
+    + Song song → thực thi nhiều tác vụ cùng lúc
+
+### 25. Goroutine
+1. Goroutine là gì?
+- Goroutine là một “luồng thực thi nhẹ” (lightweight thread) được quản lý bởi Go runtime, chứ không phải bởi hệ điều hành (OS)
+- Nó cho phép bạn chạy nhiều tác vụ đồng thời (concurrency) một cách hiệu quả mà không tốn nhiều tài nguyên như thread truyền thống của hệ điều hành.
+
+2. So sánh Goroutine với OS Thread
+
+| Đặc điểm              | OS Thread                              | Goroutine                                    |
+|-----------------------|----------------------------------------|----------------------------------------------|
+| **Kích thước bộ nhớ** | Khoảng 1MB - 2MB                       | Chỉ từ 2KB                                   |
+| **Khởi tạo/Hủy**      | Tốn kém tài nguyên hệ thống            | Rất nhanh và rẻ                              |
+| **Context Switch**    | Chậm (do phải can thiệp vào Kernel)   | Rất nhanh (do Go Scheduler quản lý)          |
+| **Số lượng**          | Giới hạn (vài nghìn là hệ thống đuối)  | Có thể chạy hàng triệu cùng lúc              |
+
+3. Cơ chế hoạt động: `Mô hình M:N Scheduler`
+- Trong các ngôn ngữ cũ, 1 luồng ứng dụng thường là 1 luồng hệ điều hành (1:1). Go thì khác, nó dùng mô hình M:N (nhiều Goroutine chạy trên ít luồng hệ điều hành).
+
+- Go sử dụng một bộ điều phối (Scheduler) thông minh để ánh xạ `M` Goroutines vào `N` OS Threads.
+
+- `Go Scheduler` điều phối dựa trên 3 thực thể chính:
+    + `G (Goroutine)`: Đại diện cho một Goroutine.
+        + Là đơn vị nhỏ nhất, chứa stack và con trỏ lệnh. 
+        + Nó không tự chạy được mà cần được gán vào một P.
+
+    + `M (Machine)`: Đại diện cho một OS Thread.
+        + Là luồng thật sự của hệ điều hành. 
+        + Để chạy mã Go, một M phải gắn với một P.
+
+    + `P (Processor)`: Đại diện cho tài nguyên thực thi (ngữ cảnh), đóng vai trò trung gian điều phối G chạy trên M.
+        + Đại diện cho ngữ cảnh thực thi (Context).
+        + Số lượng P thường bằng số lõi CPU của máy bạn (có thể chỉnh qua biến `GOMAXPROCS`). 
+        + P giữ một hàng đợi (runqueue) các Goroutine đang chờ được chạy.
+
+- Cách thức vận hành: Chiến lược `Work Stealing`
+    + Điểm thông minh nhất của Go Scheduler là nó không để bất kỳ CPU nào được nghỉ ngơi nếu vẫn còn việc.
+        1. `Hàng đợi cục bộ (Local Runqueue)`: Mỗi P có một danh sách các Goroutine riêng. M sẽ lấy G từ P đang gắn với nó để xử lý.
+
+        2. `Lấy trộm công việc (Work Stealing)`: Nếu một P đã xử lý hết sạch Goroutine trong hàng đợi của mình, nó sẽ nhìn sang các P khác. Nếu thấy P hàng xóm đang quá tải, nó sẽ "trộm" một nửa số Goroutine từ hàng đợi của hàng xóm về cho mình chạy.
+
+        3. `Hàng đợi toàn cục (Global Runqueue)`: Nếu không trộm được từ hàng xóm, nó mới tìm đến hàng đợi chung của toàn hệ thống.
+
+4. Giao tiếp giữa các Goroutine (Channels)
+- Một triết lý nổi tiếng trong Go là: 
+    ```go
+    `Don't communicate by sharing memory; share memory by communicating.`
+    (Đừng giao tiếp bằng cách dùng chung bộ nhớ; hãy chia sẻ bộ nhớ bằng cách giao tiếp.)
     ```
