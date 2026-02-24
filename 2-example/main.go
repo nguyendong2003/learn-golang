@@ -1216,6 +1216,10 @@ func contextEx1() {
 	contextExample.Main()
 }
 
+func contextEx2() {
+	contextExample.Main2()
+}
+
 func main() {
 	// variables()
 	// typeConversion()
@@ -1268,5 +1272,6 @@ func main() {
 	// deferPanicRecoverEx3()
 	// deferPanicRecoverEx4()
 	// channelEx1()
-	contextEx1()
+	// contextEx1()
+	contextEx2()
 }
