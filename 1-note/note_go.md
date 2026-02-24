@@ -1563,3 +1563,672 @@ chạy theo LIFO và tham số được evaluate ngay lúc defer."
     `Don't communicate by sharing memory; share memory by communicating.`
     (Đừng giao tiếp bằng cách dùng chung bộ nhớ; hãy chia sẻ bộ nhớ bằng cách giao tiếp.)
     ```
+
+### 26. Channel
+1. Channel là gì?
+- Channel giống như một “đường ống” để truyền dữ liệu giữa các goroutine.
+- Trong Golang, channel là một cơ chế dùng để giao tiếp và đồng bộ dữ liệu giữa các goroutine (luồng nhẹ trong Go). 
+- Nó cho phép các goroutine gửi và nhận dữ liệu một cách an toàn mà không cần dùng lock thủ công như mutex.
+- Channel hoạt động theo nguyên tắc `FIFO (First In, First Out)` — nghĩa là "Vào trước, Ra trước"
+
+2. Cách khai báo channel
+    ```go
+    var ch chan int        // khai báo
+    ch = make(chan int)    // khởi tạo
+
+    // hoặc viết gọn
+    ch := make(chan int)
+    ```
+    👉 Channel trên dùng để truyền dữ liệu kiểu int.
+
+3. Gửi và nhận dữ liệu
+
+    - Gửi dữ liệu vào channel:
+        ```go
+        ch <- 10
+        ```
+    - Nhận dữ liệu từ channel: 
+        ```go
+        value := <-ch
+        ```
+
+4. `Phân loại Channel`
+- Trong Go, có hai loại channel chính với cơ chế hoạt động khác nhau hoàn toàn về mặt đồng bộ:
+    1. `Unbuffered Channel` (Channel không đệm)
+        + Đây là loại channel "giao hàng trực tiếp". Hãy tưởng tượng nó như một cuộc chuyển giao tài liệu tận tay: Người đưa phải gặp tận mặt người nhận thì việc chuyển giao mới hoàn tất.
+        + Cú pháp: 
+            ```go
+            ch := make(chan int)
+            ```
+        + Cơ chế hoạt động: 
+            + Người gửi (Sender) sẽ bị chặn (block) cho đến khi có Người nhận (Receiver) sẵn sàng lấy dữ liệu.
+            + Ngược lại, Người nhận cũng bị chặn cho đến khi có Người gửi đẩy dữ liệu vào.
+
+        + Mục đích: Dùng để đồng bộ hóa tuyệt đối giữa hai Goroutine.
+
+    2. `Buffered Channel` (Channel có đệm)
+        + Loại này giống như một cái "hòm thư" hoặc "kho chứa tạm". Người gửi có thể quẳng đồ vào đó rồi đi làm việc khác, miễn là hòm thư vẫn còn chỗ.
+        + Cú pháp:
+            ```go
+            ch := make(chan int, capacity) (Ví dụ: capacity = 3)
+            ```
+        + Cơ chế hoạt động:
+            + Người gửi: Chỉ bị chặn khi bộ đệm đã đầy (Full). Nếu vẫn còn chỗ, người gửi cứ đẩy vào và chạy tiếp mà không cần quan tâm người nhận đã lấy hay chưa.
+
+            + Người nhận: Chỉ bị chặn khi bộ đệm đang trống (Empty). Nếu có ít nhất một phần tử trong đệm, người nhận lấy ra và chạy tiếp.
+
+        + Mục đích: Tăng hiệu năng, cho phép người gửi tiếp tục làm việc mà không cần đợi người nhận ngay lập tức (xử lý bất đồng bộ nhẹ).
+
+5. `Directional Channels (Channel định hướng)`
+- Trong Go, mặc định khi bạn tạo một channel bằng `make(chan T)`, nó là `bi-directional (hai chiều)` — tức là bạn có thể vừa gửi vừa nhận dữ liệu trên đó.
+- Tuy nhiên, `Directional Channels (Channel định hướng)` cho phép bạn giới hạn quyền hạn của một channel trong một phạm vi cụ thể (thường là trong các hàm). 
+
+- Đây là một tính năng cực kỳ thông minh của Go để tăng tính `an toàn (Type Safety)` và `rõ ràng (Readability)` cho mã nguồn.
+
+    1. Cú pháp và Cách phân biệt
+    - Cách nhớ rất đơn giản: Mũi tên `<-` chỉ đi đâu thì dữ liệu đi đó.
+        ```go
+        chan T: Channel hai chiều (mặc định)
+
+        chan<- T: Mũi tên hướng vào channel => Chỉ gửi (Send-only)
+
+        <-chan T: Mũi tên hướng ra khỏi channel => Chỉ nhận (Receive-only).
+        ```
+    2. Tại sao lại cần Directional Channels?
+
+    - Lợi ích 1: Ngăn ngừa lỗi logic (Compile-time check)
+        + Nếu bạn cố tình nhận dữ liệu từ một `chan<- int` (chỉ gửi), trình biên dịch (compiler) sẽ báo lỗi ngay lập tức thay vì đợi đến lúc chương trình chạy mới bị lỗi (runtime error).
+
+    - Lợi ích 2: Làm rõ ý đồ của lập trình viên
+        + Nhìn vào chữ ký của hàm (function signature), người khác sẽ biết ngay hàm này dùng channel để làm gì:
+            ```go
+            func produce(out chan<- int) // "À, hàm này chỉ đổ dữ liệu vào channel thôi."
+            
+            func consume(in <-chan int) // "À, hàm này chỉ lấy dữ liệu ra để xử lý."
+
+    3. Ví dụ thực tế: Mô hình Producer - Consumer
+    - Go sẽ tự động chuyển đổi từ channel hai chiều sang một chiều khi bạn truyền vào hàm.
+        ```go
+        package main
+
+        import "fmt"
+
+        // Hàm này CHỈ ĐƯỢC PHÉP GỬI dữ liệu (Send-only)
+        func producer(out chan<- int) {
+            for i := 0; i < 5; i++ {
+                out <- i // Gửi dữ liệu vào
+            }
+            close(out) // Đóng channel sau khi gửi xong
+            // fmt.Println(<-out) // NẾU BỎ COMMENT DÒNG NÀY SẼ BỊ LỖI KHI COMPILER
+        }
+
+        // Hàm này CHỈ ĐƯỢC PHÉP NHẬN dữ liệu (Receive-only)
+        func consumer(in <-chan int) {
+            for v := range in {
+                fmt.Println("Nhận được:", v)
+            }
+            // in <- 10 // NẾU BỎ COMMENT DÒNG NÀY SẼ BỊ LỖI KHI COMPILER
+        }
+
+        func main() {
+            // 1. Tạo một channel hai chiều bình thường
+            ch := make(chan int)
+
+            // 2. Truyền vào các hàm, Go tự động ép kiểu sang channel một chiều
+            go producer(ch)
+            consumer(ch) // Đợi consumer xử lý xong
+        }
+        ```
+
+    4. Những quy tắc cần nhớ
+    - Chuyển đổi một chiều: Bạn có thể chuyển từ channel hai chiều sang một chiều, nhưng KHÔNG THỂ chuyển ngược lại.
+    - Đóng channel: Chỉ nên đóng channel ở phía `Gửi (chan<-)`. Nếu bạn cố đóng một channel ở phía `Nhận (<-chan)`, trình biên dịch sẽ báo lỗi. Điều này cực kỳ hợp lý vì người nhận không nên có quyền đóng "vòi nước" mà họ đang dùng.
+
+    5. Những trạng thái "nguy hiểm" cần nhớ
+    - Làm việc với channel rất dễ gây ra lỗi `Deadlock` hoặc `Panic` nếu không cẩn thận:
+        + Gửi vào channel đã đóng: Gây ra `panic`.
+        + Đóng channel đã đóng: Gây ra `panic`.
+        + Gửi/Nhận từ channel nil: Sẽ bị chặn mãi mãi (Deadlock).
+        + Chỉ gửi mà không có ai nhận (hoặc ngược lại): Gây ra lỗi `all goroutines are asleep - deadlock!`.
+
+### 27. Range và Close
+1. Lệnh `close(ch)`
+- Lệnh close dùng để thông báo rằng: "Sẽ không có thêm giá trị nào được gửi vào channel này nữa".
+- Quy tắc "Vàng" khi đóng Channel:
+    + Chỉ người gửi mới nên đóng: Người nhận không bao giờ nên đóng channel vì họ không biết khi nào dữ liệu thực sự kết thúc.
+
+    + Không gửi vào channel đã đóng: Nếu bạn cố làm vậy (`ch <- v`), chương trình sẽ bị Panic.
+
+    + Không đóng 2 lần: Đóng một channel đã đóng cũng gây Panic.
+
+    + Đóng rồi vẫn nhận được: Nếu channel còn dữ liệu trong bộ đệm (buffered), người nhận vẫn lấy ra được cho đến khi hết sạch. Sau đó, họ sẽ nhận được "giá trị zero" (như `0, "", false`).
+
+2. Lệnh `range` với Channel
+- Thay vì dùng vòng lặp `for` vô tận, bạn có thể dùng `for range` để đọc dữ liệu từ channel
+- Cơ chế:
+    + `range chỉ dừng khi channel đã bị đóng VÀ đã đọc hết toàn bộ dữ liệu còn lại trong buffered channel`.
+    + Vòng lặp range sẽ liên tục đợi (block) và lấy dữ liệu từ channel cho đến khi channel đó bị đóng và đã đọc hết toàn bộ dữ liệu còn lại trong buffered channel
+
+- Ví dụ:
+    ```go
+    package main
+
+    import "fmt"
+
+    func main() {
+        ch := make(chan int, 3)
+
+        go func() {
+            for i := 1; i <= 3; i++ {
+                ch <- i
+            }
+            // Nếu không có dòng này, vòng range ở dưới sẽ đợi mãi -> Deadlock!
+            close(ch) 
+        }()
+
+        // range sẽ chạy cho đến khi channel bị close
+        for v := range ch {
+            fmt.Println("Nhận:", v)
+        }
+        
+        fmt.Println("Channel đã đóng, vòng lặp kết thúc!")
+    }
+    ```
+3. Cách kiểm tra Channel đã đóng chưa
+- Đôi khi bạn không dùng range mà dùng lệnh nhận đơn lẻ. Làm sao biết giá trị 0 nhận được là do người gửi gửi số 0, hay do channel đã đóng?
+- Bạn sử dụng cú pháp này:
+    ```go
+    v, ok := <-ch
+    if !ok {
+        fmt.Println("Channel đã đóng và không còn dữ liệu!")
+    }
+    ```
+    👉 
+    
+    `ok == true`: Channel vẫn đang mở hoặc vẫn còn dữ liệu trong đệm để đọc.
+
+    `ok == false`: Channel đã đóng và không còn dữ liệu nào bên trong.
+
+    👉 Nếu không có biến `ok` và `ch` đã bị đóng thì `v` nhận giá trị `zero value` chứ không bị lỗi chương trình
+
+### 28. Select
+1. `select` là gì?
+- `select` là cấu trúc dùng để chờ và xử lý nhiều thao tác channel cùng lúc.
+- Nó giống như `switch`, nhưng thay vì so sánh giá trị, nó chờ các operation trên channel (send/receive).
+
+2. Cú pháp:
+    ```go
+    select {
+    case v := <-ch1:
+        // nhận từ ch1
+    case ch2 <- 10:
+        // gửi vào ch2
+    default:
+        // chạy nếu không case nào sẵn sàng
+    }
+    ```
+3. Cách hoạt động:
+- Bước 1: Go kiểm tra tất cả các case
+- Bước 2:Nếu có nhiều case sẵn sàng → chọn ngẫu nhiên một case
+- Bước 3: Nếu không có case nào sẵn sàng:
+    + Có `default` → chạy `default`
+    + Không có `default` → block (chờ)
+
+4. Ví dụ:
+- Ví dụ 1: Chờ nhiều channel
+    ```go
+    package main
+
+    import (
+        "fmt"
+        "time"
+    )
+
+    func main() {
+        ch1 := make(chan string)
+        ch2 := make(chan string)
+
+        go func() {
+            time.Sleep(1 * time.Second)
+            ch1 <- "from ch1"
+        }()
+
+        go func() {
+            time.Sleep(2 * time.Second)
+            ch2 <- "from ch2"
+        }()
+
+        select {
+        case msg := <-ch1:
+            fmt.Println(msg)
+        case msg := <-ch2:
+            fmt.Println(msg)
+        }
+    }
+    ```
+    👉 Sẽ in "from ch1" vì ch1 sẵn sàng trước.
+
+
+- Ví dụ 2: Non-blocking với default
+    ```go
+    select {
+    case msg := <-ch:
+        fmt.Println(msg)
+    default:
+        fmt.Println("No data")
+    }
+    ```
+    👉 Nếu ch chưa có dữ liệu → không block → in "No data"
+
+- Ví dụ 3: Timeout pattern (rất hay dùng)
+    ```go
+    select {
+    case msg := <-ch:
+        fmt.Println(msg)
+    case <-time.After(2 * time.Second):
+        fmt.Println("timeout")
+    }
+    ```
+    👉 Cách hoạt động:
+    + select sẽ chờ một trong các case sẵn sàng.
+    + Nếu ch nhận được dữ liệu trước 2 giây → in msg.
+    + Nếu sau 2 giây vẫn chưa có dữ liệu từ ch → time.After(2 * time.Second) sẽ kích hoạt → in "timeout".
+    + Bởi vì: `time.After()` tạo ra một channel và sẽ gửi một giá trị vào đó sau khoảng thời gian chỉ định. Vì vậy nó rất hay dùng để xử lý timeout trong `select`.
+
+5. `Một số lưu ý quan trọng`:
+    1. select không phải là vòng lặp
+    - Muốn lặp thì phải viết:
+        ```go
+        for {
+            select {
+            ...
+            }
+        }
+        ```
+    2. Nếu tất cả channel đều là nil và select không có default thì select sẽ block vĩnh viễn.
+        ```go
+        var ch1 chan int
+        var ch2 chan string
+
+        select {
+        case <-ch1:
+        case <-ch2:
+        }
+        ```
+        👉 Cả ch1 và ch2 đều là nil → chương trình sẽ deadlock (nếu ở main goroutine).
+
+### 29. Mutex
+1. Mutex là gì?
+- Mutex (Mutual Exclusion) là cơ chế dùng để đảm bảo tại một thời điểm chỉ có một goroutine được truy cập vào vùng dữ liệu dùng chung (ví dụ: biến) hoặc một đoạn code nhất định.
+- Trong Go, Mutex được cung cấp bởi package `sync`.
+
+2. Khi nào cần Mutex?
+- Khi có nhiều goroutine cùng đọc/ghi một biến chung, có thể xảy ra:
+
+    ❌ Race condition
+
+    ❌ Dữ liệu sai lệch
+
+    ❌ Crash khó debug
+
+- Ví dụ không dùng Mutex (bị race)
+    ```go
+    package main
+
+    import (
+        "fmt"
+    )
+
+    var counter int
+
+    func main() {
+        for i := 0; i < 1000; i++ {
+            go func() {
+                counter++
+            }()
+        }
+
+        fmt.Println(counter)
+    }
+    ```
+    👉 Kết quả gần như chắc chắn không phải 1000.
+
+3. Cách sử dụng `sync.Mutex`:
+- Gói sync cung cấp Mutex với hai phương thức cơ bản:
+    + Lock(): Bắt đầu khóa. Nếu đã có goroutine khóa rồi, Goroutine hiện tại sẽ phải đứng đợi.
+    + Unlock(): Mở khóa để goroutine khác vào.
+- Cách hoạt động:
+    + Nếu một goroutine đã Lock() thì Goroutine khác gọi Lock() sẽ bị block cho đến khi Unlock() được gọi
+
+    + Nếu mutex đang mở (unlock) → goroutine đó chiếm lock và chạy tiếp.
+    + Nếu mutex đang bị giữ bởi goroutine khác → goroutine hiện tại sẽ bị block tại dòng Lock() cho đến khi mutex được Unlock().
+
+- Nếu một goroutine đã `mu.Lock()` mà không bao giờ `mu.Unlock()`, thì: Tất cả goroutine khác gọi `mu.Lock()` cùng mutex đó sẽ block mãi mãi tại dòng `Lock()`.
+- Để tránh quên mở khóa (dẫn đến Deadlock), chúng ta luôn đặt `Unlock()` ngay sau `Lock()` bằng từ khóa `defer`
+    ```go
+    mu.Lock()
+    defer mu.Unlock()
+    ```
+
+### 30. Các loại Mutex trong Golang
+1. `sync.Mutex`
+- Đây là loại khóa "độc quyền" (Exclusive Lock). 
+- Một khi một Goroutine đã giữ khóa này, không có bất kỳ Goroutine khác (dù là đọc hay ghi) được phép vào cho đến khi khóa được mở.
+- Trạng thái: Chỉ có 2 trạng thái là `Locked` (đã khóa) và `Unlocked` (đã mở).
+- Cơ chế: Nếu Goroutine A đang Lock(), Goroutine B gọi Lock() sẽ bị chặn hoàn toàn cho đến khi A gọi Unlock().
+
+- Đặc điểm:
+    + Chỉ cho phép 1 goroutine truy cập vào critical section tại một thời điểm.
+    + Goroutine khác sẽ bị block cho đến khi mutex được unlock.
+    + Không phân biệt đọc/ghi.
+
+- Khi nên dùng:
+    + Khi tài nguyên bị ghi thường xuyên.
+    + Khi không cần phân biệt read/write.
+
+- Ví dụ:
+    ```go
+    var mu sync.Mutex
+
+    mu.Lock()
+    // critical section
+    mu.Unlock()
+    ```
+
+2. `sync.RWMutex` (Reader/Writer Mutex)
+- Đây là loại khóa "ưu tiên người đọc", giúp tối ưu hiệu năng cực tốt cho các hệ thống có tần suất đọc dữ liệu cao hơn ghi.
+- Cho phép 1 thời điểm có thể có nhiều reader hoặc chỉ có 1 writer.
+
+- Nó cung cấp hai bộ phương thức:
+    + Cho việc Ghi (`Lock` và `Unlock`): Hoạt động y hệt `sync.Mutex`. Độc quyền hoàn toàn.
+    + Cho việc Đọc (`RLock` và `RUnlock`): Nhiều Goroutine có thể cùng giữ `RLock` một lúc.
+        * Nếu có ai đó đang giữ RLock, người muốn Lock (để ghi) phải đợi.
+        * Nếu có ai đó đang giữ Lock (để ghi), người muốn RLock (để đọc) phải đợi.
+
+- Đặc điểm:
+    + Nhiều goroutine có thể RLock() cùng lúc.
+    + Khi có Lock() (write), tất cả reader và writer khác sẽ bị block.
+    + Tối ưu cho trường hợp read nhiều – write ít.
+
+- Ví dụ:
+    ```go
+    var mu sync.RWMutex
+
+    mu.RLock()
+    // read
+    mu.RUnlock()
+
+    mu.Lock()
+    // write
+    mu.Unlock()
+    ```
+
+3. `sync.Once`
+- Không phải mutex thuần túy, nhưng dùng cơ chế khóa bên trong.
+- Đặc điểm:
+    + Đảm bảo một function chỉ chạy 1 lần duy nhất.
+    + Thread-safe.
+- Khi nên dùng:
+    + Lazy initialization
+    + Singleton pattern
+
+- Ví dụ:
+    ```go
+    var once sync.Once
+
+    once.Do(func() {
+        initConfig()
+    })
+    ```
+4. `sync.Map`
+- Không phải mutex trực tiếp nhưng là cấu trúc map đã được đồng bộ hóa.
+- Dùng cơ chế lock + atomic bên trong.
+- Đặc điểm:
+    + Thread-safe map.
+    + Tối ưu cho read-heavy workloads.
+    + Không cần dùng mutex bên ngoài.
+- Khi nên dùng
+    + Concurrent map read-heavy
+    + Không muốn tự quản lý mutex
+
+- Ví dụ:
+    ```go
+    var m sync.Map
+    m.Store("a", 1)
+    v, ok := m.Load("a")
+    ```
+
+5. `Atomic` (không phải mutex nhưng thay thế mutex nhỏ)
+- Package sync/atomic cho phép lock-free operation.
+    ```go
+    atomic.AddInt64(&counter, 1)
+    ```
+- Dùng khi:
+    + Chỉ thao tác số nguyên
+    + Cần hiệu năng cao
+    + Tránh lock
+
+6. Tóm tắt: Chọn loại nào?
+    - Chỉ cần tăng/giảm số nguyên đơn giản? $\rightarrow$ Dùng sync/atomic.
+    - Dữ liệu đọc nhiều, ghi ít (ví dụ: Cache, Config)? $\rightarrow$ Dùng sync.RWMutex.
+    - Tác vụ ghi nhiều hoặc logic phức tạp? $\rightarrow$ Dùng sync.Mutex.
+    - Cần đảm bảo một đoạn code chỉ chạy 1 lần duy nhất (như khởi tạo DB)? $\rightarrow$ Dùng sync.Once (nó sử dụng Mutex ngầm bên dưới).
+
+7. Lưu ý quan trọng:
+- Unlock() khi chưa Lock() → panic
+- RUnlock() khi chưa RLock() → panic
+- Code này sẽ bị deadlock, không phải panic.
+    ```go
+    mu.Lock()
+    mu.Lock() // deadlock (không panic)
+    ```
+
+### 31. WaitGroup
+- Trong Go (Golang), `WaitGroup` là một cấu trúc trong `package sync` dùng để đợi một nhóm goroutine hoàn thành trước khi tiếp tục thực thi chương trình.
+
+1. `WaitGroup` hoạt động như thế nào?
+- `WaitGroup`có 3 method chính:
+    + Add(n): Tăng bộ đếm thêm n (số goroutine cần đợi)
+    + Done(): Giảm bộ đếm đi 1 (gọi khi một goroutine xong)
+    + Wait(): Chặn (block) cho đến khi bộ đếm về 0
+
+- Ví dụ:
+    ```go
+    package main
+
+    import (
+        "fmt"
+        "sync"
+        "time"
+    )
+
+    func main() {
+        var wg sync.WaitGroup
+
+        for i := 1; i <= 3; i++ {
+            wg.Add(1) // báo có thêm 1 goroutine
+            go func(id int) {
+                defer wg.Done() // báo hoàn thành khi xong
+                fmt.Println("Worker", id, "đang chạy")
+                time.Sleep(2 * time.Second)
+                fmt.Println("Worker", id, "hoàn thành")
+            }(i)
+        }
+
+        wg.Wait() // đợi tất cả goroutine hoàn thành
+        fmt.Println("Tất cả công việc đã xong")
+    }
+    ```
+    📌 Cách hoạt động trong ví dụ trên
+    + wg.Add(1) → tăng bộ đếm lên 1 mỗi khi tạo goroutine.
+    + wg.Done() → giảm bộ đếm khi goroutine hoàn thành.
+    + wg.Wait() → chương trình sẽ dừng ở đây cho đến khi tất cả goroutine gọi Done().
+    + Nếu không có Wait(), chương trình có thể kết thúc trước khi goroutine chạy xong.
+
+    ⚠️ Lưu ý quan trọng
+    + ❗ Luôn gọi Add() trước khi chạy goroutine.
+    + ❗ Không được copy WaitGroup (nên truyền bằng pointer nếu dùng trong struct).
+    + ❗ Nếu Done() nhiều hơn Add() → chương trình sẽ panic.
+    + WaitGroup chỉ dùng để đợi hoàn thành, không dùng để truyền dữ liệu (dùng channel cho việc đó).
+
+### 32. Context
+- Trong Go (Golang), Context là một cơ chế dùng để:
+
+    ✅ Quản lý timeout
+
+    ✅ Hủy (cancel) nhiều goroutine cùng lúc
+
+    ✅ Truyền request-scoped data (metadata) xuyên suốt call stack
+
+- Nó nằm trong package chuẩn:
+    ```go
+    import "context"
+    ```
+
+1. Context là gì?
+- `context.Context` là một interface giúp:
+    + Kiểm soát vòng đời của request, goroutine
+    + Truyền tín hiệu dừng giữa các goroutine
+    + Tránh goroutine bị leak
+
+
+- Đặc biệt quan trọng trong:
+    + Web server
+    + Microservices
+    + Database call
+    + API call
+    + Xử lý concurrent
+
+2. Các loại Context chính
+
+    1️⃣ `context.Background()`
+    - Context gốc
+    - Thường dùng trong main() hoặc khởi tạo server
+        ```go
+        ctx := context.Background()
+        ```
+
+    2️⃣ `context.WithCancel()`
+    - Tạo context có thể hủy thủ công.
+        ```go
+        ctx, cancel := context.WithCancel(parentCtx)
+        cancel() // hủy
+        ```
+        👉 Dùng khi cần dừng nhiều goroutine cùng lúc.
+
+    3️⃣ `context.WithTimeout()`
+    - Tự động hủy sau một khoảng thời gian.
+        ```go
+        ctx, cancel := context.WithTimeout(parentCtx, duration)
+        defer cancel()
+        ```
+        👉 Rất hay dùng cho: Query database, Call API, HTTP request
+
+
+    4️⃣ `context.WithDeadline()`
+    - Hủy tại một thời điểm cụ thể.
+        ```go
+        ctx, cancel := context.WithDeadline(parentCtx, deadlineTime)
+        ```
+
+    5️⃣ `context.WithValue()`
+    - Truyền dữ liệu qua các layer.
+        ```govalue
+        ctx := context.WithValue(parentCtx, key, value)
+        ```
+    - ⚠️ Không nên lạm dụng. Chỉ dùng cho metadata như: request ID, user ID, auth token
+
+3. Context hoạt động như thế nào?
+- Trong Go, mọi `context.Context` đều tạo thành một cây (`tree`).
+- Mỗi context mới được tạo ra sẽ:
+    + Có 1 parent
+    + Có thể có nhiều child
+    + Khi parent bị cancel → tất cả child tự động bị cancel theo
+
+- Gốc của cây: 
+    + Cây luôn bắt đầu từ: `context.Background()` hoặc `context.TODO()`
+    
+        👉 Hai cái này là root context, không bao giờ bị cancel.
+
+- 🌲 Ví dụ cấu trúc cây
+
+    ```go
+    root := context.Background()
+    ctx1, cancel1 := context.WithCancel(root)
+    ctx2, cancel2 := context.WithTimeout(ctx1, 5*time.Second)
+    ctx3 := context.WithValue(ctx2, "userID", 123)
+    ```
+
+- Cây sẽ trông như sau:
+
+    ```bash
+    Background()
+        └── ctx1 (WithCancel)
+                └── ctx2 (WithTimeout 5s)
+                        └── ctx3 (WithValue userID=123)
+    ```
+
+    🔥 Nguyên tắc quan trọng
+
+    1️⃣ Cancel lan truyền từ trên xuống
+    - Nếu bạn gọi: 
+        ```go
+        cancel1()
+        ```
+        👉 ctx1 bị hủy
+
+        👉 ctx2 bị hủy
+
+        👉 ctx3 bị hủy
+
+    - Nhưng nếu bạn chỉ gọi:
+        ```go
+        cancel2()
+        ```
+        👉 ctx2 và ctx3 bị hủy
+
+        👉 ctx1 vẫn sống
+
+    ➡️ Parent không bị ảnh hưởng bởi child.
+
+    2️⃣ Deadline cũng lan truyền
+
+    - Nếu parent có timeout 3s, còn child đặt 10s:
+        ```go
+        parent, _ := context.WithTimeout(root, 3*time.Second)
+        child, _ := context.WithTimeout(parent, 10*time.Second)
+        ```
+        ⏳ Child thực tế chỉ sống 3s.
+
+        👉 Vì deadline của child không thể vượt quá parent.
+
+    3️⃣ WithValue không tạo cơ chế hủy mới
+    - WithValue chỉ:
+        + Thêm dữ liệu
+        + Không thêm cancel logic
+
+    - Ví dụ:
+        ```go
+        ctxValue := context.WithValue(ctx2, "role", "admin")
+        ```
+
+        👉 Nó chỉ gắn data vào node đó trong cây.
+
+💡 Tóm tắt 5 loại trong cây
+
+    | Loại         | Tạo node mới? | Có thể cancel?     | Có deadline? | Có value? |
+    | ------------ | ------------- | ------------------ | ------------ | --------- |
+    | Background   | Root          | ❌                 | ❌           | ❌        |
+    | WithCancel   | ✅            | ✅                 | ❌           | ❌        |
+    | WithTimeout  | ✅            | ✅                 | ✅           | ❌        | 
+    | WithDeadline | ✅            | ✅                 | ✅           | ❌        |
+    | WithValue    | ✅            | ❌ (kế thừa parent)| ❌           | ✅        |
+
+4. `Lưu ý quan trọng (Best Practices)`
+- `Context là tham số đầu tiên`: Theo quy ước, `ctx context.Context` luôn đứng đầu danh sách tham số của hàm.
+
+- `Đừng lưu Context vào Struct`: Chỉ truyền nó qua các hàm. Việc lưu vào struct khiến vòng đời của nó trở nên khó kiểm soát.
+
+- `Luôn gọi cancel()`: Khi dùng `WithCancel` hoặc `WithTimeout`, hãy luôn gọi hàm cancel (thường dùng `defer cancel()`) để tránh rò rỉ bộ nhớ (goroutine leak).
+
+- `WithValue chỉ dùng cho metadata`: Không dùng nó để truyền các tham số tùy chọn vào hàm (như database connection), hãy dùng nó cho những thứ như TraceID.

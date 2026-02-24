@@ -23,6 +23,7 @@ import (
 	structembedding12 "learngo/12-struct-embedding"
 	profitrevenue "learngo/13-profit-revenue"
 	deferPanicRecover "learngo/14-defer-panic-recover"
+	contextExample "learngo/15-context"
 	"math"
 	"math/cmplx"
 	"runtime"
@@ -1184,6 +1185,37 @@ func deferPanicRecoverEx4() {
 	deferPanicRecover.RunMain()
 }
 
+func channelEx1() {
+	// Hàm này CHỈ ĐƯỢC PHÉP GỬI dữ liệu (Send-only)
+	producer := func(out chan<- int) {
+		for i := 0; i < 5; i++ {
+			out <- i // Gửi dữ liệu vào
+		}
+		close(out) // Đóng channel sau khi gửi xong
+		// fmt.Println(<-out) // NẾU BỎ COMMENT DÒNG NÀY SẼ BỊ LỖI KHI COMPILER
+	}
+
+	// Hàm này CHỈ ĐƯỢC PHÉP NHẬN dữ liệu (Receive-only)
+	consumer := func(in <-chan int) {
+		for v := range in {
+			fmt.Println("Nhận được:", v)
+		}
+		// in <- 10 // NẾU BỎ COMMENT DÒNG NÀY SẼ BỊ LỖI KHI COMPILER
+		// close(in) // NẾU BỎ COMMENT DÒNG NÀY SẼ BỊ LỖI KHI COMPILER vì channel chỉ nhận không được phép đóng channel
+	}
+
+	// 1. Tạo một channel hai chiều bình thường
+	ch := make(chan int)
+
+	// 2. Truyền vào các hàm, Go tự động ép kiểu sang channel một chiều
+	go producer(ch)
+	consumer(ch) // Đợi consumer xử lý xong
+}
+
+func contextEx1() {
+	contextExample.Main()
+}
+
 func main() {
 	// variables()
 	// typeConversion()
@@ -1234,5 +1266,7 @@ func main() {
 	// deferPanicRecoverEx1()
 	// deferPanicRecoverEx2()
 	// deferPanicRecoverEx3()
-	deferPanicRecoverEx4()
+	// deferPanicRecoverEx4()
+	// channelEx1()
+	contextEx1()
 }
