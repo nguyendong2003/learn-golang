@@ -88,6 +88,8 @@ CREATE TABLE quizzes (
     pass_score DECIMAL(5,2) NOT NULL DEFAULT 0.00 CHECK (pass_score >= 0 AND pass_score <= 100),
     description TEXT,
     topic_id INT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
