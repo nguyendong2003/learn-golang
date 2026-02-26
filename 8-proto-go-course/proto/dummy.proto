@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package example.dummy;
+
+option go_package = "proto-go-course/proto";
+
+message Dummy {
+  uint32 id = 1;
+}
+
