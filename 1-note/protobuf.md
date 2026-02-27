@@ -599,7 +599,15 @@ tag + wire_type + value
 
 👉 Nhưng có thể làm hỏng compile code
 
+### 10. Note
+- Backward compatible vs Forward compatible
+- `Style Guide`: <https://protobuf.dev/programming-guides/style/>
+- `Updating`: <https://protobuf.dev/programming-guides/proto3/#updating>
+- Xem best practice viết protobuf: <https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto>
+
 ### Practice 2
+
+
 
 ## Công cụ
 - Dưới đây là tác dụng của từng công cụ trong workflow `Protobuf + Go`:
