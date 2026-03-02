@@ -13,6 +13,8 @@
 
 <https://github.com/googleapis/googleapis/blob/master/google/type/dayofweek.proto>
 
+<https://github.com/Clement-Jean/grpc-go-course>
+
 ## Keyword
 ### 1. `Defaults`:
 - When not set:
