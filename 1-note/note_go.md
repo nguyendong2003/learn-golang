@@ -4,12 +4,14 @@
 
 # Cai dat go
 
+- Tải từ trang chủ golang -> giải nén ra lấy thư mục go
+- Sau đó chạy
 ```bash
-# Tải từ trang chủ golang -> giải nén ra lấy thư mục go
 sudo mv ~/Downloads/go /usr/local/ 
 echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
 source ~/.bashrc
 ```
+
 # Cai dat cong cu run and debug in vscode
 ```bash
 go install -v github.com/go-delve/delve/cmd/dlv@latest
