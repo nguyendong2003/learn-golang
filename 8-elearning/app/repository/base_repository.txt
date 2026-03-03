@@ -1,0 +1,111 @@
+package repository
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
+
+type Repository[T any] interface {
+	GetAll(ctx context.Context) ([]T, []error)
+	GetWithPagination(ctx context.Context, limit int, page int) ([]T, []error)
+	GetWithPaginationAndFilter(ctx context.Context, limit int, page int, filters map[string]any) ([]T, []error)
+	Filter(ctx context.Context, filters map[string]any) ([]T, []error)
+	GetByID(ctx context.Context, id uuid.UUID) (*T, []error)
+	Create(ctx context.Context, data T) (*T, []error)
+	Update(ctx context.Context, id uuid.UUID, data T) (*T, []error)
+	Delete(ctx context.Context, id uuid.UUID) []error
+}
+
+type repository[T any] struct {
+	db DbRepository
+}
+
+func NewBaseRepository[T any](db DbRepository) *repository[T] {
+	return &repository[T]{db: db}
+}
+
+func (r *repository[T]) GetAll(ctx context.Context) ([]T, []error) {
+	var data []T
+	err := r.db.GetDB().Find(&data).Error
+	if err != nil {
+		return nil, []error{err}
+	}
+	return data, nil
+}
+func (r *repository[T]) GetWithPagination(ctx context.Context, limit int, page int) ([]T, []error) {
+	var data []T
+	offset := (page - 1) * limit
+	err := r.db.GetDB().Limit(limit).Offset(offset).Find(&data).Error
+	if err != nil {
+		return nil, []error{err}
+	}
+	return data, nil
+}
+
+func (r *repository[T]) GetWithPaginationAndFilter(ctx context.Context, limit int, page int, filters map[string]any) ([]T, []error) {
+	var data []T
+	offset := (page - 1) * limit
+	db := r.db.GetDB().Limit(limit).Offset(offset)
+	for key, value := range filters {
+		db = db.Where(key+" = ?", value)
+	}
+	err := db.Find(&data).Error
+	if err != nil {
+		return nil, []error{err}
+	}
+	return data, nil
+}
+
+func (r *repository[T]) Filter(ctx context.Context, filters map[string]any) ([]T, []error) {
+	var data []T
+	db := r.db.GetDB()
+	for key, value := range filters {
+		db = db.Where(key+" = ?", value)
+	}
+	err := db.Find(&data).Error
+	if err != nil {
+		return nil, []error{err}
+	}
+	return data, nil
+}
+
+func (r *repository[T]) GetByID(ctx context.Context, id uuid.UUID) (*T, []error) {
+	var data T
+	err := r.db.GetDB().First(&data, "id = ?", id).Error
+	if err != nil {
+		return nil, []error{err}
+	}
+	return &data, nil
+}
+
+func (r *repository[T]) Create(ctx context.Context, data T) (*T, []error) {
+	err := r.db.GetDB().Create(&data).Error
+	if err != nil {
+		return nil, []error{err}
+	}
+	return &data, nil
+}
+
+func (r *repository[T]) Update(ctx context.Context, id uuid.UUID, data T) (*T, []error) {
+	var existingData T
+	err := r.db.GetDB().First(&existingData, "id = ?", id).Error
+	if err != nil {
+		return nil, []error{err}
+	}
+
+	err = r.db.GetDB().Model(&existingData).Updates(data).Error
+	if err != nil {
+		return nil, []error{err}
+	}
+
+	return &existingData, nil
+}
+
+func (r *repository[T]) Delete(ctx context.Context, id uuid.UUID) []error {
+	err := r.db.GetDB().Delete(new(T), "id = ?", id).Error
+	if err != nil {
+		return []error{err}
+	}
+	return nil
+}
