@@ -9,14 +9,16 @@ import (
 )
 
 type Repository[T any] interface {
-	GetAll(ctx context.Context) ([]T, error)
-	GetWithPagination(ctx context.Context, limit, page int) ([]T, int64, error)
-	GetWithPaginationAndFilter(ctx context.Context, limit, page int, filters map[string]any, allowedFields map[string]bool) ([]T, int64, error)
-	Filter(ctx context.Context, filters map[string]any, allowedFields map[string]bool) ([]T, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*T, error)
 	Create(ctx context.Context, data *T) (*T, error)
 	Update(ctx context.Context, id uuid.UUID, updates map[string]any) (*T, error)
+	Updates(ctx context.Context, entity *T) (*T, error)
 	Delete(ctx context.Context, id uuid.UUID) error
+
+	FindByID(ctx context.Context, id uuid.UUID) (*T, error)
+	Find(ctx context.Context, query string, args ...any) (*T, error)
+	FindAll(ctx context.Context, query string, args ...any) ([]*T, error)
+
+	List(ctx context.Context, limit, offset int, order string, query string, args ...any) ([]*T, int64, error)
 }
 
 type repository[T any] struct {
@@ -27,95 +29,104 @@ func NewBaseRepository[T any](db DbRepository) *repository[T] {
 	return &repository[T]{db: db}
 }
 
-func (r *repository[T]) GetAll(ctx context.Context) ([]T, error) {
-	var data []T
+func (r *repository[T]) baseQuery(ctx context.Context) *gorm.DB {
+	return r.db.GetDB().
+		WithContext(ctx).
+		Model(new(T))
+}
 
-	if err := r.db.GetDB().WithContext(ctx).Find(&data).Error; err != nil {
+func (r *repository[T]) Create(ctx context.Context, data *T) (*T, error) {
+	if err := r.baseQuery(ctx).Create(data).Error; err != nil {
 		return nil, err
 	}
-
 	return data, nil
 }
 
-func (r *repository[T]) GetWithPagination(ctx context.Context, limit, page int) ([]T, int64, error) {
-	var (
-		data  []T
-		total int64
-	)
-
-	offset := (page - 1) * limit
-	db := r.db.GetDB().WithContext(ctx).Model(new(T))
-
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	if err := db.Limit(limit).Offset(offset).Find(&data).Error; err != nil {
-		return nil, 0, err
-	}
-
-	return data, total, nil
-}
-
-func (r *repository[T]) Filter(
+func (r *repository[T]) Update(
 	ctx context.Context,
-	filters map[string]any,
-	allowedFields map[string]bool,
-) ([]T, error) {
+	id uuid.UUID,
+	updates map[string]any,
+) (*T, error) {
 
-	var data []T
-	db := r.db.GetDB().WithContext(ctx)
-
-	for key, value := range filters {
-		if allowedFields[key] {
-			db = db.Where(key+" = ?", value)
-		}
-	}
-
-	if err := db.Find(&data).Error; err != nil {
+	entity, err := r.FindByID(ctx, id)
+	if err != nil {
 		return nil, err
 	}
 
-	return data, nil
+	if entity == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	if err := r.baseQuery(ctx).
+		Model(entity).
+		Updates(updates).Error; err != nil {
+		return nil, err
+	}
+
+	// reload entity after update
+	if err := r.baseQuery(ctx).
+		First(entity, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+
+	return entity, nil
 }
 
-func (r *repository[T]) GetWithPaginationAndFilter(
+func (r *repository[T]) Updates(
 	ctx context.Context,
-	limit, page int,
-	filters map[string]any,
-	allowedFields map[string]bool,
-) ([]T, int64, error) {
+	entity *T,
+) (*T, error) {
 
-	var (
-		data  []T
-		total int64
-	)
+	result := r.baseQuery(ctx).
+		Model(entity).
+		Updates(entity)
 
-	offset := (page - 1) * limit
-	db := r.db.GetDB().WithContext(ctx).Model(new(T))
-
-	for key, value := range filters {
-		if allowedFields[key] {
-			db = db.Where(key+" = ?", value)
-		}
+	if result.Error != nil {
+		return nil, result.Error
 	}
 
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 
-	if err := db.Limit(limit).Offset(offset).Find(&data).Error; err != nil {
-		return nil, 0, err
-	}
-
-	return data, total, nil
+	return entity, nil
 }
 
-func (r *repository[T]) GetByID(ctx context.Context, id uuid.UUID) (*T, error) {
-	var data T
+func (r *repository[T]) Delete(ctx context.Context, id uuid.UUID) error {
 
-	err := r.db.GetDB().WithContext(ctx).
-		First(&data, "id = ?", id).Error
+	result := r.baseQuery(ctx).
+		Delete(new(T), "id = ?", id)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
+}
+
+func (r *repository[T]) FindByID(ctx context.Context, id uuid.UUID) (*T, error) {
+	return r.Find(ctx, "id = ?", id)
+}
+
+func (r *repository[T]) Find(
+	ctx context.Context,
+	query string,
+	args ...any,
+) (*T, error) {
+
+	var entity T
+
+	db := r.baseQuery(ctx)
+
+	if query != "" {
+		db = db.Where(query, args...)
+	}
+
+	err := db.First(&entity).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -125,39 +136,66 @@ func (r *repository[T]) GetByID(ctx context.Context, id uuid.UUID) (*T, error) {
 		return nil, err
 	}
 
-	return &data, nil
-}
-
-func (r *repository[T]) Create(ctx context.Context, data *T) (*T, error) {
-	if err := r.db.GetDB().WithContext(ctx).Create(data).Error; err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-func (r *repository[T]) Update(ctx context.Context, id uuid.UUID, updates map[string]any) (*T, error) {
-	var entity T
-	db := r.db.GetDB().WithContext(ctx)
-
-	if err := db.First(&entity, "id = ?", id).Error; err != nil {
-		return nil, err
-	}
-
-	if err := db.Model(&entity).Updates(updates).Error; err != nil {
-		return nil, err
-	}
-
-	if err := db.First(&entity, "id = ?", id).Error; err != nil {
-		return nil, err
-	}
-
 	return &entity, nil
 }
 
-func (r *repository[T]) Delete(ctx context.Context, id uuid.UUID) error {
-	if err := r.db.GetDB().WithContext(ctx).
-		Delete(new(T), "id = ?", id).Error; err != nil {
-		return err
+func (r *repository[T]) FindAll(
+	ctx context.Context,
+	query string,
+	args ...any,
+) ([]*T, error) {
+	var data []*T
+
+	db := r.baseQuery(ctx)
+
+	if query != "" {
+		db = db.Where(query, args...)
 	}
-	return nil
+
+	if err := db.Find(&data).Error; err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (r *repository[T]) List(
+	ctx context.Context,
+	limit, offset int,
+	order string,
+	query string,
+	args ...any,
+) ([]*T, int64, error) {
+
+	var (
+		data  []*T
+		total int64
+	)
+
+	db := r.baseQuery(ctx)
+
+	if query != "" {
+		db = db.Where(query, args...)
+	}
+
+	// count total records
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if order != "" {
+		db = db.Order(order)
+	}
+
+	// apply pagination
+	if limit > 0 {
+		db = db.Limit(limit).Offset(offset)
+	}
+
+	// fetch data
+	if err := db.Find(&data).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return data, total, nil
 }

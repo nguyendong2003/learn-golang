@@ -2,7 +2,6 @@ package handler
 
 import (
 	"elearning-api/dto"
-	"elearning-api/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -20,12 +19,7 @@ func NewMainHandler() MainHandler {
 
 func (h *mainHandler) HealthCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
-		response := dto.NewSuccessResponse[any](
-			nil,
-			"Server healthcheck successfully",
-			util.GetRequestID(c),
-		)
+		response := dto.SimpleSuccess("Server healthcheck successfully")
 
 		c.JSON(http.StatusOK, response)
 	}

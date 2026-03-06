@@ -1,6 +1,7 @@
 package di
 
 import (
+	"elearning-api/config"
 	"elearning-api/repository"
 	"log"
 )
@@ -11,22 +12,17 @@ type Container struct {
 	Services *Services
 }
 
-func NewContainer(db repository.DbRepository) *Container {
+func NewContainer(config *config.Config) *Container {
+	db := repository.NewDbRepository(config.Database.Dsn)
+	if err := db.InitializeDB(); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
 	repos := InitRepositories(db)
-	services := InitServices(repos)
+	services := InitServices(repos, config)
 
 	return &Container{
 		DB:       db,
 		Repos:    repos,
 		Services: services,
 	}
-}
-
-func MustInitialize(dsn string) *Container {
-	db := repository.NewDbRepository(dsn)
-	if err := db.InitializeDB(); err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
-	}
-
-	return NewContainer(db)
 }

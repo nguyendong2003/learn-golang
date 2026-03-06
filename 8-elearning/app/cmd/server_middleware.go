@@ -3,7 +3,6 @@ package cmd
 import (
 	"elearning-api/apperror"
 	"elearning-api/consts"
-	"elearning-api/dto"
 	"elearning-api/util"
 	"net/http"
 
@@ -18,51 +17,62 @@ func (s *ApiServer) ErrorHandler() gin.HandlerFunc {
 		if len(c.Errors) == 0 {
 			return
 		}
-
 		err := c.Errors.Last().Err
-		requestID := util.GetRequestID(c)
-
-		status := http.StatusInternalServerError
-		code := apperror.InternalServer
-		message := "Internal server error"
 
 		if appErr, ok := err.(*apperror.AppError); ok {
-			code = appErr.Type
-			message = appErr.Message
 
-			switch appErr.Type {
-			case apperror.NotFound:
-				status = http.StatusNotFound
-			case apperror.BadRequest:
-				status = http.StatusBadRequest
-			case apperror.Unauthorized:
-				status = http.StatusUnauthorized
-			case apperror.Forbidden:
-				status = http.StatusForbidden
-			case apperror.DuplicateEntry:
-				status = http.StatusConflict
-			}
+			status := apperror.MapErrorToStatus(appErr.Type)
+
+			c.JSON(status, appErr)
+			return
 		}
 
-		resp := dto.NewErrorResponse(
-			string(code),
-			message,
-			requestID,
-		)
-
-		c.AbortWithStatusJSON(status, resp)
+		// fallback
+		c.JSON(http.StatusInternalServerError, apperror.NewInternalServerError("Something went wrong", err))
 	}
 }
 
 func (s *ApiServer) AuthHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.GetHeader("Authorization")
-		if token == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.Error(apperror.NewUnauthorizedError("Missing authorization header"))
+			c.Abort()
+			return
+		}
+
+		// Extract token from "Bearer <token>" format
+		token, err := util.ExtractTokenFromHeader(authHeader)
+		if err != nil {
+			c.Error(apperror.NewUnauthorizedError(err.Error()))
+			c.Abort()
+			return
+		}
+
+		// Validate access token
+		claims, err := util.ValidateAccessToken(token, &s.config.JWT)
+		if err != nil {
+			c.Error(apperror.NewUnauthorizedError("Invalid or expired token"))
+			c.Abort()
+			return
+		}
+
+		// Set user info in context for later use
+		c.Set("user_id", claims.UserID)
+		c.Set("user_role", claims.Role)
+
+		c.Next()
+	}
+}
+
+func (s *ApiServer) AuthorizationHandler(role consts.UserRole) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRole := c.GetString("user_role")
+		if userRole != string(role) {
+			c.Error(apperror.NewForbiddenError("User does not have the required role"))
 			return
 		}
 		c.Next()
-		// Implement token validation logic here
 	}
 }
 
@@ -78,34 +88,17 @@ func (s *ApiServer) CorsHandler() gin.HandlerFunc {
 		c.Next()
 	}
 }
-func (s *ApiServer) AuthorizationHandler(role consts.Role) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Example authorization logic
-		userRole := c.GetString("user_role")
-		if userRole != string(role) {
-			c.Error(apperror.NewForbiddenError("User does not have the required role"))
-			return
-		}
-		c.Next()
-	}
-}
 
-// Middleware để gán request ID cho mỗi request, giúp dễ dàng theo dõi log và debug
 func (s *ApiServer) RequestIDHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Nếu client đã gửi X-Request-ID thì dùng lại
 		requestID := c.GetHeader("X-Request-ID")
 
 		if requestID == "" {
 			requestID = uuid.NewString()
 		}
 
-		// Lưu vào context để handler khác dùng
 		c.Set(util.RequestIDKey, requestID)
-
-		// Trả lại cho client qua header
 		c.Writer.Header().Set("X-Request-ID", requestID)
-
 		c.Next()
 	}
 }

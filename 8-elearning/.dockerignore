@@ -1,0 +1,33 @@
+# Ignore unnecessary files for Docker build
+.git
+.gitignore
+.env
+.env.local
+*.md
+README.md
+
+# Ignore build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+app/app
+
+# Ignore IDE files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore logs
+*.log
+
+# Ignore node_modules if any
+node_modules/

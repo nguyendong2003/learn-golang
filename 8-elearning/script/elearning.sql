@@ -2,6 +2,12 @@
 -- CREATE DATABASE elearning;
 
 -- 2. Kết nối vào database elearning và chạy các lệnh dưới đây
+CREATE TYPE user_role AS ENUM (
+    'admin',
+    'student',
+    'instructor'
+);
+
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -10,9 +16,10 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     username VARCHAR(100) NOT NULL UNIQUE,
     password TEXT NOT NULL,
-    full_name VARCHAR(255),
+    name VARCHAR(255),
     avatar TEXT,
-    is_active BOOLEAN DEFAULT true
+    is_active BOOLEAN DEFAULT true,
+    role user_role DEFAULT 'student'
 );
 
 -- Tạo index cho deleted_at để tối ưu soft delete của GORM
