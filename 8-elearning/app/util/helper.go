@@ -3,10 +3,6 @@ package util
 import (
 	"elearning-api/apperror"
 	"errors"
-	"fmt"
-	"log"
-	"os"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -26,20 +22,4 @@ func BindAndValidateJSON(c *gin.Context, obj any) error {
 	}
 
 	return nil
-}
-
-func GetDuration(durationStr string) (time.Duration, error) {
-	duration, err := time.ParseDuration(durationStr)
-	if err != nil {
-		return 0, fmt.Errorf("invalid duration format: %w", err)
-	}
-	return duration, nil
-}
-
-func MustGetEnv(key string) string {
-	val := os.Getenv(key)
-	if val == "" {
-		log.Fatalf("%s is not set", key)
-	}
-	return val
 }
