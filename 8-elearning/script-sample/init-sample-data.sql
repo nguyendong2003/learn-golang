@@ -11,20 +11,20 @@ VALUES
 
 INSERT INTO permissions (code, description)
 VALUES
-('user.read', 'Read users'),
-('user.create', 'Create users'),
-('user.update', 'Update users'),
-('user.delete', 'Delete users'),
+('user_read', 'Read users'),
+('user_create', 'Create users'),
+('user_update', 'Update users'),
+('user_delete', 'Delete users'),
 
-('blog.read', 'Read blogs'),
-('blog.create', 'Create blogs'),
-('blog.update', 'Update blogs'),
-('blog.delete', 'Delete blogs'),
+('blog_read', 'Read blogs'),
+('blog_create', 'Create blogs'),
+('blog_update', 'Update blogs'),
+('blog_delete', 'Delete blogs'),
 
-('course.read', 'Read courses'),
-('course.create', 'Create courses'),
-('course.update', 'Update courses'),
-('course.delete', 'Delete courses');
+('course_read', 'Read courses'),
+('course_create', 'Create courses'),
+('course_update', 'Update courses'),
+('course_delete', 'Delete courses');
 
 -- Admin Role
 INSERT INTO role_permissions (role_id, permission_id)
@@ -38,13 +38,14 @@ SELECT r.id, p.id
 FROM roles r, permissions p
 WHERE r.name = 'instructor'
 AND p.code IN (
-    'blog.read',
-    'blog.create',
-    'blog.update',
-    'blog.delete',
-    'course.read',
-    'course.create',
-    'course.update'
+    'blog_read',
+    'blog_create',
+    'blog_update',
+    'blog_delete',
+    'course_read',
+    'course_create',
+    'course_update',
+    'course_delete'
 );
 
 -- Student Role
@@ -53,6 +54,6 @@ SELECT r.id, p.id
 FROM roles r, permissions p
 WHERE r.name = 'student'
 AND p.code IN (
-    'blog.read',
-    'course.read'
+    'blog_read',
+    'course_read'
 );

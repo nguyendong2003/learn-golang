@@ -52,15 +52,16 @@ func (h *userHandler) Create() gin.HandlerFunc {
 			return
 		}
 
-		data, err := h.userService.Create(c.Request.Context(), request)
+		user, err := h.userService.Create(c.Request.Context(), request)
 		if err != nil {
 			c.Error(err)
 			return
 		}
 
 		res := dto.NewApiResponse(c)
+		res.Status = dto.NewResponseStatus(http.StatusCreated)
 		res.Request = dto.GetRequestClient(c)
-		res.Data = data
+		res.Data = user
 
 		c.JSON(http.StatusCreated, res)
 	}
@@ -188,7 +189,6 @@ func (h *userHandler) GetByID() gin.HandlerFunc {
 
 		// Call service
 		data, err := h.userService.GetByID(c.Request.Context(), id)
-
 		if err != nil {
 			c.Error(err)
 			return
@@ -233,7 +233,7 @@ func (h *userHandler) GetList() gin.HandlerFunc {
 		sortOrder := paginationRequest.SortOrder
 
 		// Call service
-		data, total, err := h.userService.GetList(
+		users, total, err := h.userService.GetList(
 			c.Request.Context(),
 			limit,
 			offset,
@@ -246,7 +246,7 @@ func (h *userHandler) GetList() gin.HandlerFunc {
 
 		res := dto.NewApiResponse(c)
 		res.Request = dto.GetRequestClient(c)
-		res.Data = data
+		res.Data = users
 		res.Metadata = dto.NewPagination(limit, offset, int(total), sortBy, sortOrder)
 
 		c.JSON(http.StatusOK, res)

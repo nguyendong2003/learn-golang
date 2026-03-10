@@ -19,7 +19,6 @@ const (
 
 type AccessTokenClaims struct {
 	UserID string    `json:"user_id"`
-	Role   string    `json:"role"`
 	Type   TokenType `json:"type"`
 
 	jwt.RegisteredClaims
@@ -33,12 +32,11 @@ type RefreshTokenClaims struct {
 }
 
 // GenerateAccessToken generates a new JWT access token for a user
-func GenerateAccessToken(userID uuid.UUID, role string, jwtConfig *config.JWTConfig) (string, error) {
+func GenerateAccessToken(userID uuid.UUID, jwtConfig *config.JWTConfig) (string, error) {
 	expirationTime := time.Now().Add(jwtConfig.AccessTokenExpiration)
 
 	claims := &AccessTokenClaims{
 		UserID: userID.String(),
-		Role:   role,
 		Type:   AccessTokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    jwtConfig.Issuer,

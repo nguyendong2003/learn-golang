@@ -34,7 +34,7 @@ type ApiResponse struct {
 type RequestClient struct {
 	Params map[string]string `json:"params"`
 	Query  map[string]any    `json:"query"`
-	Body   any               `json:"body"`
+	Body   map[string]any    `json:"body"`
 }
 
 func GetRequestClient(c *gin.Context) RequestClient {
@@ -61,11 +61,13 @@ func GetRequestClient(c *gin.Context) RequestClient {
 	}
 }
 
-func GetRequestBody(c *gin.Context) any {
+func GetRequestBody(c *gin.Context) map[string]any {
 	if body, exists := c.Get("request_body"); exists {
-		return body
+		if bodyMap, ok := body.(map[string]any); ok {
+			return bodyMap
+		}
 	}
-	return nil
+	return map[string]any{}
 }
 
 func NewResponseStatus(code int) ResponseStatus {
@@ -93,6 +95,7 @@ func NewApiResponse(c *gin.Context) *ApiResponse {
 
 	respError := []apperror.AppError{}
 	respData := make([]any, 0)
+	respMetadata := make(map[string]any)
 
 	return &ApiResponse{
 		ProcessID: processID,
@@ -100,5 +103,6 @@ func NewApiResponse(c *gin.Context) *ApiResponse {
 		Errors:    respError,
 		Data:      respData,
 		Path:      path,
+		Metadata:  respMetadata,
 	}
 }

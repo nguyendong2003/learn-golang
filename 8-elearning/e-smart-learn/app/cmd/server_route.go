@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"elearning-api/consts"
+
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -28,6 +30,26 @@ func (server *ApiServer) route() {
 		// }
 	}
 
+	// Admin routes (protected)
+	{
+		adminGroup := server.router.Group("/api/v1/admin")
+
+		adminGroup.Use(
+			server.AuthHandler(),
+			server.LoadRolePermissionHandler(),
+			server.RequireRoleHandler(string(consts.RoleAdmin)),
+		)
+
+		adminUsers := adminGroup.Group("/users")
+		{
+			adminUsers.GET("", server.userHandler.GetList())
+			adminUsers.GET("/:id", server.userHandler.GetByID())
+			adminUsers.POST("", server.userHandler.Create())
+			adminUsers.PUT("/:id", server.userHandler.Update())
+			adminUsers.DELETE("/:id", server.userHandler.Delete())
+		}
+	}
+
 	// User routes (protected)
 	{
 		userGroup := server.router.Group("/api/v1/users")
@@ -46,13 +68,31 @@ func (server *ApiServer) route() {
 
 	// Blog routes (protected)
 	{
+
 		blogGroup := server.router.Group("/api/v1/blogs")
-		// blogGroup.Use(server.AuthHandler())
-
 		blogGroup.GET("", server.blogHandler.GetList())
-
 		// Dynamic route must be placed after static route to avoid conflict
 		blogGroup.GET("/:slug", server.blogHandler.GetByID())
+
+		blogGroup.Use(
+			server.AuthHandler(),
+			server.LoadRolePermissionHandler(),
+		)
+
+		blogGroup.POST("",
+			server.RequirePermissionHandler("blog_create"),
+			server.blogHandler.Create(),
+		)
+
+		blogGroup.PUT("/:id",
+			server.RequirePermissionHandler("blog_update"),
+			server.blogHandler.Update(),
+		)
+
+		blogGroup.DELETE("/:id",
+			server.RequirePermissionHandler("blog_delete"),
+			server.blogHandler.Delete(),
+		)
 	}
 
 	// Subscription routes (public)

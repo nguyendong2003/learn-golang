@@ -12,7 +12,7 @@ type Services struct {
 
 func InitServices(repos *Repositories, config *config.Config) *Services {
 	return &Services{
-		User: service.NewUserService(repos.User),
+		User: service.NewUserService(repos.User, repos.Role),
 		Auth: service.NewAuthService(repos.User, repos.Role, &config.JWT),
 	}
 }

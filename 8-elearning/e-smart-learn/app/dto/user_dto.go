@@ -6,16 +6,19 @@ import (
 )
 
 type UserResponse struct {
-	ID        string       `json:"id"`
-	Email     string       `json:"email"`
-	Username  string       `json:"username"`
-	Name      string       `json:"name"`
-	CreatedAt time.Time    `json:"created_at"`
-	UpdatedAt time.Time    `json:"updated_at"`
-	Role      RoleResponse `json:"role"`
+	ID        string        `json:"id"`
+	Email     string        `json:"email"`
+	Username  string        `json:"username"`
+	Name      string        `json:"name"`
+	CreatedAt time.Time     `json:"created_at"`
+	UpdatedAt time.Time     `json:"updated_at"`
+	Role      *RoleResponse `json:"role,omitempty"`
 }
 
 func NewUserDetailResponse(data *model.User) *UserResponse {
+	if data == nil {
+		return nil
+	}
 	return &UserResponse{
 		ID:        data.ID.String(),
 		Email:     data.Email,
@@ -23,6 +26,7 @@ func NewUserDetailResponse(data *model.User) *UserResponse {
 		Name:      data.Name,
 		CreatedAt: data.CreatedAt,
 		UpdatedAt: data.UpdatedAt,
+		Role:      NewRoleResponse(data.Role),
 	}
 }
 
@@ -42,6 +46,7 @@ type CreateUserRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Username string `json:"username" binding:"required,min=3,max=50"`
 	Password string `json:"password" binding:"required,min=6"`
+	RoleID   string `json:"roleID" binding:"required,uuid"`
 }
 
 type UpdateUserRequest struct {

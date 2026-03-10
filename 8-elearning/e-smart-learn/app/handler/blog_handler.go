@@ -9,6 +9,9 @@ import (
 type BlogHandler interface {
 	GetByID() gin.HandlerFunc
 	GetList() gin.HandlerFunc
+	Create() gin.HandlerFunc
+	Update() gin.HandlerFunc
+	Delete() gin.HandlerFunc
 }
 
 type blogHandler struct{}
@@ -137,5 +140,29 @@ func (h *blogHandler) GetByID() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, response)
+	}
+}
+
+func (h *blogHandler) Create() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Create blog endpoint",
+		})
+	}
+}
+
+func (h *blogHandler) Update() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Update blog endpoint",
+		})
+	}
+}
+
+func (h *blogHandler) Delete() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Delete blog endpoint",
+		})
 	}
 }

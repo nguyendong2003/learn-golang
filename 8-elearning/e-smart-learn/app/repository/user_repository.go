@@ -3,6 +3,9 @@ package repository
 import (
 	"context"
 	"elearning-api/model"
+	"errors"
+
+	"gorm.io/gorm"
 )
 
 type UserRepository interface {
@@ -27,14 +30,42 @@ func (r *userRepository) GetByEmail(
 	ctx context.Context,
 	email string,
 ) (*model.User, error) {
-	return r.Find(ctx, "email = ?", email)
+	var user model.User
+	err := r.baseQuery(ctx).
+		Where("email = ?", email).
+		Preload("Role").
+		First(&user).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func (r *userRepository) GetByUsername(
 	ctx context.Context,
 	username string,
 ) (*model.User, error) {
-	return r.Find(ctx, "username = ?", username)
+	var user model.User
+	err := r.baseQuery(ctx).
+		Where("username = ?", username).
+		Preload("Role").
+		First(&user).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func (r *userRepository) GetByEmailOrUsername(
@@ -42,5 +73,19 @@ func (r *userRepository) GetByEmailOrUsername(
 	email string,
 	username string,
 ) (*model.User, error) {
-	return r.Find(ctx, "email = ? OR username = ?", email, username)
+	var user model.User
+	err := r.baseQuery(ctx).
+		Where("email = ? OR username = ?", email, username).
+		Preload("Role").
+		First(&user).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }

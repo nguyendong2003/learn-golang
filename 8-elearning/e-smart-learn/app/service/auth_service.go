@@ -48,13 +48,13 @@ func (s *authService) Login(ctx context.Context, request dto.LoginRequest) (*dto
 	}
 
 	if user == nil {
-		return nil, apperror.NewUnauthorizedError("Username/email or password is incorrect")
+		return nil, apperror.NewUnauthorizedError("Username or password is incorrect")
 	}
 
 	// Compare password with hashed password
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password))
 	if err != nil {
-		return nil, apperror.NewUnauthorizedError("Username/email or password is incorrect")
+		return nil, apperror.NewUnauthorizedError("Username or password is incorrect")
 	}
 
 	// Check if user is active
@@ -63,7 +63,7 @@ func (s *authService) Login(ctx context.Context, request dto.LoginRequest) (*dto
 	}
 
 	// Generate tokens
-	accessToken, err := util.GenerateAccessToken(user.ID, "", s.jwtConfig)
+	accessToken, err := util.GenerateAccessToken(user.ID, s.jwtConfig)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to generate access token")
 	}
@@ -155,7 +155,7 @@ func (s *authService) RefreshToken(ctx context.Context, request dto.RefreshToken
 	}
 
 	// Generate new tokens
-	accessToken, err := util.GenerateAccessToken(user.ID, "", s.jwtConfig)
+	accessToken, err := util.GenerateAccessToken(user.ID, s.jwtConfig)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to generate access token")
 	}

@@ -3,11 +3,10 @@ package cmd
 import (
 	"bytes"
 	"elearning-api/apperror"
-	"elearning-api/consts"
 	"elearning-api/dto"
+	"elearning-api/model"
 	"elearning-api/util"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -32,8 +31,6 @@ func (s *ApiServer) ErrorHandler() gin.HandlerFunc {
 			res.Errors = []apperror.AppError{*appErr}
 			res.Request = dto.GetRequestClient(c)
 
-			fmt.Println(">>>>err: ", status, res.Request)
-
 			c.JSON(status, res)
 
 			return
@@ -46,7 +43,6 @@ func (s *ApiServer) ErrorHandler() gin.HandlerFunc {
 
 func (s *ApiServer) CaptureRequestBody() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		if c.Request.Body == nil {
 			c.Next()
 			return
@@ -99,20 +95,83 @@ func (s *ApiServer) AuthHandler() gin.HandlerFunc {
 
 		// Set user info in context for later use
 		c.Set("user_id", claims.UserID)
-		c.Set("user_role", claims.Role)
 
 		c.Next()
 	}
 }
 
-func (s *ApiServer) AuthorizationHandler(role consts.UserRole) gin.HandlerFunc {
+func (s *ApiServer) LoadRolePermissionHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userRole := c.GetString("user_role")
-		if userRole != string(role) {
-			c.Error(apperror.NewForbiddenError("User does not have the required role"))
+		userID, exists := c.Get("user_id")
+		if !exists {
+			c.Error(apperror.NewUnauthorizedError("User not authenticated"))
+			c.Abort()
 			return
 		}
+
+		var user model.User
+
+		err := s.dbRepository.GetDB().
+			Preload("Role").
+			Preload("Role.Permissions").
+			First(&user, "id = ?", userID).
+			Error
+
+		if err != nil {
+			c.Error(apperror.NewUnauthorizedError("User not found"))
+			c.Abort()
+			return
+		}
+
+		// set role vào context
+		c.Set("user_role", user.Role.Name)
+
+		// set permissions vào context
+		var permissions []string
+		for _, p := range user.Role.Permissions {
+			permissions = append(permissions, p.Code)
+		}
+
+		c.Set("user_permissions", permissions)
+
 		c.Next()
+	}
+}
+
+func (s *ApiServer) RequireRoleHandler(role string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRole := c.GetString("user_role")
+
+		if userRole != role {
+			c.Error(apperror.NewForbiddenError("Role " + role + " required"))
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func (s *ApiServer) RequirePermissionHandler(permission string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		perms, exists := c.Get("user_permissions")
+		if !exists {
+			c.Error(apperror.NewForbiddenError("Permissions not found"))
+			c.Abort()
+			return
+		}
+
+		permissions := perms.([]string)
+
+		for _, p := range permissions {
+			if p == permission {
+				c.Next()
+				return
+			}
+		}
+
+		c.Error(apperror.NewForbiddenError("Permission denied"))
+		c.Abort()
 	}
 }
 

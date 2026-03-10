@@ -26,58 +26,64 @@ type UserService interface {
 
 type userService struct {
 	userRepository repository.UserRepository
+	roleRepository repository.RoleRepository
 }
 
-func NewUserService(userRepository repository.UserRepository) UserService {
+func NewUserService(
+	userRepository repository.UserRepository,
+	roleRepository repository.RoleRepository) UserService {
 	return &userService{
 		userRepository: userRepository,
+		roleRepository: roleRepository,
 	}
 }
 
-func (s *userService) Create(
-	ctx context.Context,
-	data dto.CreateUserRequest,
-) (*dto.UserResponse, error) {
-
-	existingUser, err := s.userRepository.GetByEmailOrUsername(
-		ctx,
-		data.Email,
-		data.Username,
-	)
-
+func (s *userService) Create(ctx context.Context, request dto.CreateUserRequest) (*dto.UserResponse, error) {
+	existingUser, err := s.userRepository.GetByEmailOrUsername(ctx, request.Email, request.Username)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to check existing user")
 	}
 
 	if existingUser != nil {
-
 		validationErrors := map[string]string{}
 
-		if existingUser.Email == data.Email {
+		if existingUser.Email == request.Email {
 			validationErrors["email"] = "Email already exists"
 		}
 
-		if existingUser.Username == data.Username {
+		if existingUser.Username == request.Username {
 			validationErrors["username"] = "Username already exists"
 		}
 
 		return nil, apperror.NewValidationError(validationErrors)
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword(
-		[]byte(data.Password),
-		bcrypt.DefaultCost,
-	)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
 
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to hash password")
 	}
 
+	roleID, err := uuid.Parse(request.RoleID)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to parse uuid")
+	}
+
+	role, err := s.roleRepository.FindByID(ctx, roleID)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to get role")
+	}
+
+	if role == nil {
+		return nil, apperror.NewNotFoundError("Role not found")
+	}
+
 	newUser := &model.User{
-		Email:    data.Email,
-		Username: data.Username,
+		Email:    request.Email,
+		Username: request.Username,
 		Password: string(hashedPassword),
-		Name:     data.Username,
+		Name:     request.Username,
+		Role:     role,
 	}
 
 	createdUser, err := s.userRepository.Create(ctx, newUser)
@@ -88,12 +94,7 @@ func (s *userService) Create(
 	return dto.NewUserDetailResponse(createdUser), nil
 }
 
-func (s *userService) Update(
-	ctx context.Context,
-	id uuid.UUID,
-	data dto.UpdateUserRequest,
-) (*dto.UserResponse, error) {
-
+func (s *userService) Update(ctx context.Context, id uuid.UUID, request dto.UpdateUserRequest) (*dto.UserResponse, error) {
 	user, err := s.userRepository.FindByID(ctx, id)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to get user")
@@ -105,24 +106,21 @@ func (s *userService) Update(
 
 	updates := map[string]any{}
 
-	if data.Email != nil {
-		updates["email"] = *data.Email
+	if request.Email != nil {
+		updates["email"] = *request.Email
 	}
 
-	if data.Username != nil {
-		updates["username"] = *data.Username
+	if request.Username != nil {
+		updates["username"] = *request.Username
 	}
 
-	if data.Name != nil {
-		updates["name"] = *data.Name
+	if request.Name != nil {
+		updates["name"] = *request.Name
 	}
 
-	if data.Password != nil {
+	if request.Password != nil {
 
-		hashedPassword, err := bcrypt.GenerateFromPassword(
-			[]byte(*data.Password),
-			bcrypt.DefaultCost,
-		)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*request.Password), bcrypt.DefaultCost)
 
 		if err != nil {
 			return nil, apperror.NewInternalServerError("Failed to hash password")
@@ -140,11 +138,7 @@ func (s *userService) Update(
 	return dto.NewUserDetailResponse(updatedUser), nil
 }
 
-func (s *userService) DeleteByID(
-	ctx context.Context,
-	id uuid.UUID,
-) error {
-
+func (s *userService) DeleteByID(ctx context.Context, id uuid.UUID) error {
 	user, err := s.userRepository.FindByID(ctx, id)
 	if err != nil {
 		return apperror.NewInternalServerError("Failed to get user")
@@ -161,11 +155,7 @@ func (s *userService) DeleteByID(
 	return nil
 }
 
-func (s *userService) GetByID(
-	ctx context.Context,
-	id uuid.UUID,
-) (*dto.UserResponse, error) {
-
+func (s *userService) GetByID(ctx context.Context, id uuid.UUID) (*dto.UserResponse, error) {
 	user, err := s.userRepository.FindByID(ctx, id)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to get user detail")
@@ -178,12 +168,7 @@ func (s *userService) GetByID(
 	return dto.NewUserDetailResponse(user), nil
 }
 
-func (s *userService) GetList(
-	ctx context.Context,
-	limit int,
-	offset int,
-) ([]*dto.UserResponse, int64, error) {
-
+func (s *userService) GetList(ctx context.Context, limit int, offset int) ([]*dto.UserResponse, int64, error) {
 	// default pagination
 	if limit <= 0 {
 		limit = 10
@@ -208,10 +193,7 @@ func (s *userService) GetList(
 	return dto.NewListUserResponse(users), total, nil
 }
 
-func (s *userService) FilterAndPaginateAndSort(
-	ctx context.Context,
-	filter dto.FilterUserRequest,
-) ([]*dto.UserResponse, int64, error) {
+func (s *userService) FilterAndPaginateAndSort(ctx context.Context, filter dto.FilterUserRequest) ([]*dto.UserResponse, int64, error) {
 
 	limit := filter.Limit
 	offset := filter.Offset
