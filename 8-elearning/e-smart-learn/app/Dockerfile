@@ -1,0 +1,67 @@
+# Stage 1: Build stage
+FROM golang:1.25-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Set working directory
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum* ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+# CGO_ENABLED=0 for static binary
+# -ldflags="-w -s" to reduce binary size
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s" \
+    -o /build/app \
+    .
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+
+# Stage 2: Runtime stage
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata
+
+# Create non-root user
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/app .
+COPY --from=builder /go/bin/goose /usr/local/bin/goose
+
+# Copy config file
+COPY --from=builder /build/config.yaml .
+# Copy migrations folder
+COPY --from=builder /build/repository/migrations ./repository/migrations
+
+# Copy any necessary config files (if needed)
+# COPY --from=builder /build/.env.example .env
+
+# Change ownership to non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health-check || exit 1
+
+# Run the application
+CMD ["./app"]

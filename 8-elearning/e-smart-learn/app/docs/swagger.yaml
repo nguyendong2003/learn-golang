@@ -1,0 +1,635 @@
+definitions:
+  dto.ApiResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      pagination:
+        $ref: '#/definitions/dto.Pagination'
+      timestamp:
+        type: string
+    type: object
+  dto.ChangePasswordRequest:
+    properties:
+      new_password:
+        minLength: 6
+        type: string
+      old_password:
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
+  dto.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  dto.ForgotPasswordRequest:
+    properties:
+      username:
+        type: string
+    required:
+    - username
+    type: object
+  dto.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  dto.Pagination:
+    properties:
+      has_next:
+        type: boolean
+      has_previous:
+        type: boolean
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  dto.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  dto.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  dto.UpdateUserRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Change current user's password
+      parameters:
+      - description: Change password payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+      summary: Change password
+      tags:
+      - auth
+  /api/v1/auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Request password reset instructions
+      parameters:
+      - description: Forgot password payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Forgot password
+      tags:
+      - auth
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email/username and password
+      parameters:
+      - description: Login payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+      summary: Login
+      tags:
+      - auth
+  /api/v1/auth/refresh-token:
+    post:
+      consumes:
+      - application/json
+      description: Refresh access token using refresh token
+      parameters:
+      - description: Refresh token payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Refresh token
+      tags:
+      - auth
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account
+      parameters:
+      - description: Register payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Register
+      tags:
+      - auth
+  /api/v1/blogs:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve paginated list of blogs with optional filters
+      parameters:
+      - default: 10
+        description: limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: offset
+        in: query
+        name: offset
+        type: integer
+      - default: created_at
+        description: sortBy
+        in: query
+        name: sortBy
+        type: string
+      - default: asc
+        description: sortOrder
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sortOrder
+        type: string
+      - description: categoryId
+        in: query
+        name: categoryId
+        type: string
+      - description: type
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Get list of blogs
+      tags:
+      - blogs
+  /api/v1/blogs/{slug}:
+    get:
+      consumes:
+      - application/json
+      description: Returns a blog post identified by its slug, including author info,
+        view count and timestamps.
+      parameters:
+      - description: Blog Slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Retrieve a blog post by slug
+      tags:
+      - blogs
+  /api/v1/courses:
+    get:
+      consumes:
+      - application/json
+      description: Return a paginated list of courses (mocked)
+      parameters:
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: sortBy
+        in: query
+        name: sortBy
+        type: string
+      - description: sortOrder
+        in: query
+        name: sortOrder
+        type: string
+      - description: categoryId
+        in: query
+        name: categoryId
+        type: string
+      - description: type
+        in: query
+        name: type
+        type: string
+      - description: search
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+      summary: View course list
+      tags:
+      - courses
+  /api/v1/courses/{slug}:
+    get:
+      consumes:
+      - application/json
+      description: Return detailed information of a course by slug (mocked)
+      parameters:
+      - description: course slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+      summary: View course detail
+      tags:
+      - courses
+  /api/v1/health-check:
+    get:
+      consumes:
+      - application/json
+      description: Check service health
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Ping
+      tags:
+      - main
+  /api/v1/subscriptions:
+    get:
+      consumes:
+      - application/json
+      description: Return list of subscription plans (mocked)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+      summary: List subscription plans
+      tags:
+      - subscriptions
+  /api/v1/users:
+    get:
+      consumes:
+      - application/json
+      description: Get list of users with pagination
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: List users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user
+      parameters:
+      - description: Create user payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Create user
+      tags:
+      - users
+  /api/v1/users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+      summary: Delete user
+      tags:
+      - users
+    get:
+      consumes:
+      - application/json
+      description: Get user details by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+      summary: Get user by ID
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update an existing user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+      summary: Update user
+      tags:
+      - users
+  /api/v1/users/filter:
+    get:
+      consumes:
+      - application/json
+      description: Filter users by username/name and paginate/sort
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Username filter
+        in: query
+        name: username
+        type: string
+      - description: Name filter
+        in: query
+        name: name
+        type: string
+      - description: Sort e.g. username:desc,created_at:asc
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Filter and paginate users
+      tags:
+      - users
+  /api/v1/users/me/courses:
+    get:
+      consumes:
+      - application/json
+      description: Return list of enrolled courses with progress (mocked)
+      parameters:
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: offset
+        in: query
+        name: offset
+        type: integer
+      - description: sortBy
+        in: query
+        name: sortBy
+        type: string
+      - description: sortOrder
+        in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+      summary: Track user course progress
+      tags:
+      - user-courses
+  /api/v1/users/me/courses/progress:
+    post:
+      consumes:
+      - application/json
+      description: Update progress for a lesson the user completed (mocked)
+      parameters:
+      - description: course progress payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+      summary: Update course progress
+      tags:
+      - user-courses
+swagger: "2.0"

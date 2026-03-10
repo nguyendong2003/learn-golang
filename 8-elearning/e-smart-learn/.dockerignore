@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+
+# Environment
+.env
+.env.*
+
+# Docs
+*.md
+README.md
+
+# Build artifacts
+bin/
+build/
+dist/
+tmp/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go coverage
+coverage.out
+
+# Logs
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node (if any frontend later)
+node_modules/
+
+# Docker dev files
+docker-compose*
+Dockerfile.dev

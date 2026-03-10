@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./app:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    command: air
+    stdin_open: true
+    tty: true
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
