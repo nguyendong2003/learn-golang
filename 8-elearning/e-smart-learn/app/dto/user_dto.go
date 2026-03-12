@@ -10,6 +10,7 @@ type UserResponse struct {
 	Email     string        `json:"email"`
 	Username  string        `json:"username"`
 	Name      string        `json:"name"`
+	Avatar    string        `json:"avatar"`
 	CreatedAt time.Time     `json:"created_at"`
 	UpdatedAt time.Time     `json:"updated_at"`
 	Role      *RoleResponse `json:"role,omitempty"`
@@ -24,6 +25,7 @@ func NewUserDetailResponse(data *model.User) *UserResponse {
 		Email:     data.Email,
 		Username:  data.Username,
 		Name:      data.Name,
+		Avatar:    data.Avatar,
 		CreatedAt: data.CreatedAt,
 		UpdatedAt: data.UpdatedAt,
 		Role:      NewRoleResponse(data.Role),

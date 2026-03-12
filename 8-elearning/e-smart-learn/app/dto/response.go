@@ -81,9 +81,9 @@ func NewPagination(limit, offset, total int, sortBy, sortOrder string) Paginatio
 	return Pagination{
 		Limit:     limit,
 		Offset:    offset,
-		Total:     total,
 		SortBy:    sortBy,
 		SortOrder: sortOrder,
+		Total:     total,
 	}
 }
 

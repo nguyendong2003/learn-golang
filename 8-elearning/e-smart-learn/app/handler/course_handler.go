@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"elearning-api/dto"
+	"elearning-api/model"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -35,61 +38,44 @@ func NewCourseHandler() CourseHandler { return &courseHandler{} }
 // @Router /api/v1/courses [get]
 func (h *courseHandler) GetCourses() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// read query params with defaults
 		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-		sortBy := c.DefaultQuery("sortBy", "created_at")
-		sortOrder := c.DefaultQuery("sortOrder", "asc")
-		categoryId := c.DefaultQuery("categoryId", "")
-		typ := c.DefaultQuery("type", "")
-		search := c.DefaultQuery("search", "")
 
-		response := gin.H{
-			"process_id": "c1b2a8f4-7d91-4f0e-9b2c-6f0f1c92e1aa",
-			"path":       "/api/v1/courses",
-			"status":     gin.H{"code": 200, "type": "OK"},
-			"request": gin.H{
-				"limit":      limit,
-				"offset":     (page - 1) * limit,
-				"sortBy":     sortBy,
-				"sortOrder":  sortOrder,
-				"categoryId": categoryId,
-				"type":       typ,
-				"search":     search,
-			},
-			"errors": []any{},
-			"data": []gin.H{
-				{
-					"id":                "course_001",
-					"title":             "Golang Backend Development",
-					"short_description": "Learn how to build scalable backend services using Go.",
-					"image_url":         "https://cdn.example.com/courses/go-backend.jpg",
-					"average_rate":      4.7,
-					"old_price":         99,
-					"price":             49,
-					"category":          gin.H{"id": "cat_backend", "title": "Backend Development"},
-					"instructor":        gin.H{"id": "ins_001", "fullname": "Nguyen Van A"},
-					"created_at":        "2024-01-10T10:00:00Z",
-					"updated_at":        "2024-01-15T10:00:00Z",
-				},
-				{
-					"id":                "course_002",
-					"title":             "Microservices with Go",
-					"short_description": "Design and implement microservices architecture using Go.",
-					"image_url":         "https://cdn.example.com/courses/go-microservices.jpg",
-					"average_rate":      4.8,
-					"old_price":         120,
-					"price":             59,
-					"category":          gin.H{"id": "cat_backend", "title": "Backend Development"},
-					"instructor":        gin.H{"id": "ins_002", "fullname": "Tran Van B"},
-					"created_at":        "2024-02-01T10:00:00Z",
-					"updated_at":        "2024-02-05T10:00:00Z",
-				},
-			},
-			"metadata": gin.H{"limit": limit, "offset": (page - 1) * limit, "sortBy": sortBy, "sortOrder": sortOrder, "total": 125},
+		// create mock models
+		m1 := &model.Course{
+			Title:       "Golang Backend Development",
+			Description: "Learn how to build scalable backend services using Go.",
+			Image:       "https://cdn.example.com/courses/go-backend.jpg",
+			Slug:        "course_001",
+			AverageRate: 4.7,
+			OldPrice:    99,
+			Price:       49,
 		}
+		m1.Category = &model.Category{Name: "Backend Development"}
+		m1.Instructor = &model.InstructorProfile{}
+		m1.Instructor.User = &model.User{Name: "Nguyen Van A"}
 
-		c.JSON(http.StatusOK, response)
+		m2 := &model.Course{
+			Title:       "Microservices with Go",
+			Description: "Design and implement microservices architecture using Go.",
+			Image:       "https://cdn.example.com/courses/go-microservices.jpg",
+			Slug:        "course_002",
+			AverageRate: 4.8,
+			OldPrice:    120,
+			Price:       59,
+		}
+		m2.Category = &model.Category{Name: "Backend Development"}
+		m2.Instructor = &model.InstructorProfile{}
+		m2.Instructor.User = &model.User{Name: "Tran Van B"}
+
+		list := dto.NewListCourseResponse([]*model.Course{m1, m2})
+
+		resp := dto.NewApiResponse(c)
+		resp.Request = gin.H{"limit": limit, "offset": (page - 1) * limit, "sortBy": c.DefaultQuery("sortBy", "created_at"), "sortOrder": c.DefaultQuery("sortOrder", "asc"), "categoryId": c.DefaultQuery("categoryId", ""), "type": c.DefaultQuery("type", ""), "search": c.DefaultQuery("search", "")}
+		resp.Data = list
+		resp.Metadata = dto.NewPagination(limit, (page-1)*limit, 125, c.DefaultQuery("sortBy", "created_at"), c.DefaultQuery("sortOrder", "asc"))
+
+		c.JSON(http.StatusOK, resp)
 	}
 }
 
@@ -106,28 +92,29 @@ func (h *courseHandler) GetCourseBySlug() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slug := c.Param("slug")
 
-		response := gin.H{
-			"process_id": "c1b2a8f4-7d91-4f0e-9b2c-6f0f1c92e1aa",
-			"path":       "/api/v1/courses/" + slug,
-			"status":     gin.H{"code": 200, "type": "OK"},
-			"request":    gin.H{},
-			"errors":     []any{},
-			"data": gin.H{
-				"id":           "course_001",
-				"title":        "Golang Backend Development",
-				"description":  "A complete course covering Go fundamentals, REST APIs, concurrency, and production-ready backend systems.",
-				"image_url":    "https://cdn.example.com/courses/go-backend.jpg",
-				"instructor":   gin.H{"id": "ins_001", "fullname": "Nguyen Van A"},
-				"average_rate": 4.7,
-				"old_price":    99,
-				"price":        49,
-				"category":     gin.H{"id": "cat_backend", "title": "Backend Development"},
-				"created_at":   "2024-01-10T10:00:00Z",
-				"updated_at":   "2024-01-15T10:00:00Z",
-			},
-			"metadata": nil,
+		m := &model.Course{
+			Title:       "Golang Backend Development",
+			Description: "A complete course covering Go fundamentals, REST APIs, concurrency, and production-ready backend systems.",
+			Image:       "https://cdn.example.com/courses/go-backend.jpg",
+			Slug:        "course_001",
+			AverageRate: 4.7,
+			OldPrice:    99,
+			Price:       49,
 		}
+		m.Category = &model.Category{Name: "Backend Development"}
+		m.Instructor = &model.InstructorProfile{}
+		m.Instructor.User = &model.User{Name: "Nguyen Van A"}
 
-		c.JSON(http.StatusOK, response)
+		detail := dto.NewCourseDetailResponse(m)
+
+		resp := dto.NewApiResponse(c)
+		resp.Request = gin.H{}
+		resp.Data = detail
+		resp.Metadata = nil
+
+		// ensure path includes slug
+		resp.Path = "/api/v1/courses/" + slug
+
+		c.JSON(http.StatusOK, resp)
 	}
 }

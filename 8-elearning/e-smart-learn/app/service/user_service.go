@@ -18,6 +18,7 @@ type UserService interface {
 	Create(ctx context.Context, data dto.CreateUserRequest) (*dto.UserResponse, error)
 	Update(ctx context.Context, id uuid.UUID, data dto.UpdateUserRequest) (*dto.UserResponse, error)
 	DeleteByID(ctx context.Context, id uuid.UUID) error
+	GetUserWithRole(ctx context.Context, id uuid.UUID) (*model.User, error)
 
 	GetByID(ctx context.Context, id uuid.UUID) (*dto.UserResponse, error)
 	GetList(ctx context.Context, limit, offset int) ([]*dto.UserResponse, int64, error)
@@ -69,7 +70,7 @@ func (s *userService) Create(ctx context.Context, request dto.CreateUserRequest)
 		return nil, apperror.NewInternalServerError("Failed to parse uuid")
 	}
 
-	role, err := s.roleRepository.FindByID(ctx, roleID)
+	role, err := s.roleRepository.FindByID(ctx, roleID, nil)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to get role")
 	}
@@ -95,7 +96,7 @@ func (s *userService) Create(ctx context.Context, request dto.CreateUserRequest)
 }
 
 func (s *userService) Update(ctx context.Context, id uuid.UUID, request dto.UpdateUserRequest) (*dto.UserResponse, error) {
-	user, err := s.userRepository.FindByID(ctx, id)
+	user, err := s.userRepository.FindByID(ctx, id, nil)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to get user")
 	}
@@ -139,7 +140,7 @@ func (s *userService) Update(ctx context.Context, id uuid.UUID, request dto.Upda
 }
 
 func (s *userService) DeleteByID(ctx context.Context, id uuid.UUID) error {
-	user, err := s.userRepository.FindByID(ctx, id)
+	user, err := s.userRepository.FindByID(ctx, id, nil)
 	if err != nil {
 		return apperror.NewInternalServerError("Failed to get user")
 	}
@@ -156,7 +157,7 @@ func (s *userService) DeleteByID(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s *userService) GetByID(ctx context.Context, id uuid.UUID) (*dto.UserResponse, error) {
-	user, err := s.userRepository.FindByID(ctx, id)
+	user, err := s.userRepository.FindByID(ctx, id, nil)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to get user detail")
 	}
@@ -184,6 +185,7 @@ func (s *userService) GetList(ctx context.Context, limit int, offset int) ([]*dt
 		offset,
 		"created_at DESC",
 		"",
+		nil,
 	)
 
 	if err != nil {
@@ -191,6 +193,19 @@ func (s *userService) GetList(ctx context.Context, limit int, offset int) ([]*dt
 	}
 
 	return dto.NewListUserResponse(users), total, nil
+}
+
+func (s *userService) GetUserWithRole(ctx context.Context, id uuid.UUID) (*model.User, error) {
+	user, err := s.userRepository.FindByID(ctx, id, []repository.Preload{repository.Role, repository.PreloadPath(repository.Role, repository.Permissions)})
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to get user detail")
+	}
+
+	if user == nil {
+		return nil, apperror.NewNotFoundError("User not found")
+	}
+
+	return user, nil
 }
 
 func (s *userService) FilterAndPaginateAndSort(ctx context.Context, filter dto.FilterUserRequest) ([]*dto.UserResponse, int64, error) {
@@ -223,6 +238,7 @@ func (s *userService) FilterAndPaginateAndSort(ctx context.Context, filter dto.F
 		offset,
 		orderQuery,
 		query,
+		nil,
 		args...,
 	)
 

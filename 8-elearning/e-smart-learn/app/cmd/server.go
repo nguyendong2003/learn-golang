@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"log"
+
 	"elearning-api/config"
 	"elearning-api/handler"
 	"elearning-api/repository"
+	"elearning-api/service"
 	"elearning-api/util"
-	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +17,16 @@ const API_SERVER_DEFAULT_SERVER string = "8080"
 type ApiServer struct {
 	config *config.Config
 
-	dbRepository repository.DbRepository
+	userRepository         repository.UserRepository
+	blogRepository         repository.BlogRepository
+	roleRepository         repository.RoleRepository
+	refreshTokenRepository repository.RefreshTokenRepository
+	categoryRepository     repository.CategoryRepository
+
+	userService     service.UserService
+	authService     service.AuthService
+	blogService     service.BlogService
+	categoryService service.CategoryService
 
 	mainHandler         handler.MainHandler
 	userHandler         handler.UserHandler
@@ -24,6 +35,8 @@ type ApiServer struct {
 	subscriptionHandler handler.SubscriptionHandler
 	courseHandler       handler.CourseHandler
 	userCourseHandler   handler.UserCourseHandler
+	categoryHandler     handler.CategoryHandler
+	feedbackHandler     handler.FeedbackHandler
 
 	router *gin.Engine
 }
@@ -34,8 +47,6 @@ func (server *ApiServer) Run() {
 		log.Fatal(err)
 		return
 	}
-
-	//
 	server.router = gin.Default()
 
 	// Apply middleware

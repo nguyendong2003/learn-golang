@@ -25,7 +25,7 @@ func NewRoleRepository(db DbRepository) RoleRepository {
 }
 
 func (r *roleRepository) GetAll(ctx context.Context) ([]*model.Role, error) {
-	return r.FindAll(ctx, "")
+	return r.FindAll(ctx, "", nil)
 }
 
 func (r *roleRepository) GetAllWithPermissions(ctx context.Context) ([]*model.Role, error) {
@@ -39,7 +39,7 @@ func (r *roleRepository) GetAllWithPermissions(ctx context.Context) ([]*model.Ro
 }
 
 func (r *roleRepository) GetByName(ctx context.Context, name string) (*model.Role, error) {
-	return r.Find(ctx, "name = ?", name)
+	return r.Find(ctx, "name = ?", nil, name)
 }
 
 func (r *roleRepository) GetByNameWithPermissions(ctx context.Context, name string) (*model.Role, error) {

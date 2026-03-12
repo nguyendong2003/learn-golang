@@ -5,4 +5,15 @@ jwt:
   refresh_token_secret: "your_refresh_token_secret"
   access_token_expiration: "15m"
   refresh_token_expiration: "24h"
-  issuer: "elearning-api" 
+  issuer: "elearning-api"
+email:
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: 587
+  SMTP_USER: "hunghvde180038@fpt.edu.vn"
+  SMTP_PASS: "tkrsdyhsedzfukmu"
+redis:
+  host: "redis"
+  port: 6379
+  password: "123456"
+  db: 0
+frontend: "http://localhost:3000"

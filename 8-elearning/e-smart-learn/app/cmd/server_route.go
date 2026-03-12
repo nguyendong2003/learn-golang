@@ -8,38 +8,31 @@ import (
 )
 
 func (server *ApiServer) route() {
-	// Swagger UI
 	server.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	server.router.GET("/api/v1/health-check", server.mainHandler.HealthCheck())
 
-	// Auth routes (public)
+	// Auth routes
 	{
 		authGroup := server.router.Group("/api/v1/auth")
-
 		authGroup.POST("/login", server.authHandler.Login())
 		authGroup.POST("/register", server.authHandler.Register())
 		authGroup.POST("/refresh-token", server.authHandler.RefreshToken())
 		authGroup.POST("/forgot-password", server.authHandler.ForgotPassword())
-
-		// Protected auth routes
+		authGroup.POST("/reset-password", server.authHandler.ResetPassword())
 		authProtected := authGroup.Group("")
-		// authProtected.Use(server.AuthHandler())
-		// {
-		authProtected.POST("/change-password", server.authHandler.ChangePassword())
-		// }
+		authProtected.Use(server.AuthHandler())
+		authProtected.PUT("/change-password", server.authHandler.ChangePassword())
 	}
 
-	// Admin routes (protected)
+	// User route
 	{
 		adminGroup := server.router.Group("/api/v1/admin")
-
 		adminGroup.Use(
 			server.AuthHandler(),
 			server.LoadRolePermissionHandler(),
 			server.RequireRoleHandler(string(consts.RoleAdmin)),
 		)
-
 		adminUsers := adminGroup.Group("/users")
 		{
 			adminUsers.GET("", server.userHandler.GetList())
@@ -48,69 +41,79 @@ func (server *ApiServer) route() {
 			adminUsers.PUT("/:id", server.userHandler.Update())
 			adminUsers.DELETE("/:id", server.userHandler.Delete())
 		}
-	}
 
-	// User routes (protected)
-	{
 		userGroup := server.router.Group("/api/v1/users")
-		// userGroup.Use(server.AuthHandler())
-
-		userGroup.GET("", server.userHandler.GetList())
-		userGroup.GET("/filter", server.userHandler.FilterAndPaginateAndSort())
-
-		// Dynamic route must be placed after static route to avoid conflict
-		userGroup.GET("/:id", server.userHandler.GetByID())
-
-		userGroup.POST("", server.userHandler.Create())
-		userGroup.PUT("/:id", server.userHandler.Update())
-		userGroup.DELETE("/:id", server.userHandler.Delete())
+		{
+			userGroup.GET("", server.userHandler.GetList())
+			userGroup.GET("/filter", server.userHandler.FilterAndPaginateAndSort())
+			userGroup.GET("/:id", server.userHandler.GetByID())
+			userGroup.POST("", server.userHandler.Create())
+			userGroup.PUT("/:id", server.userHandler.Update())
+			userGroup.DELETE("/:id", server.userHandler.Delete())
+		}
 	}
 
-	// Blog routes (protected)
+	// Blog routes
 	{
-
 		blogGroup := server.router.Group("/api/v1/blogs")
 		blogGroup.GET("", server.blogHandler.GetList())
-		// Dynamic route must be placed after static route to avoid conflict
 		blogGroup.GET("/:slug", server.blogHandler.GetByID())
 
 		blogGroup.Use(
 			server.AuthHandler(),
-			server.LoadRolePermissionHandler(),
+			// server.LoadRolePermissionHandler(),
 		)
 
 		blogGroup.POST("",
-			server.RequirePermissionHandler("blog_create"),
+			// server.RequirePermissionHandler("blog_create"),
 			server.blogHandler.Create(),
 		)
 
 		blogGroup.PUT("/:id",
-			server.RequirePermissionHandler("blog_update"),
+			// server.RequirePermissionHandler("blog_update"),
 			server.blogHandler.Update(),
 		)
 
 		blogGroup.DELETE("/:id",
-			server.RequirePermissionHandler("blog_delete"),
+			// server.RequirePermissionHandler("blog_delete"),
 			server.blogHandler.Delete(),
 		)
 	}
 
-	// Subscription routes (public)
+	// Category route
 	{
-		subGroup := server.router.Group("/api/v1/subscriptions")
-		// Public endpoint returning mocked subscription plans
-		subGroup.GET("", server.subscriptionHandler.GetSupcriptions())
+		categoryGroup := server.router.Group("/api/v1/categories")
+		categoryGroup.GET("/all", server.categoryHandler.GetAll())
+		categoryGroup.GET("", server.categoryHandler.GetList())
+		categoryGroup.GET("/:id", server.categoryHandler.GetByID())
+
+		categoryProtected := categoryGroup.Group("")
+		categoryProtected.Use(server.AuthHandler(), server.LoadRolePermissionHandler())
+		categoryProtected.POST("", server.RequirePermissionHandler("category_create"), server.categoryHandler.Create())
+		categoryProtected.PUT("/:id", server.RequirePermissionHandler("category_update"), server.categoryHandler.Update())
+		categoryProtected.DELETE("/:id", server.RequirePermissionHandler("category_delete"), server.categoryHandler.Delete())
 	}
 
-	// Course routes (public)
+	// Course route
 	{
 		courseGroup := server.router.Group("/api/v1/courses")
-		// public course listing and detail (mock)
 		courseGroup.GET("", server.courseHandler.GetCourses())
 		courseGroup.GET("/:slug", server.courseHandler.GetCourseBySlug())
 	}
 
-	// User course routes (mock)
+	// Subscription routes (mocked)
+	{
+		subGroup := server.router.Group("/api/v1/subscriptions")
+		subGroup.GET("", server.subscriptionHandler.GetPlans())
+	}
+
+	{
+		feedbackGroup := server.router.Group("/api/v1/feedbacks")
+		// feedbackGroup.Use(server.AuthHandler())
+
+		feedbackGroup.GET("", server.feedbackHandler.GetFeedbacks())
+	}
+
 	{
 		meGroup := server.router.Group("/api/v1/users/me")
 		// update progress and list enrolled courses

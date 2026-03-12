@@ -1,24 +1,104 @@
 definitions:
+  apperror.AppError:
+    properties:
+      fields:
+        additionalProperties:
+          type: string
+        type: object
+      message:
+        type: string
+      type:
+        $ref: '#/definitions/apperror.ErrorType'
+    type: object
+  apperror.ErrorType:
+    enum:
+    - not_found
+    - bad_request
+    - internal_server
+    - unauthorized
+    - forbidden
+    - duplicate_entry
+    - validation_error
+    type: string
+    x-enum-varnames:
+    - NotFound
+    - BadRequest
+    - InternalServer
+    - Unauthorized
+    - Forbidden
+    - DuplicateEntry
+    - ValidationError
   dto.ApiResponse:
     properties:
       data: {}
-      message:
+      errors:
+        items:
+          $ref: '#/definitions/apperror.AppError'
+        type: array
+      metadata: {}
+      path:
         type: string
-      pagination:
-        $ref: '#/definitions/dto.Pagination'
-      timestamp:
+      process_id:
+        type: string
+      request: {}
+      status:
+        $ref: '#/definitions/dto.ResponseStatus'
+    type: object
+  dto.BlogResponse:
+    properties:
+      author:
+        $ref: '#/definitions/dto.InstructorResponse'
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      view_count:
+        type: integer
+    type: object
+  dto.CategoryResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
         type: string
     type: object
-  dto.ChangePasswordRequest:
+  dto.CreateBlogRequest:
     properties:
-      new_password:
-        minLength: 6
+      content:
         type: string
-      old_password:
+      image_url:
+        type: string
+      title:
         type: string
     required:
-    - new_password
-    - old_password
+    - content
+    - image_url
+    - title
+    type: object
+  dto.CreateCategoryRequest:
+    properties:
+      description:
+        type: string
+      name:
+        maxLength: 255
+        minLength: 3
+        type: string
+    required:
+    - name
     type: object
   dto.CreateUserRequest:
     properties:
@@ -27,6 +107,8 @@ definitions:
       password:
         minLength: 6
         type: string
+      roleID:
+        type: string
       username:
         maxLength: 50
         minLength: 3
@@ -34,14 +116,38 @@ definitions:
     required:
     - email
     - password
+    - roleID
     - username
     type: object
   dto.ForgotPasswordRequest:
     properties:
-      username:
+      email:
         type: string
     required:
-    - username
+    - email
+    type: object
+  dto.InstructorResponse:
+    properties:
+      balance:
+        type: number
+      bio:
+        type: string
+      education:
+        type: string
+      instagram_url:
+        type: string
+      linkedin_url:
+        type: string
+      rating_avg:
+        type: number
+      total_course:
+        type: integer
+      total_student:
+        type: integer
+      user:
+        $ref: '#/definitions/dto.UserResponse'
+      youtube_url:
+        type: string
     type: object
   dto.LoginRequest:
     properties:
@@ -55,14 +161,14 @@ definitions:
     type: object
   dto.Pagination:
     properties:
-      has_next:
-        type: boolean
-      has_previous:
-        type: boolean
       limit:
         type: integer
-      page:
+      offset:
         type: integer
+      sortBy:
+        type: string
+      sortOrder:
+        type: string
       total:
         type: integer
     type: object
@@ -89,6 +195,54 @@ definitions:
     - password
     - username
     type: object
+  dto.ResetPasswordRequest:
+    properties:
+      confirm_password:
+        type: string
+      email:
+        type: string
+      new_password:
+        minLength: 6
+        type: string
+      reset_code:
+        type: string
+    required:
+    - confirm_password
+    - email
+    - new_password
+    - reset_code
+    type: object
+  dto.ResponseStatus:
+    properties:
+      code:
+        type: integer
+      type:
+        type: string
+    type: object
+  dto.RoleResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.UpdateCategoryRequest:
+    properties:
+      description:
+        type: string
+      name:
+        maxLength: 255
+        minLength: 3
+        type: string
+    required:
+    - name
+    type: object
   dto.UpdateUserRequest:
     properties:
       email:
@@ -103,11 +257,30 @@ definitions:
         minLength: 3
         type: string
     type: object
+  dto.UserResponse:
+    properties:
+      avatar:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      role:
+        $ref: '#/definitions/dto.RoleResponse'
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
 info:
   contact: {}
 paths:
   /api/v1/auth/change-password:
-    post:
+    put:
       consumes:
       - application/json
       description: Change current user's password
@@ -117,7 +290,12 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/dto.ChangePasswordRequest'
+          $ref: '#/definitions/dto.ResetPasswordRequest'
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -137,7 +315,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Request password reset instructions
+      description: Send reset password instructions to user's email
       parameters:
       - description: Forgot password payload
         in: body
@@ -232,6 +410,30 @@ paths:
       summary: Register
       tags:
       - auth
+  /api/v1/auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Reset user's password using reset token
+      parameters:
+      - description: Reset password payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: Reset password
+      tags:
+      - auth
   /api/v1/blogs:
     get:
       consumes:
@@ -281,7 +483,49 @@ paths:
       summary: Get list of blogs
       tags:
       - blogs
+    post:
+      consumes:
+      - application/json
+      description: Create a new blog post and return created resource
+      parameters:
+      - description: Create blog payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateBlogRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.BlogResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a blog post
+      tags:
+      - blogs
   /api/v1/blogs/{slug}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a blog post identified by slug (mocked)
+      parameters:
+      - description: Blog Slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+      summary: Delete a blog post (mock)
+      tags:
+      - blogs
     get:
       consumes:
       - application/json
@@ -319,6 +563,274 @@ paths:
       summary: Retrieve a blog post by slug
       tags:
       - blogs
+    put:
+      consumes:
+      - application/json
+      description: Update an existing blog post identified by slug (mocked)
+      parameters:
+      - description: Blog Slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      - description: Update blog payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+      summary: Update a blog post (mock)
+      tags:
+      - blogs
+  /api/v1/categories:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a paginated list of categories with filtering, sorting,
+        and pagination support
+      parameters:
+      - default: 10
+        description: 'Number of items per page (default: 10, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: 'Number of items to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      - default: created_at
+        description: 'Field to sort by (default: created_at)'
+        in: query
+        name: sortBy
+        type: string
+      - default: desc
+        description: 'Sort order: asc or desc (default: desc)'
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sortOrder
+        type: string
+      - description: Filter categories by name (partial match)
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.CategoryResponse'
+                  type: array
+                metadata:
+                  $ref: '#/definitions/dto.Pagination'
+              type: object
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Get paginated list of categories
+      tags:
+      - categories
+    post:
+      consumes:
+      - application/json
+      description: Create a new category with the provided name and description. Category
+        name must be unique.
+      parameters:
+      - description: Category create request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CategoryResponse'
+              type: object
+        "400":
+          description: Invalid request payload or validation failed
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new category
+      tags:
+      - categories
+  /api/v1/categories/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a category by ID. Cannot delete a category that has associated
+        courses.
+      parameters:
+      - description: Category ID (UUID format)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Category not found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a category
+      tags:
+      - categories
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single category by its ID
+      parameters:
+      - description: Category ID (UUID format)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CategoryResponse'
+              type: object
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Category not found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Get category by ID
+      tags:
+      - categories
+    put:
+      consumes:
+      - application/json
+      description: Update a category by ID with the provided name and description.
+        Category name must be unique.
+      parameters:
+      - description: Category ID (UUID format)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Category update request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CategoryResponse'
+              type: object
+        "400":
+          description: Invalid UUID format or validation failed
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Category not found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an existing category
+      tags:
+      - categories
+  /api/v1/categories/all:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all categories without pagination
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.CategoryResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Get all categories
+      tags:
+      - categories
   /api/v1/courses:
     get:
       consumes:
@@ -382,6 +894,20 @@ paths:
       summary: View course detail
       tags:
       - courses
+  /api/v1/feedbacks:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve list of feedbacks (mocked)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+      summary: Get list of feedbacks
+      tags:
+      - feedbacks
   /api/v1/health-check:
     get:
       consumes:
@@ -632,4 +1158,9 @@ paths:
       summary: Update course progress
       tags:
       - user-courses
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

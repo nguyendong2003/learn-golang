@@ -2,13 +2,14 @@ package cmd
 
 import (
 	"bytes"
-	"elearning-api/apperror"
-	"elearning-api/dto"
-	"elearning-api/model"
-	"elearning-api/util"
 	"encoding/json"
 	"io"
 	"net/http"
+
+	"elearning-api/apperror"
+	"elearning-api/consts"
+	"elearning-api/dto"
+	"elearning-api/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -94,7 +95,7 @@ func (s *ApiServer) AuthHandler() gin.HandlerFunc {
 		}
 
 		// Set user info in context for later use
-		c.Set("user_id", claims.UserID)
+		c.Set(consts.ContextUserID, claims.UserID)
 
 		c.Next()
 	}
@@ -102,37 +103,32 @@ func (s *ApiServer) AuthHandler() gin.HandlerFunc {
 
 func (s *ApiServer) LoadRolePermissionHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := c.Get("user_id")
+		id, exists := c.Get(consts.ContextUserID)
 		if !exists {
 			c.Error(apperror.NewUnauthorizedError("User not authenticated"))
 			c.Abort()
 			return
 		}
-
-		var user model.User
-
-		err := s.dbRepository.GetDB().
-			Preload("Role").
-			Preload("Role.Permissions").
-			First(&user, "id = ?", userID).
-			Error
-
+		userID, ok := id.(uuid.UUID)
+		if !ok {
+			c.Error(apperror.NewUnauthorizedError("Invalid user ID"))
+			c.Abort()
+			return
+		}
+		user, err := s.userService.GetUserWithRole(c.Request.Context(), userID)
 		if err != nil {
 			c.Error(apperror.NewUnauthorizedError("User not found"))
 			c.Abort()
 			return
 		}
+		c.Set(consts.ContextUserRole, user.Role.Name)
 
-		// set role vào context
-		c.Set("user_role", user.Role.Name)
-
-		// set permissions vào context
 		var permissions []string
 		for _, p := range user.Role.Permissions {
 			permissions = append(permissions, p.Code)
 		}
 
-		c.Set("user_permissions", permissions)
+		c.Set(consts.ContextUserPermissions, permissions)
 
 		c.Next()
 	}
@@ -196,7 +192,7 @@ func (s *ApiServer) RequestIDHandler() gin.HandlerFunc {
 			requestID = uuid.NewString()
 		}
 
-		c.Set(util.RequestIDKey, requestID)
+		c.Set(consts.RequestIDKey, requestID)
 		c.Writer.Header().Set("X-Request-ID", requestID)
 		c.Next()
 	}

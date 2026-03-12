@@ -15,10 +15,18 @@ type RegisterRequest struct {
 type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword"`
 }
 
 type ForgotPasswordRequest struct {
-	EmailOrUsername string `json:"username" binding:"required"`
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+	ResetCode string `json:"reset_code" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword"`
 }
 
 type RefreshTokenRequest struct {

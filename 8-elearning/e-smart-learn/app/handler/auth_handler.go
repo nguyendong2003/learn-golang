@@ -1,12 +1,16 @@
 package handler
 
 import (
+	"net/http"
+
+	"elearning-api/apperror"
+	"elearning-api/consts"
 	"elearning-api/dto"
 	"elearning-api/service"
 	"elearning-api/util"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type AuthHandler interface {
@@ -15,6 +19,7 @@ type AuthHandler interface {
 	RefreshToken() gin.HandlerFunc
 	ChangePassword() gin.HandlerFunc
 	ForgotPassword() gin.HandlerFunc
+	ResetPassword() gin.HandlerFunc
 }
 
 type authHandler struct {
@@ -59,7 +64,6 @@ func (h *authHandler) Login() gin.HandlerFunc {
 		res.Data = loginResponse
 
 		c.JSON(http.StatusOK, res)
-
 	}
 }
 
@@ -134,11 +138,12 @@ func (h *authHandler) RefreshToken() gin.HandlerFunc {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param payload body dto.ChangePasswordRequest true "Change password payload"
+// @Param payload body dto.ResetPasswordRequest true "Change password payload"
+// @Param Authorization header string true "Bearer token"
 // @Success 200 {object} any
 // @Failure 400 {object} any
 // @Failure 401 {object} any
-// @Router /api/v1/auth/change-password [post]
+// @Router /api/v1/auth/change-password [put]
 func (h *authHandler) ChangePassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var request dto.ChangePasswordRequest
@@ -146,8 +151,18 @@ func (h *authHandler) ChangePassword() gin.HandlerFunc {
 			c.Error(err)
 			return
 		}
+		id := c.GetString(consts.ContextUserID)
+		if id == "" {
+			c.Error(apperror.NewUnauthorizedError("User ID not found in context"))
+			return
+		}
+		userID, err := uuid.Parse(id)
+		if err != nil {
+			c.Error(apperror.NewUnauthorizedError("Invalid user ID in context"))
+			return
+		}
 
-		err := h.authService.ChangePassword(c.Request.Context(), request)
+		err = h.authService.ChangePassword(c, userID, request)
 		if err != nil {
 			c.Error(err)
 			return
@@ -155,6 +170,7 @@ func (h *authHandler) ChangePassword() gin.HandlerFunc {
 
 		res := dto.NewApiResponse(c)
 		res.Request = dto.GetRequestClient(c)
+		res.Data = gin.H{"message": "Password changed successfully", "user_id": userID}
 
 		c.JSON(http.StatusOK, res)
 	}
@@ -162,7 +178,7 @@ func (h *authHandler) ChangePassword() gin.HandlerFunc {
 
 // ForgotPassword godoc
 // @Summary Forgot password
-// @Description Request password reset instructions
+// @Description Send reset password instructions to user's email
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -186,6 +202,39 @@ func (h *authHandler) ForgotPassword() gin.HandlerFunc {
 
 		res := dto.NewApiResponse(c)
 		res.Request = dto.GetRequestClient(c)
+		res.Data = gin.H{"message": "Reset password instructions sent to email if it exists"}
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// ResetPassword godoc
+// @Summary Reset password
+// @Description Reset user's password using reset token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body dto.ResetPasswordRequest true "Reset password payload"
+// @Success 200 {object} any
+// @Failure 400 {object} any
+// @Router /api/v1/auth/reset-password [post]
+func (h *authHandler) ResetPassword() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var request dto.ResetPasswordRequest
+		if err := util.BindAndValidateJSON(c, &request); err != nil {
+			c.Error(err)
+			return
+		}
+
+		err := h.authService.ResetPassword(c.Request.Context(), request)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+
+		res := dto.NewApiResponse(c)
+		res.Request = dto.GetRequestClient(c)
+		res.Data = gin.H{"message": "Password reset successfully"}
 
 		c.JSON(http.StatusOK, res)
 	}

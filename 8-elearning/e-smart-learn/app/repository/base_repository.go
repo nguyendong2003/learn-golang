@@ -14,11 +14,11 @@ type Repository[T any] interface {
 	Updates(ctx context.Context, entity *T) (*T, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 
-	FindByID(ctx context.Context, id uuid.UUID) (*T, error)
-	Find(ctx context.Context, query string, args ...any) (*T, error)
-	FindAll(ctx context.Context, query string, args ...any) ([]*T, error)
+	FindByID(ctx context.Context, id uuid.UUID, preloads []Preload) (*T, error)
+	Find(ctx context.Context, query string, preloads []Preload, args ...any) (*T, error)
+	FindAll(ctx context.Context, query string, preloads []Preload, args ...any) ([]*T, error)
 
-	List(ctx context.Context, limit, offset int, order string, query string, args ...any) ([]*T, int64, error)
+	List(ctx context.Context, limit, offset int, order string, query string, preloads []Preload, args ...any) ([]*T, int64, error)
 }
 
 type repository[T any] struct {
@@ -48,7 +48,7 @@ func (r *repository[T]) Update(
 	updates map[string]any,
 ) (*T, error) {
 
-	entity, err := r.FindByID(ctx, id)
+	entity, err := r.FindByID(ctx, id, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -108,22 +108,40 @@ func (r *repository[T]) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r *repository[T]) FindByID(ctx context.Context, id uuid.UUID) (*T, error) {
-	return r.Find(ctx, "id = ?", id)
+func (r *repository[T]) FindByID(ctx context.Context, id uuid.UUID, preloads []Preload) (*T, error) {
+	db := r.baseQuery(ctx)
+
+	if len(preloads) > 0 {
+		db = applyPreloads(db, preloads)
+	}
+
+	var entity T
+
+	if err := db.Where("id = ?", id).First(&entity).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &entity, nil
 }
 
 func (r *repository[T]) Find(
 	ctx context.Context,
 	query string,
+	preloads []Preload,
 	args ...any,
 ) (*T, error) {
 
 	var entity T
 
 	db := r.baseQuery(ctx)
-
 	if query != "" {
 		db = db.Where(query, args...)
+	}
+
+	if len(preloads) > 0 {
+		db = applyPreloads(db, preloads)
 	}
 
 	err := db.First(&entity).Error
@@ -142,14 +160,18 @@ func (r *repository[T]) Find(
 func (r *repository[T]) FindAll(
 	ctx context.Context,
 	query string,
+	preloads []Preload,
 	args ...any,
 ) ([]*T, error) {
 	var data []*T
 
 	db := r.baseQuery(ctx)
-
 	if query != "" {
 		db = db.Where(query, args...)
+	}
+
+	if len(preloads) > 0 {
+		db = applyPreloads(db, preloads)
 	}
 
 	if err := db.Find(&data).Error; err != nil {
@@ -164,6 +186,7 @@ func (r *repository[T]) List(
 	limit, offset int,
 	order string,
 	query string,
+	preloads []Preload,
 	args ...any,
 ) ([]*T, int64, error) {
 
@@ -173,7 +196,6 @@ func (r *repository[T]) List(
 	)
 
 	db := r.baseQuery(ctx)
-
 	if query != "" {
 		db = db.Where(query, args...)
 	}
@@ -181,6 +203,11 @@ func (r *repository[T]) List(
 	// count total records
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
+	}
+
+	// apply preloads only for fetching data so it won't affect count performance
+	if len(preloads) > 0 {
+		db = applyPreloads(db, preloads)
 	}
 
 	if order != "" {

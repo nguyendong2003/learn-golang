@@ -3,6 +3,9 @@ package handler
 import (
 	"net/http"
 
+	"elearning-api/dto"
+	"elearning-api/model"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -34,17 +37,13 @@ func (h *userCourseHandler) UpdateCourseProgress() gin.HandlerFunc {
 		}
 		_ = c.BindJSON(&payload)
 
-		response := gin.H{
-			"process_id": "c1b2a8f4-7d91-4f0e-9b2c-6f0f1c92e1aa",
-			"path":       "/api/v1/users/me/courses/progress",
-			"status":     gin.H{"code": 200, "type": "OK"},
-			"request":    gin.H{"courseId": payload.CourseId, "lessonId": payload.LessonId},
-			"errors":     []any{},
-			"data":       gin.H{"lesson_id": payload.LessonId, "completed": true},
-			"metadata":   nil,
-		}
+		resp := dto.NewApiResponse(c)
+		resp.Path = "/api/v1/users/me/courses/progress"
+		resp.Request = gin.H{"courseId": payload.CourseId, "lessonId": payload.LessonId}
+		resp.Data = gin.H{"lesson_id": payload.LessonId, "completed": true}
+		resp.Metadata = nil
 
-		c.JSON(http.StatusOK, response)
+		c.JSON(http.StatusOK, resp)
 	}
 }
 
@@ -64,33 +63,33 @@ func (h *userCourseHandler) GetMyCourses() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		limit := 10
 		offset := 0
-		sortBy := c.DefaultQuery("sortBy", "created_at")
-		sortOrder := c.DefaultQuery("sortOrder", "desc")
 
-		response := gin.H{
-			"process_id": "c1b2a8f4-7d91-4f0e-9b2c-6f0f1c92e1aa",
-			"path":       "/api/v1/users/me/courses",
-			"status":     gin.H{"code": 200, "type": "OK"},
-			"request":    gin.H{"limit": limit, "offset": offset, "sortBy": sortBy, "sortOrder": sortOrder},
-			"errors":     []any{},
-			"data": []gin.H{
-				{
-					"course": gin.H{
-						"id":                "course_001",
-						"title":             "Golang Backend Development",
-						"short_description": "Learn how to build scalable backend services using Go.",
-						"image_url":         "https://cdn.example.com/courses/go-backend.jpg",
-						"category":          gin.H{"id": "cat_backend", "title": "Backend Development"},
-						"instructor":        gin.H{"id": "ins_001", "fullname": "Nguyen Van A"},
-					},
-					"progress":    gin.H{"percentage": 65, "completed_lessons": 13, "total_lessons": 20, "last_accessed_at": "2024-03-01T10:00:00Z"},
-					"enrolled_at": "2024-02-10T10:00:00Z",
-					"updated_at":  "2024-03-01T10:00:00Z",
-				},
-			},
-			"metadata": gin.H{"limit": limit, "offset": offset, "total": 125},
+		// mock course model
+		m := &model.Course{
+			Title:       "Golang Backend Development",
+			Description: "Learn how to build scalable backend services using Go.",
+			Image:       "https://cdn.example.com/courses/go-backend.jpg",
+			Slug:        "course_001",
 		}
+		m.Category = &model.Category{Name: "Backend Development"}
+		m.Instructor = &model.InstructorProfile{}
+		m.Instructor.User = &model.User{Name: "Nguyen Van A"}
 
-		c.JSON(http.StatusOK, response)
+		courseDTO := dto.NewCourseDetailResponse(m)
+
+		resp := dto.NewApiResponse(c)
+		resp.Path = "/api/v1/users/me/courses"
+		resp.Request = gin.H{"limit": limit, "offset": offset, "sortBy": c.DefaultQuery("sortBy", "created_at"), "sortOrder": c.DefaultQuery("sortOrder", "desc")}
+		resp.Data = []gin.H{
+			{
+				"course":      courseDTO,
+				"progress":    gin.H{"percentage": 65, "completed_lessons": 13, "total_lessons": 20, "last_accessed_at": "2024-03-01T10:00:00Z"},
+				"enrolled_at": "2024-02-10T10:00:00Z",
+				"updated_at":  "2024-03-01T10:00:00Z",
+			},
+		}
+		resp.Metadata = gin.H{"limit": limit, "offset": offset, "total": 125}
+
+		c.JSON(http.StatusOK, resp)
 	}
 }

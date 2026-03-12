@@ -57,7 +57,7 @@ func GenerateAccessToken(userID uuid.UUID, jwtConfig *config.JWTConfig) (string,
 }
 
 // GenerateRefreshToken generates a new JWT refresh token for a user
-func GenerateRefreshToken(userID uuid.UUID, jwtConfig *config.JWTConfig) (string, error) {
+func GenerateRefreshToken(userID uuid.UUID, jwtConfig *config.JWTConfig) (string, time.Time, error) {
 	expirationTime := time.Now().Add(jwtConfig.RefreshTokenExpiration)
 
 	claims := &RefreshTokenClaims{
@@ -75,10 +75,10 @@ func GenerateRefreshToken(userID uuid.UUID, jwtConfig *config.JWTConfig) (string
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(jwtConfig.RefreshTokenSecret))
 	if err != nil {
-		return "", fmt.Errorf("failed to sign refresh token: %w", err)
+		return "", time.Time{}, fmt.Errorf("failed to sign refresh token: %w", err)
 	}
 
-	return tokenString, nil
+	return tokenString, expirationTime, nil
 }
 
 // ValidateAccessToken validates the JWT access token and returns the claims
