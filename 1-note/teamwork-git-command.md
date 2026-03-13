@@ -123,3 +123,8 @@ Sau đó
 git reset --mixed HEAD~1
 git push --force
 ```
+go install github.com/pressly/goose/v3/cmd/goose@latest
+goose -version
+
+goose -dir app/repository/migrations create update_courses_status_enum sql
+goose -dir app/repository/migrations postgres "postgres://postgres:123456@localhost:5433/elearning?sslmode=disable" up

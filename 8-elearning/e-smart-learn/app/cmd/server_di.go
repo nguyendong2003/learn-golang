@@ -30,6 +30,8 @@ func (s *ApiServer) initDatabase(config *config.Config) {
 	s.blogRepository = repository.NewBlogRepository(db)
 	s.refreshTokenRepository = repository.NewRefreshTokenRepository(db)
 	s.categoryRepository = repository.NewCategoryRepository(db)
+	s.instructorRepository = repository.NewInstructorProfileRepository(db)
+	s.courseRepository = repository.NewCourseRepository(db)
 }
 
 func (s *ApiServer) initServices(config *config.Config) {
@@ -40,14 +42,17 @@ func (s *ApiServer) initServices(config *config.Config) {
 	s.authService = service.NewAuthService(s.userRepository, s.roleRepository, s.refreshTokenRepository, &config.JWT, mailer, cache)
 	s.blogService = service.NewBlogService(s.blogRepository)
 	s.categoryService = service.NewCategoryService(s.categoryRepository)
+	s.instructorService = service.NewInstructorProfileService(s.instructorRepository)
+	s.courseService = service.NewCourseService(s.courseRepository, s.categoryService, s.instructorService)
 }
+
 func (s *ApiServer) initHandler() {
 	s.mainHandler = handler.NewMainHandler()
 	s.userHandler = handler.NewUserHandler(s.userService)
 	s.authHandler = handler.NewAuthHandler(s.authService)
 	s.blogHandler = handler.NewBlogHandler(s.blogService)
 	s.subscriptionHandler = handler.NewSubscriptionHandler()
-	s.courseHandler = handler.NewCourseHandler()
+	s.courseHandler = handler.NewCourseHandler(s.courseService, s.instructorService)
 	s.userCourseHandler = handler.NewUserCourseHandler()
 	s.categoryHandler = handler.NewCategoryHandler(s.categoryService)
 	s.feedbackHandler = handler.NewFeedbackHandler()

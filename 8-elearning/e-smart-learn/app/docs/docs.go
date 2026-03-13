@@ -862,7 +862,7 @@ const docTemplate = `{
         },
         "/api/v1/courses": {
             "get": {
-                "description": "Return a paginated list of courses (mocked)",
+                "description": "Retrieve a paginated list of courses with filtering, sorting, and pagination support.",
                 "consumes": [
                     "application/json"
                 ],
@@ -872,62 +872,110 @@ const docTemplate = `{
                 "tags": [
                     "courses"
                 ],
-                "summary": "View course list",
+                "summary": "Get paginated list of courses",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "page",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "limit",
+                        "default": 10,
+                        "description": "Number of items per page (default: 10, max: 100)",
                         "name": "limit",
                         "in": "query"
                     },
                     {
-                        "type": "string",
-                        "description": "sortBy",
-                        "name": "sortBy",
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Number of items to skip (default: 0)",
+                        "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "sortOrder",
+                        "default": "created_at",
+                        "description": "Field to sort by (default: created_at)",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort order: asc or desc (default: desc)",
                         "name": "sortOrder",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "categoryId",
-                        "name": "categoryId",
+                        "description": "Filter courses by title (partial match)",
+                        "name": "title",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "type",
-                        "name": "type",
+                        "description": "Filter courses by category id (UUID format)",
+                        "name": "category_id",
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "DRAFT",
+                            "PUBLISHED",
+                            "ARCHIVED"
+                        ],
                         "type": "string",
-                        "description": "search",
-                        "name": "search",
+                        "description": "Filter courses by status",
+                        "name": "status",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
-                        "schema": {}
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.CourseResponse"
+                                            }
+                                        },
+                                        "metadata": {
+                                            "$ref": "#/definitions/dto.Pagination"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
                     }
                 }
-            }
-        },
-        "/api/v1/courses/{slug}": {
-            "get": {
-                "description": "Return detailed information of a course by slug (mocked)",
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new course with the provided title, description, and category. Requires an instructor account.",
                 "consumes": [
                     "application/json"
                 ],
@@ -937,11 +985,75 @@ const docTemplate = `{
                 "tags": [
                     "courses"
                 ],
-                "summary": "View course detail",
+                "summary": "Create a new course",
+                "parameters": [
+                    {
+                        "description": "Course create request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateCourseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.CourseResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload or validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/courses/slug/{slug}": {
+            "get": {
+                "description": "Retrieve a single course by its slug.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Get course by slug",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "course slug",
+                        "description": "Course slug",
                         "name": "slug",
                         "in": "path",
                         "required": true
@@ -950,7 +1062,240 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
-                        "schema": {}
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.CourseResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid slug format",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Course not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/courses/{id}": {
+            "get": {
+                "description": "Retrieve a single course by its ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Get course by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Course ID (UUID format)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.CourseResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Course not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update a course by ID. Requires instructor permissions.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Update an existing course",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Course ID (UUID format)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Course update request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateCourseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.CourseResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format or validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Course not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a course by ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Delete a course",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Course ID (UUID format)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Course not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
                     }
                 }
             }
@@ -1388,6 +1733,23 @@ const docTemplate = `{
                 "ValidationError"
             ]
         },
+        "consts.CourseStatus": {
+            "type": "string",
+            "enum": [
+                "draft",
+                "pending_review",
+                "published",
+                "rejected",
+                "archived"
+            ],
+            "x-enum-varnames": [
+                "CourseDraft",
+                "CoursePending",
+                "CoursePublished",
+                "CourseRejected",
+                "CourseArchived"
+            ]
+        },
         "dto.ApiResponse": {
             "type": "object",
             "properties": {
@@ -1415,7 +1777,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "author": {
-                    "$ref": "#/definitions/dto.InstructorResponse"
+                    "$ref": "#/definitions/dto.InstructorProfileResponse"
                 },
                 "content": {
                     "type": "string"
@@ -1460,6 +1822,56 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CourseResponse": {
+            "type": "object",
+            "properties": {
+                "average_rate": {
+                    "type": "number"
+                },
+                "category": {
+                    "$ref": "#/definitions/dto.CategoryResponse"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "instructor": {
+                    "$ref": "#/definitions/dto.InstructorProfileResponse"
+                },
+                "old_price": {
+                    "type": "number"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/consts.CourseStatus"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "total_student": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.CreateBlogRequest": {
             "type": "object",
             "required": [
@@ -1489,6 +1901,30 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 3
+                }
+            }
+        },
+        "dto.CreateCourseRequest": {
+            "type": "object",
+            "required": [
+                "category_id",
+                "price",
+                "title"
+            ],
+            "properties": {
+                "category_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "title": {
                     "type": "string",
                     "maxLength": 255,
                     "minLength": 3
@@ -1532,7 +1968,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.InstructorResponse": {
+        "dto.InstructorProfileResponse": {
             "type": "object",
             "properties": {
                 "balance": {
@@ -1541,7 +1977,16 @@ const docTemplate = `{
                 "bio": {
                     "type": "string"
                 },
+                "courses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.CourseResponse"
+                    }
+                },
                 "education": {
+                    "type": "string"
+                },
+                "id": {
                     "type": "string"
                 },
                 "instagram_url": {
@@ -1700,6 +2145,25 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 3
+                }
+            }
+        },
+        "dto.UpdateCourseRequest": {
+            "type": "object",
+            "properties": {
+                "category_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "title": {
                     "type": "string",
                     "maxLength": 255,
                     "minLength": 3

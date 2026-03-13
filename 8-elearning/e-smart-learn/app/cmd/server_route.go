@@ -97,8 +97,15 @@ func (server *ApiServer) route() {
 	// Course route
 	{
 		courseGroup := server.router.Group("/api/v1/courses")
-		courseGroup.GET("", server.courseHandler.GetCourses())
-		courseGroup.GET("/:slug", server.courseHandler.GetCourseBySlug())
+		courseGroup.GET("", server.courseHandler.GetList())
+		courseGroup.GET("/:id", server.courseHandler.GetByID())
+		courseGroup.GET("/slug/:slug", server.courseHandler.GetBySlug())
+
+		courseProtected := courseGroup.Group("")
+		courseProtected.Use(server.AuthHandler(), server.LoadRolePermissionHandler())
+		courseProtected.POST("", server.RequirePermissionHandler("course_create"), server.courseHandler.Create())
+		courseProtected.PUT("/:id", server.RequirePermissionHandler("course_update"), server.courseHandler.Update())
+		courseProtected.DELETE("/:id", server.RequirePermissionHandler("course_delete"), server.courseHandler.Delete())
 	}
 
 	// Subscription routes (mocked)

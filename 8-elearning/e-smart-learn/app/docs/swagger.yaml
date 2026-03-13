@@ -28,6 +28,20 @@ definitions:
     - Forbidden
     - DuplicateEntry
     - ValidationError
+  consts.CourseStatus:
+    enum:
+    - draft
+    - pending_review
+    - published
+    - rejected
+    - archived
+    type: string
+    x-enum-varnames:
+    - CourseDraft
+    - CoursePending
+    - CoursePublished
+    - CourseRejected
+    - CourseArchived
   dto.ApiResponse:
     properties:
       data: {}
@@ -47,7 +61,7 @@ definitions:
   dto.BlogResponse:
     properties:
       author:
-        $ref: '#/definitions/dto.InstructorResponse'
+        $ref: '#/definitions/dto.InstructorProfileResponse'
       content:
         type: string
       created_at:
@@ -76,6 +90,39 @@ definitions:
       updated_at:
         type: string
     type: object
+  dto.CourseResponse:
+    properties:
+      average_rate:
+        type: number
+      category:
+        $ref: '#/definitions/dto.CategoryResponse'
+      created_at:
+        type: string
+      description:
+        type: string
+      duration:
+        type: integer
+      id:
+        type: string
+      image:
+        type: string
+      instructor:
+        $ref: '#/definitions/dto.InstructorProfileResponse'
+      old_price:
+        type: number
+      price:
+        type: number
+      slug:
+        type: string
+      status:
+        $ref: '#/definitions/consts.CourseStatus'
+      title:
+        type: string
+      total_student:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   dto.CreateBlogRequest:
     properties:
       content:
@@ -99,6 +146,23 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  dto.CreateCourseRequest:
+    properties:
+      category_id:
+        type: string
+      description:
+        type: string
+      price:
+        type: number
+      title:
+        maxLength: 255
+        minLength: 3
+        type: string
+    required:
+    - category_id
+    - price
+    - title
     type: object
   dto.CreateUserRequest:
     properties:
@@ -126,13 +190,19 @@ definitions:
     required:
     - email
     type: object
-  dto.InstructorResponse:
+  dto.InstructorProfileResponse:
     properties:
       balance:
         type: number
       bio:
         type: string
+      courses:
+        items:
+          $ref: '#/definitions/dto.CourseResponse'
+        type: array
       education:
+        type: string
+      id:
         type: string
       instagram_url:
         type: string
@@ -242,6 +312,19 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  dto.UpdateCourseRequest:
+    properties:
+      category_id:
+        type: string
+      description:
+        type: string
+      price:
+        type: number
+      title:
+        maxLength: 255
+        minLength: 3
+        type: string
     type: object
   dto.UpdateUserRequest:
     properties:
@@ -835,52 +918,248 @@ paths:
     get:
       consumes:
       - application/json
-      description: Return a paginated list of courses (mocked)
+      description: Retrieve a paginated list of courses with filtering, sorting, and
+        pagination support.
       parameters:
-      - description: page
-        in: query
-        name: page
-        type: integer
-      - description: limit
+      - default: 10
+        description: 'Number of items per page (default: 10, max: 100)'
         in: query
         name: limit
         type: integer
-      - description: sortBy
+      - default: 0
+        description: 'Number of items to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      - default: created_at
+        description: 'Field to sort by (default: created_at)'
         in: query
         name: sortBy
         type: string
-      - description: sortOrder
+      - default: desc
+        description: 'Sort order: asc or desc (default: desc)'
+        enum:
+        - asc
+        - desc
         in: query
         name: sortOrder
         type: string
-      - description: categoryId
+      - description: Filter courses by title (partial match)
         in: query
-        name: categoryId
+        name: title
         type: string
-      - description: type
+      - description: Filter courses by category id (UUID format)
         in: query
-        name: type
+        name: category_id
         type: string
-      - description: search
+      - description: Filter courses by status
+        enum:
+        - DRAFT
+        - PUBLISHED
+        - ARCHIVED
         in: query
-        name: search
+        name: status
         type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
-          schema: {}
-      summary: View course list
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.CourseResponse'
+                  type: array
+                metadata:
+                  $ref: '#/definitions/dto.Pagination'
+              type: object
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Get paginated list of courses
       tags:
       - courses
-  /api/v1/courses/{slug}:
+    post:
+      consumes:
+      - application/json
+      description: Create a new course with the provided title, description, and category.
+        Requires an instructor account.
+      parameters:
+      - description: Course create request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCourseRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CourseResponse'
+              type: object
+        "400":
+          description: Invalid request payload or validation failed
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new course
+      tags:
+      - courses
+  /api/v1/courses/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a course by ID.
+      parameters:
+      - description: Course ID (UUID format)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Course not found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a course
+      tags:
+      - courses
     get:
       consumes:
       - application/json
-      description: Return detailed information of a course by slug (mocked)
+      description: Retrieve a single course by its ID.
       parameters:
-      - description: course slug
+      - description: Course ID (UUID format)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CourseResponse'
+              type: object
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Course not found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Get course by ID
+      tags:
+      - courses
+    put:
+      consumes:
+      - application/json
+      description: Update a course by ID. Requires instructor permissions.
+      parameters:
+      - description: Course ID (UUID format)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Course update request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateCourseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CourseResponse'
+              type: object
+        "400":
+          description: Invalid UUID format or validation failed
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Course not found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an existing course
+      tags:
+      - courses
+  /api/v1/courses/slug/{slug}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single course by its slug.
+      parameters:
+      - description: Course slug
         in: path
         name: slug
         required: true
@@ -890,8 +1169,26 @@ paths:
       responses:
         "200":
           description: OK
-          schema: {}
-      summary: View course detail
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CourseResponse'
+              type: object
+        "400":
+          description: Invalid slug format
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Course not found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Get course by slug
       tags:
       - courses
   /api/v1/feedbacks:

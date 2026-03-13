@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// CategoryHandler provides mocked endpoints for categories.
 type CategoryHandler interface {
 	Create() gin.HandlerFunc
 	Update() gin.HandlerFunc

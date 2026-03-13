@@ -5,14 +5,14 @@ import (
 )
 
 type BlogResponse struct {
-	ID        string              `json:"id"`
-	Title     string              `json:"title"`
-	Content   string              `json:"content"`
-	ImageURL  string              `json:"image_url"`
-	Author    *InstructorResponse `json:"author"`
-	ViewCount int64               `json:"view_count"`
-	CreatedAt string              `json:"created_at"`
-	UpdatedAt string              `json:"updated_at"`
+	ID        string                     `json:"id"`
+	Title     string                     `json:"title"`
+	Content   string                     `json:"content"`
+	ImageURL  string                     `json:"image_url"`
+	Author    *InstructorProfileResponse `json:"author"`
+	ViewCount int64                      `json:"view_count"`
+	CreatedAt string                     `json:"created_at"`
+	UpdatedAt string                     `json:"updated_at"`
 }
 
 func NewListBlogResponse(blogs []*model.Blog) []*BlogResponse {
@@ -24,9 +24,9 @@ func NewListBlogResponse(blogs []*model.Blog) []*BlogResponse {
 }
 
 func NewBlogDetailResponse(m *model.Blog) *BlogResponse {
-	var author *InstructorResponse
+	var author *InstructorProfileResponse
 	if m.Author != nil {
-		author = NewInstructorResponse(m.Author)
+		author = NewInstructorProfileDetailResponse(m.Author)
 	}
 
 	return &BlogResponse{
@@ -42,7 +42,7 @@ func NewBlogDetailResponse(m *model.Blog) *BlogResponse {
 }
 
 type CreateBlogRequest struct {
-	Title   string `json:"title" binding:"required"`
-	Content string `json:"content" binding:"required"`
-	ImageURL   string `json:"image_url" binding:"required"`
+	Title    string `json:"title" binding:"required"`
+	Content  string `json:"content" binding:"required"`
+	ImageURL string `json:"image_url" binding:"required"`
 }

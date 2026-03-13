@@ -1,21 +1,27 @@
 package dto
 
 import (
+	"elearning-api/consts"
 	"elearning-api/model"
+	"time"
 )
 
 type CourseResponse struct {
-	ID          string              `json:"id"`
-	Title       string              `json:"title"`
-	Description string              `json:"description"`
-	ImageURL    string              `json:"image_url"`
-	Instructor  *InstructorResponse `json:"instructor"`
-	AverageRate float64             `json:"average_rate"`
-	OldPrice    float64             `json:"old_price"`
-	Price       float64             `json:"price"`
-	Category    *CategoryResponse   `json:"category"`
-	CreatedAt   string              `json:"created_at"`
-	UpdatedAt   string              `json:"updated_at"`
+	ID           string                     `json:"id"`
+	Title        string                     `json:"title"`
+	Description  string                     `json:"description"`
+	Image        string                     `json:"image"`
+	Slug         string                     `json:"slug"`
+	Duration     int                        `json:"duration"`
+	Price        float64                    `json:"price"`
+	OldPrice     float64                    `json:"old_price"`
+	Status       consts.CourseStatus        `json:"status"`
+	AverageRate  float64                    `json:"average_rate"`
+	TotalStudent int64                      `json:"total_student"`
+	Category     *CategoryResponse          `json:"category"`
+	Instructor   *InstructorProfileResponse `json:"instructor"`
+	CreatedAt    time.Time                  `json:"created_at"`
+	UpdatedAt    time.Time                  `json:"updated_at"`
 }
 
 func NewListCourseResponse(courses []*model.Course) []*CourseResponse {
@@ -27,27 +33,61 @@ func NewListCourseResponse(courses []*model.Course) []*CourseResponse {
 }
 
 func NewCourseDetailResponse(m *model.Course) *CourseResponse {
-	var cat *CategoryResponse
-	if m.Category != nil {
-		cat = NewCategoryDetailResponse(m.Category)
+	if m == nil {
+		return nil
 	}
 
-	var ins *InstructorResponse
-	if m.Instructor != nil && m.Instructor.User != nil {
-		ins = NewInstructorResponse(m.Instructor)
+	var category *CategoryResponse
+	if m.Category != nil {
+		category = NewCategoryDetailResponse(m.Category)
+	}
+
+	var instructor *InstructorProfileResponse
+	if m.InstructorProfile != nil {
+		instructor = NewInstructorProfileDetailResponse(m.InstructorProfile)
 	}
 
 	return &CourseResponse{
-		ID:          m.Slug,
-		Title:       m.Title,
-		Description: m.Description,
-		ImageURL:    m.Image,
-		Instructor:  ins,
-		AverageRate: m.AverageRate,
-		OldPrice:    m.OldPrice,
-		Price:       m.Price,
-		Category:    cat,
-		CreatedAt:   m.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt:   m.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:           m.ID.String(),
+		Title:        m.Title,
+		Description:  m.Description,
+		Image:        m.Image,
+		Slug:         m.Slug,
+		Duration:     m.Duration,
+		Price:        m.Price,
+		OldPrice:     m.OldPrice,
+		Status:       m.Status,
+		AverageRate:  m.AverageRate,
+		TotalStudent: m.TotalStudent,
+		Category:     category,
+		Instructor:   instructor,
+		CreatedAt:    m.CreatedAt,
+		UpdatedAt:    m.UpdatedAt,
 	}
+}
+
+type CreateCourseRequest struct {
+	Title       string  `json:"title" binding:"required,min=3,max=255"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price" binding:"required,gt=0"`
+	CategoryID  string  `json:"category_id" binding:"required,uuid"`
+}
+
+type UpdateCourseRequest struct {
+	Title       *string  `json:"title" binding:"omitempty,min=3,max=255"`
+	Description *string  `json:"description"`
+	Price       *float64 `json:"price" binding:"omitempty,gt=0"`
+	CategoryID  *string  `json:"category_id" binding:"omitempty,uuid"`
+}
+
+type ListCourseRequest struct {
+	PagingRequest
+
+	Title      *string              `form:"title"`
+	CategoryID *string              `form:"category_id" binding:"omitempty,uuid"`
+	Status     *consts.CourseStatus `form:"status"`
+}
+
+type CourseSlugRequest struct {
+	Slug string `uri:"slug" binding:"required"`
 }

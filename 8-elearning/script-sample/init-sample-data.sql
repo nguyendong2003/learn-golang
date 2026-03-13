@@ -20,15 +20,20 @@ VALUES
 ('blog_update', 'Update blogs'),
 ('blog_delete', 'Delete blogs'),
 
-('course_read', 'Read courses'),
-('course_create', 'Create courses'),
-('course_update', 'Update courses'),
-('course_delete', 'Delete courses'),
-
 ('category_read', 'Read categories'),
 ('category_create', 'Create categories'),
 ('category_update', 'Update categories'),
-('category_delete', 'Delete categories');
+('category_delete', 'Delete categories'),
+
+('instructor_profile_read', 'Read instructor profiles'),
+('instructor_profile_create', 'Create instructor profiles'),
+('instructor_profile_update', 'Update instructor profiles'),
+('instructor_profile_delete', 'Delete instructor profiles'),
+
+('course_read', 'Read courses'),
+('course_create', 'Create courses'),
+('course_update', 'Update courses'),
+('course_delete', 'Delete courses');
 
 -- Admin Role
 INSERT INTO role_permissions (role_id, permission_id)
@@ -47,12 +52,15 @@ AND p.code IN (
     'blog_update',
     'blog_delete',
     
+    'instructor_profile_read',
+    'instructor_profile_create',
+    'instructor_profile_update',
+    'instructor_profile_delete',
+
     'course_read',
     'course_create',
     'course_update',
-    'course_delete',
-
-    'category_read'
+    'course_delete'
 );
 
 -- Student Role
@@ -62,6 +70,7 @@ FROM roles r, permissions p
 WHERE r.name = 'student'
 AND p.code IN (
     'blog_read',
+    'instructor_profile_read',
     'course_read'
 );
 

@@ -9,16 +9,17 @@ import (
 type Preload string
 
 const (
-	User       Preload = "User"
-	Author     Preload = "Author"
-	Instructor Preload = "Instructor"
-	Course     Preload = "Course"
-	Courses    Preload = "Courses"
-	Role       Preload = "Role"
-	Permissions Preload = "Permissions"
+	User              Preload = "User"
+	Author            Preload = "Author"
+	InstructorProfile Preload = "InstructorProfile"
+	Course            Preload = "Course"
+	Courses           Preload = "Courses"
+	Category          Preload = "Category"
+	Role              Preload = "Role"
+	Permissions       Preload = "Permissions"
 )
 
-// Use for nested preloads, e.g. "Author.User", "Course.Instructor.User"
+// Use for nested preloads, e.g. "Author.User", "Course.InstructorProfile.User"
 func PreloadPath(parts ...Preload) Preload {
 	if len(parts) == 0 {
 		return ""

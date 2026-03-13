@@ -17,8 +17,7 @@ type InstructorProfile struct {
 	YoutubeURL   string    `gorm:"type:varchar(255)"`
 	InstagramURL string    `gorm:"type:varchar(255)"`
 
-	User    *User     `gorm:"foreignKey:UserID;references:ID"`
-	Courses []*Course `gorm:"foreignKey:InstructorID;references:ID"`
+	User *User `gorm:"foreignKey:UserID;references:ID"`
 }
 
 func (InstructorProfile) TableName() string {

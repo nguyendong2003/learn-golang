@@ -22,11 +22,15 @@ type ApiServer struct {
 	roleRepository         repository.RoleRepository
 	refreshTokenRepository repository.RefreshTokenRepository
 	categoryRepository     repository.CategoryRepository
+	instructorRepository   repository.InstructorProfileRepository
+	courseRepository       repository.CourseRepository
 
-	userService     service.UserService
-	authService     service.AuthService
-	blogService     service.BlogService
-	categoryService service.CategoryService
+	userService       service.UserService
+	authService       service.AuthService
+	blogService       service.BlogService
+	categoryService   service.CategoryService
+	instructorService service.InstructorProfileService
+	courseService     service.CourseService
 
 	mainHandler         handler.MainHandler
 	userHandler         handler.UserHandler

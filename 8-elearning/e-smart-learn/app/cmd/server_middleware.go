@@ -103,18 +103,13 @@ func (s *ApiServer) AuthHandler() gin.HandlerFunc {
 
 func (s *ApiServer) LoadRolePermissionHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, exists := c.Get(consts.ContextUserID)
-		if !exists {
-			c.Error(apperror.NewUnauthorizedError("User not authenticated"))
-			c.Abort()
-			return
-		}
-		userID, ok := id.(uuid.UUID)
-		if !ok {
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
 			c.Error(apperror.NewUnauthorizedError("Invalid user ID"))
 			c.Abort()
 			return
 		}
+
 		user, err := s.userService.GetUserWithRole(c.Request.Context(), userID)
 		if err != nil {
 			c.Error(apperror.NewUnauthorizedError("User not found"))
