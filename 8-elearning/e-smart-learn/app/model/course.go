@@ -12,7 +12,7 @@ type Course struct {
 	Description  string              `gorm:"type:text"`
 	Image        string              `gorm:"type:text"`
 	Slug         string              `gorm:"type:varchar(255);not null;uniqueIndex"`
-	InstructorID uuid.UUID           `gorm:"type:uuid;not null;index"`
+	UserID       uuid.UUID           `gorm:"type:uuid;not null;index"`
 	Duration     int                 `gorm:"default:0"`
 	CategoryID   uuid.UUID           `gorm:"type:uuid;not null;index"`
 	Price        float64             `gorm:"type:decimal(10,2);default:0"`
@@ -21,7 +21,7 @@ type Course struct {
 	Status       consts.CourseStatus `gorm:"type:course_status;default:'draft'"`
 	TotalStudent int64               `gorm:"default:0"`
 
-	Instructor   *User          `gorm:"foreignKey:InstructorID;references:ID"`
+	User         *User          `gorm:"foreignKey:UserID;references:ID"`
 	Category     *Category      `gorm:"foreignKey:CategoryID;references:ID"`
 	Chapters     []*Chapter     `gorm:"foreignKey:CourseID;references:ID"`
 	Enrollments  []*Enrollment  `gorm:"foreignKey:CourseID;references:ID"`

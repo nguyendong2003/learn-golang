@@ -20,5 +20,5 @@ type User struct {
 	Feedbacks         []*Feedback        `gorm:"foreignKey:UserID;references:ID"`
 	InstructorProfile *InstructorProfile `gorm:"foreignKey:UserID;references:ID"`
 	Subscriptions     []*Subscription    `gorm:"foreignKey:UserID;references:ID"`
-	Course            []*Course          `gorm:"foreignKey:InstructorID;references:ID"`
+	Courses           []*Course          `gorm:"foreignKey:UserID;references:ID"`
 }

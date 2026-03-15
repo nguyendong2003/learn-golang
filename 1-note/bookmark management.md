@@ -407,7 +407,12 @@ docker exec -it redis redis-cli     # vào redis-cli để tương tác với re
     select 15   # chuyển sang database 15
 
     exit
+
+docker logs redis    # Hiển thị toàn bộ log đã được ghi lại của container (Sau khi in ra log hiện có, lệnh sẽ kết thúc ngay)
+docker logs -f redis # Xem log của container redis theo thời gian thực (Lệnh sẽ tiếp tục hiển thị các log mới khi container ghi thêm log)
+
 docker rm -f redis
+
 ```
 
 2. Cài thư viện vào project: https://github.com/redis/go-redis
@@ -422,3 +427,131 @@ go get github.com/redis/go-redis/v9
 go get github.com/alicebob/miniredis/v2
 ```
 - Thư viện miniredis là một Redis server giả lập (mock Redis) viết bằng Go, dùng chủ yếu để test code mà không cần chạy Redis thật.
+
+### 11. Thư viện viết log (Zerolog)
+- Thư viện viết log (Zerolog): https://github.com/rs/zerolog
+```bash
+go get github.com/rs/zerolog/log
+```
+- Lưu ý: tất cẩ các lỗi ở phía server (`http.StatusInternalServerError`) thì đều cần phải ghi log
+    ```
+    log.Error().Err(err).Msg("Failed to get URL")
+    ```
+
+### 12. Thư viện cấu hình CORS: https://github.com/gin-contrib/cors
+```bash
+go get github.com/gin-contrib/cors
+```
+
+
+### 13. Viết Dockerfile
+1. Tạo Dockerfile
+```Dockerfile
+FROM golang:1.25.6-alpine
+
+RUN mkdir -p /opt/app
+
+WORKDIR /opt/app
+
+COPY . .
+
+RUN apk add build-base
+
+RUN go mod download && go build -o bookmark_service cmd/api/main.go
+
+CMD ["/opt/app/bookmark_service"]
+```
+
+2. Build
+```bash
+docker build -t bookmark_service:test .
+```
+- Nếu vẫn gặp lỗi DNS khi build
+    + Build với network host:
+        ```bash
+        docker build --network=host -t bookmark_service:test .
+        ```
+
+3. Kiểm tra
+```bash
+docker images
+```
+
+4. Run container
+```
+docker run -d --name bookmark -p 8080:8080 bookmark_service:test
+```
+
+- Thêm biến môi trường
+```bash
+docker run -d --name bookmark --env APP_PORT=8082 -p 8082:8082 bookmark_service:test
+```
+
+- Như vậy vẫn chưa kết nối được app với redis => phải thêm `--network host` (hoặc `--network=host`) vào mới chạy được (Đoạn `Lecture 3 - 52:00 ` có nói phần này)
+
+```bash
+docker run -d --name bookmark --network host bookmark_service:test
+```
+
+```bash
+docker run -d --name bookmark --network host --env APP_PORT=8082 -p 8082:8082 bookmark_service:test
+```
+
+5. Xóa container
+```bash
+docker rm -f bookmark
+```
+
+6. Tại sao không nên dùng network host mà nên dùng network bridge?
+- Video `Lecture 3 - 53:15` có nói phần này
+
+7. Cách fix lỗi container không build được Dockerfile và dừng chỗ go mod download
+- Lỗi đó là DNS + IPv6 timeout khi Docker container truy cập internet.
+- Cách fix:
+    + B1:
+        ```bash
+        sudo nano /etc/docker/daemon.json
+        ```
+    + B2: Thêm dòng này vào và lưu
+        ```json
+        {
+            "dns": ["8.8.8.8", "1.1.1.1"]
+        }
+        ```
+    + B3: 
+        ```bash
+        sudo systemctl restart docker
+        ```
+
+### 14. Sử dụng docker-compose (Lecture 13)
+1. Cài đặt docker-compose
+```bash
+apt install docker-compose
+```
+2. Viết file docker-compose.yaml:
+
+3. Run docker-compose
+```bash
+docker compose up
+```
+- Chạy ngầm không chiểm terminal
+```bash
+docker compose up -d
+```
+- Cách xịn nhất (xóa hết và build lại image nếu code có thay đổi)
+```bash
+docker compose down
+docker compose up --build -d
+```
+
+4. Check
+```bash
+docker compose ps
+```
+```bash
+docker ps
+```
+5. Delete
+```bash
+docker compose down
+```

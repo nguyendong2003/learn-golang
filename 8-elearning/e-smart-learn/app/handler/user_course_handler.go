@@ -72,8 +72,8 @@ func (h *userCourseHandler) GetMyCourses() gin.HandlerFunc {
 			Slug:        "course_001",
 		}
 		m.Category = &model.Category{Name: "Backend Development"}
-		m.InstructorProfile = &model.InstructorProfile{}
-		m.InstructorProfile.User = &model.User{Name: "Nguyen Van A"}
+		// m.InstructorProfile = &model.InstructorProfile{}
+		// m.InstructorProfile.User = &model.User{Name: "Nguyen Van A"}
 
 		courseDTO := dto.NewCourseDetailResponse(m)
 

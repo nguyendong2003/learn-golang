@@ -103,9 +103,21 @@ func (server *ApiServer) route() {
 
 		courseProtected := courseGroup.Group("")
 		courseProtected.Use(server.AuthHandler(), server.LoadRolePermissionHandler())
-		courseProtected.POST("", server.RequirePermissionHandler("course_create"), server.courseHandler.Create())
-		courseProtected.PUT("/:id", server.RequirePermissionHandler("course_update"), server.courseHandler.Update())
-		courseProtected.DELETE("/:id", server.RequirePermissionHandler("course_delete"), server.courseHandler.Delete())
+		courseProtected.POST("",
+			server.RequirePermissionHandler("course_create"),
+			server.RequireInstructorProfileHandler(),
+			server.courseHandler.Create(),
+		)
+		courseProtected.PUT("/:id",
+			server.RequirePermissionHandler("course_update"),
+			server.RequireCourseOwnerHandler(),
+			server.courseHandler.Update(),
+		)
+		courseProtected.DELETE("/:id",
+			server.RequirePermissionHandler("course_delete"),
+			server.RequireCourseOwnerHandler(),
+			server.courseHandler.Delete(),
+		)
 	}
 
 	// Subscription routes (mocked)

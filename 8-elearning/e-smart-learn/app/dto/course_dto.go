@@ -43,8 +43,8 @@ func NewCourseDetailResponse(m *model.Course) *CourseResponse {
 	}
 
 	var instructor *InstructorProfileResponse
-	if m.InstructorProfile != nil {
-		instructor = NewInstructorProfileDetailResponse(m.InstructorProfile)
+	if m.User != nil && m.User.InstructorProfile != nil {
+		instructor = NewInstructorProfileDetailResponse(m.User.InstructorProfile)
 	}
 
 	return &CourseResponse{

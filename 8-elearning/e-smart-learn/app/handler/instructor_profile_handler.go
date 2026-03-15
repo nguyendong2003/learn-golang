@@ -110,14 +110,8 @@ func (h *instructorProfileHandler) Update() gin.HandlerFunc {
 			return
 		}
 
-		userID, err := util.GetRequestUserID(c)
-		if err != nil {
-			c.Error(err)
-			return
-		}
-
 		// Call service
-		data, err := h.instructorProfileService.Update(c.Request.Context(), userID, id, request)
+		data, err := h.instructorProfileService.Update(c.Request.Context(), id, request)
 
 		if err != nil {
 			c.Error(err)

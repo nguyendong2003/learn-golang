@@ -14,8 +14,8 @@ import (
 
 type CourseService interface {
 	Create(ctx context.Context, userID uuid.UUID, request dto.CreateCourseRequest) (*dto.CourseResponse, error)
-	Update(ctx context.Context, userID uuid.UUID, id uuid.UUID, request dto.UpdateCourseRequest) (*dto.CourseResponse, error)
-	Delete(ctx context.Context, userID uuid.UUID, id uuid.UUID) error
+	Update(ctx context.Context, id uuid.UUID, request dto.UpdateCourseRequest) (*dto.CourseResponse, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	GetByID(ctx context.Context, id uuid.UUID) (*dto.CourseResponse, error)
 	GetBySlug(ctx context.Context, slug string) (*dto.CourseResponse, error)
@@ -40,20 +40,6 @@ func NewCourseService(
 }
 
 func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dto.CreateCourseRequest) (*dto.CourseResponse, error) {
-	instructorProfile, err := s.instructorProfileService.GetByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	if instructorProfile == nil {
-		return nil, apperror.NewBadRequestError("User is not an instructor")
-	}
-
-	instructorProfileID, err := uuid.Parse(instructorProfile.ID)
-	if err != nil {
-		return nil, apperror.NewInternalServerError("Failed to parse instructor profile ID")
-	}
-
 	// Validate category ID
 	categoryID, err := uuid.Parse(request.CategoryID)
 	if err != nil {
@@ -70,13 +56,13 @@ func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dt
 	}
 
 	newCourse := &model.Course{
-		Title:        request.Title,
-		Description:  request.Description,
-		Slug:         util.GenerateSlug(request.Title),
-		Price:        request.Price,
-		OldPrice:     request.Price,
-		CategoryID:   categoryID,
-		InstructorID: instructorProfileID,
+		Title:       request.Title,
+		Description: request.Description,
+		Slug:        util.GenerateSlug(request.Title),
+		Price:       request.Price,
+		OldPrice:    request.Price,
+		CategoryID:  categoryID,
+		UserID:      userID,
 	}
 
 	createdCourse, err := s.courseRepository.Create(ctx, newCourse)
@@ -85,14 +71,14 @@ func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dt
 	}
 
 	course, err := s.courseRepository.FindByID(ctx, createdCourse.ID, []repository.Preload{
-		repository.PreloadPath(repository.InstructorProfile),
+		repository.PreloadPath(repository.User, repository.InstructorProfile),
 		repository.PreloadPath(repository.Category),
 	})
 
 	return dto.NewCourseDetailResponse(course), nil
 }
 
-func (s *courseService) Update(ctx context.Context, userID uuid.UUID, id uuid.UUID, request dto.UpdateCourseRequest) (*dto.CourseResponse, error) {
+func (s *courseService) Update(ctx context.Context, id uuid.UUID, request dto.UpdateCourseRequest) (*dto.CourseResponse, error) {
 	course, err := s.courseRepository.FindByID(ctx, id, nil)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to retrieve course")
@@ -100,25 +86,6 @@ func (s *courseService) Update(ctx context.Context, userID uuid.UUID, id uuid.UU
 
 	if course == nil {
 		return nil, apperror.NewNotFoundError("Course not found")
-	}
-
-	// Check if the user is the owner of the course
-	instructorProfile, err := s.instructorProfileService.GetByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	if instructorProfile == nil {
-		return nil, apperror.NewBadRequestError("User is not an instructor")
-	}
-
-	instructorProfileID, err := uuid.Parse(instructorProfile.ID)
-	if err != nil {
-		return nil, apperror.NewInternalServerError("Failed to parse instructor profile ID")
-	}
-
-	if course.InstructorID != instructorProfileID {
-		return nil, apperror.NewForbiddenError("User is not the owner of this course")
 	}
 
 	if request.Title != nil {
@@ -150,7 +117,7 @@ func (s *courseService) Update(ctx context.Context, userID uuid.UUID, id uuid.UU
 	return dto.NewCourseDetailResponse(updatedCourse), nil
 }
 
-func (s *courseService) Delete(ctx context.Context, userID uuid.UUID, id uuid.UUID) error {
+func (s *courseService) Delete(ctx context.Context, id uuid.UUID) error {
 	course, err := s.courseRepository.FindByID(ctx, id, nil)
 	if err != nil {
 		return apperror.NewInternalServerError("Failed to retrieve course")
@@ -158,25 +125,6 @@ func (s *courseService) Delete(ctx context.Context, userID uuid.UUID, id uuid.UU
 
 	if course == nil {
 		return apperror.NewNotFoundError("Course not found")
-	}
-
-	// Check if the user is the owner of the course
-	instructorProfile, err := s.instructorProfileService.GetByUserID(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	if instructorProfile == nil {
-		return apperror.NewBadRequestError("User is not an instructor")
-	}
-
-	instructorProfileID, err := uuid.Parse(instructorProfile.ID)
-	if err != nil {
-		return apperror.NewInternalServerError("Failed to parse instructor profile ID")
-	}
-
-	if course.InstructorID != instructorProfileID {
-		return apperror.NewForbiddenError("User is not the owner of this course")
 	}
 
 	if err := s.courseRepository.Delete(ctx, id); err != nil {

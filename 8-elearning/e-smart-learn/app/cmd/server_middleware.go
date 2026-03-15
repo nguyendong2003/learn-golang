@@ -166,6 +166,142 @@ func (s *ApiServer) RequirePermissionHandler(permission string) gin.HandlerFunc 
 	}
 }
 
+func (s *ApiServer) RequireInstructorProfileHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			c.Error(apperror.NewUnauthorizedError("Invalid user ID"))
+			c.Abort()
+			return
+		}
+
+		instructor, err := s.instructorService.GetByUserID(c.Request.Context(), userID)
+		if err != nil {
+			c.Error(apperror.NewForbiddenError("Instructor profile required"))
+			c.Abort()
+			return
+		}
+
+		if instructor == nil {
+			c.Error(apperror.NewForbiddenError("Instructor profile required"))
+			c.Abort()
+			return
+		}
+
+		// lưu instructor vào context để handler dùng
+		c.Set(consts.ContextInstructorProfile, instructor)
+
+		c.Next()
+	}
+}
+
+func (s *ApiServer) RequireCourseOwnerHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			c.Error(err)
+			c.Abort()
+			return
+		}
+
+		// get course id from param
+		courseID := c.Param("id")
+		if courseID == "" {
+			c.Error(apperror.NewBadRequestError("Course ID is required"))
+			c.Abort()
+			return
+		}
+
+		// convert uuid
+		cid, err := uuid.Parse(courseID)
+		if err != nil {
+			c.Error(apperror.NewBadRequestError("Invalid course ID"))
+			c.Abort()
+			return
+		}
+
+		// get course
+		course, err := s.courseService.GetByID(c.Request.Context(), cid)
+		if err != nil {
+			c.Error(apperror.NewNotFoundError("Course not found"))
+			c.Abort()
+			return
+		}
+
+		if course.Instructor == nil || course.Instructor.User == nil {
+			c.Error(apperror.NewInternalServerError("Instructor information is missing"))
+			c.Abort()
+			return
+		}
+
+		// check owner
+		if course.Instructor.User.ID != userID.String() {
+			c.Error(apperror.NewForbiddenError("You are not the owner of this course"))
+			c.Abort()
+			return
+		}
+
+		// save course to context for later use
+		c.Set(consts.ContextCourse, course)
+
+		c.Next()
+	}
+}
+
+func (s *ApiServer) RequireInstructorProfileOwnerHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			c.Error(apperror.NewUnauthorizedError("Invalid user ID"))
+			c.Abort()
+			return
+		}
+
+		// get instructor profile id from param
+		instructorID := c.Param("id")
+		if instructorID == "" {
+			c.Error(apperror.NewBadRequestError("Instructor profile ID is required"))
+			c.Abort()
+			return
+		}
+
+		// convert uuid
+		iid, err := uuid.Parse(instructorID)
+		if err != nil {
+			c.Error(apperror.NewBadRequestError("Invalid instructor profile ID"))
+			c.Abort()
+			return
+		}
+
+		// query instructor profile
+		instructor, err := s.instructorService.GetByID(c.Request.Context(), iid)
+		if err != nil {
+			c.Error(apperror.NewNotFoundError("Instructor profile not found"))
+			c.Abort()
+			return
+		}
+
+		if instructor.User == nil {
+			c.Error(apperror.NewInternalServerError("User information is missing"))
+			c.Abort()
+			return
+		}
+
+		// check owner
+		if instructor.User.ID != userID.String() {
+			c.Error(apperror.NewForbiddenError("You are not the owner of this instructor profile"))
+			c.Abort()
+			return
+		}
+
+		// lưu instructor vào context
+		c.Set(consts.ContextInstructorProfile, instructor)
+
+		c.Next()
+	}
+}
+
 func (s *ApiServer) CorsHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")

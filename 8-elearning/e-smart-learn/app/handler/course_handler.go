@@ -68,7 +68,7 @@ func (h *courseHandler) Create() gin.HandlerFunc {
 			return
 		}
 
-		data, err := h.courseService.GetByID(c.Request.Context(), uuid.MustParse(createdInstructorProfile.ID))
+		data, err := h.courseService.GetByID(c.Request.Context(), uuid.MustParse(createdCourse.ID))
 		if err != nil {
 			c.Error(err)
 			return
@@ -121,14 +121,8 @@ func (h *courseHandler) Update() gin.HandlerFunc {
 			return
 		}
 
-		userID, err := util.GetRequestUserID(c)
-		if err != nil {
-			c.Error(err)
-			return
-		}
-
 		// Call service
-		updatedCourse, err := h.courseService.Update(c.Request.Context(), userID, id, request)
+		updatedCourse, err := h.courseService.Update(c.Request.Context(), id, request)
 		if err != nil {
 			c.Error(err)
 			return
@@ -177,15 +171,8 @@ func (h *courseHandler) Delete() gin.HandlerFunc {
 			return
 		}
 
-		// Check if user is instructor and this course belongs to the instructor
-		userID, err := util.GetRequestUserID(c)
-		if err != nil {
-			c.Error(err)
-			return
-		}
-
 		// Call service
-		if err := h.courseService.Delete(c.Request.Context(), userID, id); err != nil {
+		if err := h.courseService.Delete(c.Request.Context(), id); err != nil {
 			c.Error(err)
 			return
 		}

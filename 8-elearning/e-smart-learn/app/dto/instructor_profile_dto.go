@@ -2,22 +2,24 @@ package dto
 
 import (
 	"elearning-api/model"
+	"time"
 )
 
 type InstructorProfileResponse struct {
-	ID           string        `json:"id"`
-	Bio          string        `json:"bio"`
-	Education    string        `json:"education"`
-	RatingAvg    float64       `json:"rating_avg"`
-	TotalStudent int64         `json:"total_student"`
-	TotalCourse  int64         `json:"total_course"`
-	Balance      float64       `json:"balance"`
-	LinkedinURL  string        `json:"linkedin_url"`
-	YoutubeURL   string        `json:"youtube_url"`
-	InstagramURL string        `json:"instagram_url"`
-	User         *UserResponse `json:"user,omitempty"`
-
-	Courses []*CourseResponse `json:"courses,omitempty"`
+	ID           string            `json:"id"`
+	Bio          string            `json:"bio"`
+	Education    string            `json:"education"`
+	RatingAvg    float64           `json:"rating_avg"`
+	TotalStudent int64             `json:"total_student"`
+	TotalCourse  int64             `json:"total_course"`
+	Balance      float64           `json:"balance"`
+	LinkedinURL  string            `json:"linkedin_url"`
+	YoutubeURL   string            `json:"youtube_url"`
+	InstagramURL string            `json:"instagram_url"`
+	User         *UserResponse     `json:"user,omitempty"`
+	Courses      []*CourseResponse `json:"courses,omitempty"`
+	CreatedAt    time.Time         `json:"created_at"`
+	UpdatedAt    time.Time         `json:"updated_at"`
 }
 
 func NewInstructorProfileListResponse(instructors []*model.InstructorProfile) []*InstructorProfileResponse {
@@ -39,8 +41,8 @@ func NewInstructorProfileDetailResponse(data *model.InstructorProfile) *Instruct
 	}
 
 	var courses []*CourseResponse
-	if data.Courses != nil {
-		courses = NewListCourseResponse(data.Courses)
+	if data.User != nil && data.User.Courses != nil {
+		courses = NewListCourseResponse(data.User.Courses)
 	}
 
 	return &InstructorProfileResponse{
@@ -56,6 +58,8 @@ func NewInstructorProfileDetailResponse(data *model.InstructorProfile) *Instruct
 		InstagramURL: data.InstagramURL,
 		User:         user,
 		Courses:      courses,
+		CreatedAt:    data.CreatedAt,
+		UpdatedAt:    data.UpdatedAt,
 	}
 }
 

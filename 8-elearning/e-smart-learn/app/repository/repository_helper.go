@@ -19,7 +19,7 @@ const (
 	Permissions       Preload = "Permissions"
 )
 
-// Use for nested preloads, e.g. "Author.User", "Course.InstructorProfile.User"
+// Use for nested preloads, e.g. "Author.User", "Course.User.InstructorProfile"
 func PreloadPath(parts ...Preload) Preload {
 	if len(parts) == 0 {
 		return ""

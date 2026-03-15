@@ -14,8 +14,8 @@ import (
 
 type InstructorProfileService interface {
 	Create(ctx context.Context, userID uuid.UUID, request dto.CreateInstructorProfileRequest) (*dto.InstructorProfileResponse, error)
-	Update(ctx context.Context, userID uuid.UUID, id uuid.UUID, request dto.UpdateInstructorProfileRequest) (*dto.InstructorProfileResponse, error)
-	Delete(ctx context.Context, userID uuid.UUID, id uuid.UUID) error
+	Update(ctx context.Context, id uuid.UUID, request dto.UpdateInstructorProfileRequest) (*dto.InstructorProfileResponse, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	GetByID(ctx context.Context, id uuid.UUID) (*dto.InstructorProfileResponse, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID) (*dto.InstructorProfileResponse, error)
@@ -63,7 +63,7 @@ func (s *instructorProfileService) Create(ctx context.Context, userID uuid.UUID,
 	return dto.NewInstructorProfileDetailResponse(instructorProfile), nil
 }
 
-func (s *instructorProfileService) Update(ctx context.Context, userID uuid.UUID, id uuid.UUID, request dto.UpdateInstructorProfileRequest) (*dto.InstructorProfileResponse, error) {
+func (s *instructorProfileService) Update(ctx context.Context, id uuid.UUID, request dto.UpdateInstructorProfileRequest) (*dto.InstructorProfileResponse, error) {
 	instructorProfile, err := s.instructorProfileRepository.FindByID(ctx, id, []repository.Preload{
 		repository.PreloadPath(repository.User),
 	})
@@ -104,14 +104,14 @@ func (s *instructorProfileService) Update(ctx context.Context, userID uuid.UUID,
 	return dto.NewInstructorProfileDetailResponse(updatedInstructorProfile), nil
 }
 
-func (s *instructorProfileService) Delete(ctx context.Context, userID uuid.UUID, id uuid.UUID) error {
+func (s *instructorProfileService) Delete(ctx context.Context, id uuid.UUID) error {
 	instructorProfile, err := s.instructorProfileRepository.FindByID(ctx, id, nil)
 	if err != nil {
 		return apperror.NewInternalServerError("Failed to retrieve instructorProfile")
 	}
 
 	if instructorProfile == nil {
-		return apperror.NewNotFoundError("InstructorProfile not found")
+		return apperror.NewNotFoundError("Instructor Profile not found")
 	}
 
 	if err := s.instructorProfileRepository.Delete(ctx, id); err != nil {
