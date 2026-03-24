@@ -139,4 +139,23 @@ goose -version
 ```bash
 goose -dir app/repository/migrations create update_courses_status_enum sql
 goose -dir app/repository/migrations postgres "postgres://postgres:123456@localhost:5433/elearning?sslmode=disable" up
+goose -dir app/repository/migrations postgres "postgres://postgres:123456@localhost:5433/elearning?sslmode=disable" reset
+goose -dir app/repository/migrations postgres "postgres://postgres:123456@localhost:5433/elearning?sslmode=disable" down
+```
+
+### Stripe
+1. Setup stripe webhook
+```
+stripe login
+stripe listen --forward-to localhost:8080/api/v1/subscriptions/webhook/stripe
+```
+- Sửa `secret_key` trong `config.yaml` (optional)
+- Copy webhook secret vào key `webhook_secret` trong `config.yaml`
+
+2. Account Stripe
+```
+4242 4242 4242 4242
+05/30
+123
+student1
 ```
