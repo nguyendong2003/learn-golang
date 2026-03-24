@@ -555,3 +555,14 @@ docker ps
 ```bash
 docker compose down
 ```
+
+### 15. Nginx, Load Balancer (Lecture 4)
+1. Tại sao cấu hình Nginx hay listen cổng 80, 443
+- Tại vì khi gõ URL trên trình duyệt thì không cần gõ port 80, 443
+- Cổng 80 là mặc định cho http và cổng 443 là mặc định cho https
+
+- Lưu ý: 
+    + Trong thực tế phải tạo project riêng tên là deployment. Còn viết chung như kia cho dễ coi thôi 
+    + Khi đặt REDIS_PASSWORD thì khi thao tác terminal redis phải đăng nhập trước:
+        docker exec -it redis redis-cli
+        auth 123456789
