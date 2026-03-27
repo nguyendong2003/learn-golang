@@ -155,7 +155,15 @@ stripe listen --forward-to localhost:8080/api/v1/subscriptions/webhook/stripe
 2. Account Stripe
 ```
 4242 4242 4242 4242
-05/30
+05/30vậy
 123
 student1
 ```
+
+###
+hiện tại dự án này đang cần làm thêm tính năng chia tiền thu được giữa instructor và nền tảng theo:
+1. Mua khóa học: instructor đựợc chia 70% và nền tảng thì được chia 30%
+2. Subscriptions: người dùng có thể subscriptions và có thể enroll được tất cả các khóa trên nền tảng, nếu 1 người dùng enroll 1 khóa học thì chủ khóa học đó sẽ được chia tiền từ subscription của người dùng đó (cũng theo tỉ lệ 70% của chủ khóa học và 30% của nền tảng).
+
+ngoài ra cũng cần làm chức năng thống kê tiền thu được, tiền của nền tảng, tiền của giảng viên theo tháng, quý, năm và xem thử tăng giảm bao nhiêu so với tháng, quý, năm trước.
+Hãy đọc toàn bộ project của tôi hãy đề xuất cho tôi phải làm thế nào, viết api gì, sửa database như thế nào để làm toàn bộ chức năng đó

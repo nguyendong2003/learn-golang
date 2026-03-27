@@ -24,7 +24,7 @@
           },
           "body": {
             "contentType": "application/json",
-            "body": "{\n    \"username\": \"student1\",\n    \"password\": \"123456\"\n}"
+            "body": "{\n    \"username\": \"student2\",\n    \"password\": \"123456\"\n}"
           },
           "requestVariables": [],
           "responses": {},
@@ -46,6 +46,27 @@
           "body": {
             "contentType": "application/json",
             "body": "{\n    \"email\": \"hung@gmail.com\",\n  \"username\": \"hung\",\n    \"password\": \"123456\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "me",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/me",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
           },
           "requestVariables": [],
           "responses": {},
@@ -165,7 +186,7 @@
           "v": "17",
           "name": "update category",
           "method": "PUT",
-          "endpoint": "<<HOST>>/api/v1/categories/b112f934-2915-4a1b-bd69-5ce0af967fcb",
+          "endpoint": "<<HOST>>/api/v1/categories/<<id>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -193,7 +214,7 @@
           "v": "17",
           "name": "delete category",
           "method": "DELETE",
-          "endpoint": "<<HOST>>/api/v1/categories/b112f934-2915-4a1b-bd69-5ce0af967fcb",
+          "endpoint": "<<HOST>>/api/v1/categories/<<id>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -230,7 +251,22 @@
       "v": 11,
       "id": "cmmvu0qhv3lmif21m4r8p1qu5",
       "name": "instructor profile",
-      "folders": [],
+      "folders": [
+        {
+          "v": 11,
+          "id": "cmn78wgf91lc4f21m2x9hb16a",
+          "name": "review",
+          "folders": [],
+          "requests": [],
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "headers": [],
+          "variables": [],
+          "description": null
+        }
+      ],
       "requests": [
         {
           "v": "17",
@@ -288,7 +324,7 @@
           "v": "17",
           "name": "get instructor profile",
           "method": "GET",
-          "endpoint": "<<HOST>>/api/v1/instructor-profiles/c88af232-0f5e-4913-ada0-84a8a632f53d",
+          "endpoint": "<<HOST>>/api/v1/instructor-profiles/<<id>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -337,7 +373,7 @@
           "v": "17",
           "name": "update instructor profile",
           "method": "PUT",
-          "endpoint": "<<HOST>>/api/v1/instructor-profiles/721c2764-b415-4f82-a35b-397b74e1c1d9",
+          "endpoint": "<<HOST>>/api/v1/instructor-profiles/<<id>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -365,7 +401,7 @@
           "v": "17",
           "name": "delete instructor profile",
           "method": "DELETE",
-          "endpoint": "<<HOST>>/api/v1/instructor-profiles/c88af232-0f5e-4913-ada0-84a8a632f53d",
+          "endpoint": "<<HOST>>/api/v1/instructor-profiles/<<id>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -655,7 +691,7 @@
               "v": "17",
               "name": "get all chapters by course id",
               "method": "GET",
-              "endpoint": "<<HOST>>/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/chapters",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
               "params": [],
               "headers": [],
               "preRequestScript": "",
@@ -682,7 +718,7 @@
               "v": "17",
               "name": "get chapter",
               "method": "GET",
-              "endpoint": "<<HOST>>/api/v1/courses/6b73f8f9-82c3-45b5-b6b1-e84de9785b0c/chapters/e7ab391a-c97a-4ee4-bb3a-07ed5aacc005",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
               "params": [],
               "headers": [],
               "preRequestScript": "",
@@ -714,7 +750,7 @@
               "v": "17",
               "name": "create chapter",
               "method": "POST",
-              "endpoint": "<<HOST>>/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/chapters",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
               "params": [],
               "headers": [],
               "preRequestScript": "",
@@ -742,7 +778,7 @@
               "v": "17",
               "name": "update chapter",
               "method": "PUT",
-              "endpoint": "<<HOST>>/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/chapters/2c4a127a-da60-4bb4-84b3-eb62966ba1ee",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>/chapters/<<chapter_id>>",
               "params": [],
               "headers": [],
               "preRequestScript": "",
@@ -775,7 +811,7 @@
               "v": "17",
               "name": "delete chapter",
               "method": "DELETE",
-              "endpoint": "<<HOST>>/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/chapters/2c4a127a-da60-4bb4-84b3-eb62966ba1ee",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>/chapters/<<chapter_id>>",
               "params": [],
               "headers": [],
               "preRequestScript": "",
@@ -798,6 +834,131 @@
                 {
                   "key": "chapter_id",
                   "value": "2c4a127a-da60-4bb4-84b3-eb62966ba1ee",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            }
+          ],
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "headers": [],
+          "variables": [],
+          "description": null
+        },
+        {
+          "v": 11,
+          "id": "cmn78wx8q1lc6f21mgzbtqrkg",
+          "name": "review",
+          "folders": [],
+          "requests": [
+            {
+              "v": "17",
+              "name": "reject course",
+              "method": "POST",
+              "endpoint": "<<HOST>>/api/v1/admin/courses/<<courseId>>/reject",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [
+                {
+                  "key": "courseId",
+                  "value": "",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "approve course",
+              "method": "POST",
+              "endpoint": "<<HOST>>/api/v1/admin/courses/<<courseId>>/approve",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [
+                {
+                  "key": "courseId",
+                  "value": "",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "publish course (legacy, same meaning with approve course)",
+              "method": "POST",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>/publish",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "bearer",
+                "token": "<<access_token>>",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [
+                {
+                  "key": "id",
+                  "value": "731693cc-5585-4fb0-9036-6216917dd81d",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "update course status (legacy)",
+              "method": "PUT",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>/update-status",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "bearer",
+                "token": "<<access_token>>",
+                "authActive": true
+              },
+              "body": {
+                "contentType": "application/json",
+                "body": "{\n  \t\"status\": \"published\"\n}"
+              },
+              "requestVariables": [
+                {
+                  "key": "id",
+                  "value": "98416cd7-daeb-4fab-b124-b0825ec15a13",
                   "active": true
                 }
               ],
@@ -883,7 +1044,7 @@
           "v": "17",
           "name": "get course",
           "method": "GET",
-          "endpoint": "<<HOST>>/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225",
+          "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -910,7 +1071,7 @@
           "v": "17",
           "name": "get course by slug",
           "method": "GET",
-          "endpoint": "<<HOST>>/api/v1/courses/slug/go-backend-development",
+          "endpoint": "<<HOST>>/api/v1/courses/slug/<<slug>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -954,7 +1115,7 @@
                 "key": "data",
                 "active": true,
                 "isFile": false,
-                "value": "{    \"title\": \"Khóa học Golang promax 4\",    \"description\": \"Khóa học golang từ A-Z 4\",    \"price\": 30.72,    \"category_id\": \"cae98cba-1e03-4ddd-81f9-a829e0d629b9\"}"
+                "value": "{    \"title\": \"Khóa học Golang promax \",    \"description\": \"Khóa học golang từ A-Z\",    \"price\": 50.22,    \"category_id\": \"926ac525-06bf-4900-9ba5-2c392e4418d1\"}"
               },
               {
                 "key": "image",
@@ -972,7 +1133,7 @@
           "v": "17",
           "name": "update course",
           "method": "PUT",
-          "endpoint": "<<HOST>>/api/v1/courses/adc3c45c-41d6-4cd7-abac-f1e9b1cece72",
+          "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -1013,7 +1174,7 @@
           "v": "17",
           "name": "delete course",
           "method": "DELETE",
-          "endpoint": "<<HOST>>/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225",
+          "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -1039,26 +1200,52 @@
         },
         {
           "v": "17",
-          "name": "update course status",
-          "method": "PUT",
-          "endpoint": "<<HOST>>/api/v1/courses/<<id>>/update-status",
+          "name": "submit course to admin",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/courses/<<courseId>>/submit",
           "params": [],
           "headers": [],
           "preRequestScript": "",
           "testScript": "",
           "auth": {
-            "authType": "bearer",
-            "token": "<<access_token>>",
+            "authType": "inherit",
             "authActive": true
           },
           "body": {
-            "contentType": "application/json",
-            "body": "{\n  \t\"status\": \"published\"\n}"
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "courseId",
+              "value": "",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "publish course",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/courses/<<id>>/publish",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
           },
           "requestVariables": [
             {
               "key": "id",
-              "value": "98416cd7-daeb-4fab-b124-b0825ec15a13",
+              "value": "5fd33b50-c28b-44eb-941a-77954ec8ea20",
               "active": true
             }
           ],
@@ -1171,7 +1358,7 @@
     {
       "v": 11,
       "id": "cmmvu0qmo3lnvf21mqrr6ekhu",
-      "name": "subcription",
+      "name": "plan",
       "folders": [],
       "requests": [
         {
@@ -1179,7 +1366,38 @@
           "name": "get plans",
           "method": "GET",
           "endpoint": "<<HOST>>/api/v1/subscription-plans",
-          "params": [],
+          "params": [
+            {
+              "key": "limit",
+              "value": "10",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortBy",
+              "value": "created_at",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortOrder",
+              "value": "asc",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "is_active",
+              "value": "true",
+              "active": true,
+              "description": ""
+            }
+          ],
           "headers": [],
           "preRequestScript": "",
           "testScript": "",
@@ -1188,8 +1406,8 @@
             "authActive": true
           },
           "body": {
-            "contentType": null,
-            "body": null
+            "contentType": "text/plain",
+            "body": ""
           },
           "requestVariables": [],
           "responses": {},
@@ -1197,30 +1415,9 @@
         },
         {
           "v": "17",
-          "name": "create plan",
-          "method": "POST",
-          "endpoint": "<<HOST>>/api/v1/admin/plans",
-          "params": [],
-          "headers": [],
-          "preRequestScript": "",
-          "testScript": "",
-          "auth": {
-            "authType": "inherit",
-            "authActive": true
-          },
-          "body": {
-            "contentType": "application/json",
-            "body": "{\n  \"access_features\": [\n    \"New feature 1\",\n    \"New feature 2\",\n  ],\n  \"description\": \"string\",\n  \"is_active\": true,\n  \"is_default\": false,\n  \"name\": \"An new Plan\",\n  \"price_monthly\": 2,\n  \"price_yearly\": 1\n}"
-          },
-          "requestVariables": [],
-          "responses": {},
-          "description": null
-        },
-        {
-          "v": "17",
-          "name": "get all plans",
+          "name": "get active plans",
           "method": "GET",
-          "endpoint": "<<HOST>>/api/v1/admin/plans?limit=10&offset=0&sortBy=created_at&sortOrder=desc",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/active",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -1241,7 +1438,7 @@
           "v": "17",
           "name": "get plan by ID",
           "method": "GET",
-          "endpoint": "<<HOST>>/api/v1/admin/plans/590f51fd-9d91-4f60-b282-814b14429d8c",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/<<id>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -1254,15 +1451,21 @@
             "contentType": "application/json",
             "body": "{\n  \"access_features\": [\n    \"string\"\n  ],\n  \"description\": \"string\",\n  \"is_active\": true,\n  \"is_default\": true,\n  \"name\": \"string\",\n  \"price_monthly\": 0,\n  \"price_yearly\": 0\n}"
           },
-          "requestVariables": [],
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "71ca2db3-752b-4e64-a1df-0baf0bbefb99",
+              "active": true
+            }
+          ],
           "responses": {},
           "description": null
         },
         {
           "v": "17",
-          "name": "update plans",
-          "method": "PUT",
-          "endpoint": "<<HOST>>/api/v1/admin/plans/590f51fd-9d91-4f60-b282-814b14429d8c",
+          "name": "create plan",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -1273,7 +1476,7 @@
           },
           "body": {
             "contentType": "application/json",
-            "body": "{\n  \"access_features\": [\n    \"New feature 1\",\n    \"New feature 2\",\n    \"new feature 3\"\n  ],\n  \"description\": \"string\",\n  \"is_active\": true,\n  \"is_default\": false,\n  \"name\": \"An new Plan updating\",\n  \"price_monthly\": 2,\n  \"price_yearly\": 1\n}"
+            "body": "{\n  \"name\": \"Premium Plan 8\",\n  \"description\": \"Premium features 8\",\n  \"billing_cycle\": \"monthly\",\n  \"price\": 10,\n  \"access_features\": [\n    \"Advanced analytics\",\n    \"Priority support\",\n    \"Custom integrations\",\n    \"Api access\"\n  ]\n}"
           },
           "requestVariables": [],
           "responses": {},
@@ -1281,9 +1484,36 @@
         },
         {
           "v": "17",
-          "name": "delete plan",
-          "method": "DELETE",
-          "endpoint": "<<HOST>>/api/v1/admin/plans/590f51fd-9d91-4f60-b282-814b14429d8c",
+          "name": "update plan",
+          "method": "PUT",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"name\": \"Premium Plan 7 updated\",\n  \"description\": \"Premium features 7 updated\",\n  \"access_features\": [\n    \"Advanced analytics 7 updated\",\n    \"Priority support 7 \",\n    \"Custom integrations 7\"\n  ],\n  \"billing_cycle\": \"yearly\",\n  \"price\": 250\n}"
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "6cb082ab-b5cc-4e42-bd2f-8e8067a2edef",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "activate plan",
+          "method": "PUT",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/<<id>>/activate",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -1296,7 +1526,67 @@
             "contentType": null,
             "body": null
           },
-          "requestVariables": [],
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "be46b63b-63e5-4ecb-9c9e-65ebe72112ed",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "deactivate plan",
+          "method": "PUT",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/<<id>>/deactivate",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "be46b63b-63e5-4ecb-9c9e-65ebe72112ed",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "delete plan",
+          "method": "DELETE",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "be46b63b-63e5-4ecb-9c9e-65ebe72112ed",
+              "active": true
+            }
+          ],
           "responses": {},
           "description": null
         }
@@ -1431,7 +1721,7 @@
           },
           "body": {
             "contentType": "application/json",
-            "body": "{\n  \"content\": \"A long of content for development\",\n  \"image_url\": \"asdasads\",\n  \"title\": \"An super long length title for development\",\n  \"category_id\": \"8abfc935-50ed-4079-bb83-7d6588ca33eb\",\n  \"tags\": [\"adada\",\"Adwwdw\", \"sjaskda\"]\n}"
+            "body": "{\n    \"title\": \"Deploying Golang Applications with Docker and CI/CD\",\n    \"content\": \"Learn how to containerize Golang applications, optimize Dockerfiles, build production images, and set up CI/CD pipelines for automated deployment.\",\n    \"image_url\": \"https://placehold.co/600x400?text=docker-ci-cd\",\n    \"category_id\": \"c77156fe-ac90-403e-afd8-ecbc4252a9cd\",\n    \"tags\": [\"docker\", \"ci-cd\", \"devops\", \"golang\"],\n    \"status\": \"published\"\n}"
           },
           "requestVariables": [],
           "responses": {},
@@ -1709,12 +1999,12 @@
             {
               "key": "code",
               "value": "ABC",
-              "active": true,
+              "active": false,
               "description": ""
             },
             {
               "key": "limit",
-              "value": "5",
+              "value": "2",
               "active": true,
               "description": ""
             },
@@ -1815,43 +2105,9 @@
           },
           "body": {
             "contentType": "application/json",
-            "body": "{\n  \"code\": \"ABC125\",\n  \"discount_type\": \"percent\",\n  \"discount_value\": 30,\n  \"max_redemptions\": 100,\n  \"expires_at\": null\n}\n"
+            "body": "{\n  \"code\": \"ABCBC1\",\n  \"currency\": \"usd\",\n  \"discount_type\": \"percent\",\n  \"discount_value\": 40,\n  \"max_redemptions\": 200,\n  \"expires_at\": \"2026-12-31T23:59:59Z\"\n}"
           },
           "requestVariables": [],
-          "responses": {},
-          "description": null
-        },
-        {
-          "v": "17",
-          "name": "update coupon",
-          "method": "PUT",
-          "endpoint": "<<HOST>>/api/v1/coupons/<<id>>",
-          "params": [],
-          "headers": [
-            {
-              "key": "Content-Type",
-              "value": "",
-              "active": true,
-              "description": ""
-            }
-          ],
-          "preRequestScript": "",
-          "testScript": "",
-          "auth": {
-            "authType": "inherit",
-            "authActive": true
-          },
-          "body": {
-            "contentType": "application/json",
-            "body": "{\n  \"discount_type\": \"percent\",\n  \"discount_value\": 20,\n\n}\n"
-          },
-          "requestVariables": [
-            {
-              "key": "id",
-              "value": "4984877b-06f2-4a5b-8ea8-932084f74363",
-              "active": true
-            }
-          ],
           "responses": {},
           "description": null
         },
@@ -2026,7 +2282,7 @@
           "requestVariables": [
             {
               "key": "course_id",
-              "value": "98416cd7-daeb-4fab-b124-b0825ec15a13",
+              "value": "731693cc-5585-4fb0-9036-6216917dd81d",
               "active": true
             }
           ],
@@ -2131,12 +2387,39 @@
           },
           "body": {
             "contentType": "application/json",
-            "body": "{\n  \t\"coupon_code\": \"ABC126\"\n}"
+            "body": "{\n  \t\"coupon_code\": \"ABCBC1\"\n}"
           },
           "requestVariables": [
             {
               "key": "id",
-              "value": "98416cd7-daeb-4fab-b124-b0825ec15a13",
+              "value": "5fd33b50-c28b-44eb-941a-77954ec8ea20",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "check payment status",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/course-purchase/<<session_id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "session_id",
+              "value": "cs_test_a1UVLm6YIkO1YWZeR1oY7iKe7vcKMhK0KBskXfOEYKzriRP3EKGXXLdL3H",
               "active": true
             }
           ],
@@ -2194,7 +2477,7 @@
           },
           "body": {
             "contentType": "application/json",
-            "body": "{\n    \"plan_id\": \"f93ba36f-2320-455e-9c30-acf3a2694e6b\"\n}"
+            "body": "{\n    \"plan_id\": \"be46b63b-63e5-4ecb-9c9e-65ebe72112ed\"\n}"
           },
           "requestVariables": [],
           "responses": {},
