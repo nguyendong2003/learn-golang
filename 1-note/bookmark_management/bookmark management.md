@@ -566,3 +566,34 @@ docker compose down
     + Khi đặt REDIS_PASSWORD thì khi thao tác terminal redis phải đăng nhập trước:
         docker exec -it redis redis-cli
         auth 123456789
+
+### 16. Lecture 4
+- Muốn xem thì vào browser gõ:
+    + Frontend: http://localhost/
+    + Swgger: http://localhost/api/bookmark_service/swagger/index.html
+
+- Login Dockerhub và đẩy image lên dockerhub
+    + Tạo tài khoản và tạo personal access token trên trang dockerhub
+    + Run
+        ```
+        docker login -u dongcoi14122003
+        ```
+        Sau đó dán token đó vào -> enter
+    + Vào project sau đó build image:
+        ```
+        docker build -t dongcoi14122003/bookmark_service:dev .
+        docker push donggcoi14122003/bookmark_service:dev
+        ```
+- Login vào VPS và setup trên VPS
+    ```
+    ssh root@103.118.29.20
+    apt install docker.io
+    apt install docker-compose
+    apt install git
+    git clone <địa chỉ repo project deployment>
+    make up
+    ```
+
+    
+
+    
