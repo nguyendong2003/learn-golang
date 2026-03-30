@@ -167,3 +167,17 @@ hiện tại dự án này đang cần làm thêm tính năng chia tiền thu đ
 
 ngoài ra cũng cần làm chức năng thống kê tiền thu được, tiền của nền tảng, tiền của giảng viên theo tháng, quý, năm và xem thử tăng giảm bao nhiêu so với tháng, quý, năm trước.
 Hãy đọc toàn bộ project của tôi hãy đề xuất cho tôi phải làm thế nào, viết api gì, sửa database như thế nào để làm toàn bộ chức năng đó
+
+### Claude Code
+1. Command
+```
+/init
+/compact
+/clear
+/resume
+/btw
+/cost
+/model
+/mcp
+```
+https://ai-first.anhhh.workers.dev/skill_proposal/presales-skill-guideline
