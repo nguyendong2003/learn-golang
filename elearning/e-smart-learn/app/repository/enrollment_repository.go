@@ -1,0 +1,151 @@
+package repository
+
+import (
+	"context"
+	"time"
+
+	"elearning-api/consts"
+	"elearning-api/model"
+
+	"github.com/google/uuid"
+)
+
+type EnrollmentRepository interface {
+	Repository[model.Enrollment]
+	AddLearnCourse(ctx context.Context, userID uuid.UUID, courseID uuid.UUID, lessonID uuid.UUID) (*model.Enrollment, error)
+	CheckEnrollment(ctx context.Context, userId, courseId uuid.UUID) (bool, error)
+	ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*model.Enrollment, int64, error)
+	GetCourseCompletionTotals(ctx context.Context) (int64, int64, error)
+	EnrollIfNotExists(ctx context.Context, userID, courseID uuid.UUID) (*model.Enrollment, error)
+	MarkCourseCompleted(ctx context.Context, userID, courseID uuid.UUID) error
+	GetCourseEnrollmentCount(ctx context.Context, userID uuid.UUID) (int64, int64, error)
+}
+
+type enrollmentRepository struct {
+	*repository[model.Enrollment]
+}
+
+func NewEnrollmentRepository(db DbRepository) EnrollmentRepository {
+	return &enrollmentRepository{
+		repository: NewBaseRepository[model.Enrollment](db),
+	}
+}
+
+func (r *enrollmentRepository) AddLearnCourse(ctx context.Context, userID uuid.UUID, courseID uuid.UUID, lessonID uuid.UUID) (*model.Enrollment, error) {
+	enrollment, err := r.Find(ctx, "user_id=? AND course_id=?", nil, userID, courseID)
+	if err != nil {
+		return nil, err
+	}
+	enrollment.LearnedLessonIds = append(enrollment.LearnedLessonIds, lessonID)
+	if err := r.db.GetDB().WithContext(ctx).Save(enrollment).Error; err != nil {
+		return nil, err
+	}
+	return enrollment, nil
+}
+
+func (r *enrollmentRepository) CheckEnrollment(ctx context.Context, userId, courseId uuid.UUID) (bool, error) {
+	var count int64
+	if err := r.baseQuery(ctx).
+		Where("user_id = ? AND course_id = ?", userId, courseId).
+		Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *enrollmentRepository) ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*model.Enrollment, int64, error) {
+	preloads := []Preload{
+		Course,
+		PreloadPath(Course, Chapters, Lessons),
+	}
+	return r.List(ctx, limit, offset, "enrolled_at desc", "user_id = ?", preloads, userID)
+}
+
+func (r *enrollmentRepository) GetCourseCompletionTotals(ctx context.Context) (int64, int64, error) {
+	type completionTotals struct {
+		TotalCompletedLessons int64 `gorm:"column:total_completed_lessons"`
+		TotalLessons          int64 `gorm:"column:total_lessons"`
+	}
+
+	var totals completionTotals
+	query := `
+		WITH lessons_per_course AS (
+			SELECT
+				c.id AS course_id,
+				COUNT(l.id) AS total_lessons
+			FROM courses c
+			LEFT JOIN chapters ch ON ch.course_id = c.id AND ch.deleted_at IS NULL
+			LEFT JOIN lessons l ON l.chapter_id = ch.id AND l.deleted_at IS NULL
+			WHERE c.deleted_at IS NULL
+			GROUP BY c.id
+		)
+		SELECT
+			COALESCE(SUM(LEAST(COALESCE(array_length(e.learned_lesson_ids, 1), 0), COALESCE(lpc.total_lessons, 0))), 0) AS total_completed_lessons,
+			COALESCE(SUM(COALESCE(lpc.total_lessons, 0)), 0) AS total_lessons
+		FROM enrollments e
+		LEFT JOIN lessons_per_course lpc ON lpc.course_id = e.course_id
+		WHERE e.deleted_at IS NULL
+	`
+
+	if err := r.db.GetDB().WithContext(ctx).Raw(query).Scan(&totals).Error; err != nil {
+		return 0, 0, err
+	}
+
+	return totals.TotalCompletedLessons, totals.TotalLessons, nil
+}
+
+func (r *enrollmentRepository) GetCourseEnrollmentCount(ctx context.Context, userID uuid.UUID) (int64, int64, error) {
+	type enrollmentCount struct {
+		TotalEnrollments int64 `gorm:"column:total_enrollments"`
+		TotalCompletions int64 `gorm:"column:total_completions"`
+	}
+
+	var count enrollmentCount
+	query := `
+		SELECT
+			COUNT(*) AS total_enrollments,
+			COUNT(CASE WHEN is_completed THEN 1 END) AS total_completions
+		FROM enrollments
+		WHERE user_id = ? AND deleted_at IS NULL
+	`
+
+	if err := r.db.GetDB().WithContext(ctx).Raw(query, userID).Scan(&count).Error; err != nil {
+		return 0, 0, err
+	}
+
+	return count.TotalEnrollments, count.TotalCompletions, nil
+}
+
+func (r *enrollmentRepository) EnrollIfNotExists(ctx context.Context, userID, courseID uuid.UUID) (*model.Enrollment, error) {
+	enrollment, err := r.Find(ctx, "user_id = ? AND course_id = ?", nil, userID, courseID)
+	if err != nil {
+		return nil, err
+	}
+	if enrollment != nil {
+		return enrollment, nil
+	}
+
+	enrollment = &model.Enrollment{
+		UserID:     userID,
+		CourseID:   courseID,
+		EnrolledAt: time.Now().UTC(),
+		Type:       string(consts.EnrollmentTypeCoursePurchase),
+	}
+
+	if err := r.db.GetDB().WithContext(ctx).Create(enrollment).Error; err != nil {
+		return nil, err
+	}
+
+	return enrollment, nil
+}
+
+func (r *enrollmentRepository) MarkCourseCompleted(ctx context.Context, userID, courseID uuid.UUID) error {
+	now := time.Now().UTC()
+	return r.db.GetDB().WithContext(ctx).
+		Model(&model.Enrollment{}).
+		Where("user_id = ? AND course_id = ?", userID, courseID).
+		Updates(map[string]any{
+			"is_completed": true,
+			"completed_at": &now,
+		}).Error
+}
