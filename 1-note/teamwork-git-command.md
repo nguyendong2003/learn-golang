@@ -120,7 +120,6 @@ git pull --rebase origin main
 ```
 Sau đó
 ```
-git reset --mixed HEAD~1
 git push --force
 ```
 
