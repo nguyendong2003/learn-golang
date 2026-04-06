@@ -175,6 +175,21 @@ func (s *ApiServer) OptionalAuthHandler() gin.HandlerFunc {
 		}
 
 		c.Set(consts.ContextUserID, claims.UserID)
+
+		// attempt to load user's role and permissions for convenience
+		// do not abort the request if loading fails — this middleware is optional
+		if userID, getErr := util.GetRequestUserID(c); getErr == nil {
+			if user, uErr := s.userService.GetUserWithRole(c.Request.Context(), userID); uErr == nil && user != nil {
+				c.Set(consts.ContextUserRole, user.Role.Name)
+
+				var permissions []string
+				for _, p := range user.Role.Permissions {
+					permissions = append(permissions, p.Code)
+				}
+				c.Set(consts.ContextUserPermissions, permissions)
+			}
+		}
+
 		c.Next()
 	}
 }

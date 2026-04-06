@@ -12,6 +12,8 @@ import (
 type CoursePurchaseRepository interface {
 	Repository[model.CoursePurchase]
 	GetByCheckoutSessionID(ctx context.Context, checkoutSessionID string, preloads []Preload) (*model.CoursePurchase, error)
+	ListPendingByCheckoutSessionID(ctx context.Context, preloads []Preload) ([]*model.CoursePurchase, error)
+	ListByUserID(ctx context.Context, userID uuid.UUID, preloads []Preload) ([]*model.CoursePurchase, error)
 	ExistsPaidByUserAndCourse(ctx context.Context, userID, courseID uuid.UUID) (bool, error)
 	ListPaidByUserID(ctx context.Context, userID uuid.UUID, preloads []Preload) ([]*model.CoursePurchase, error)
 }
@@ -28,6 +30,41 @@ func NewCoursePurchaseRepository(db DbRepository) CoursePurchaseRepository {
 
 func (r *coursePurchaseRepository) GetByCheckoutSessionID(ctx context.Context, checkoutSessionID string, preloads []Preload) (*model.CoursePurchase, error) {
 	return r.Find(ctx, "stripe_checkout_session_id = ?", preloads, checkoutSessionID)
+}
+
+func (r *coursePurchaseRepository) ListPendingByCheckoutSessionID(ctx context.Context, preloads []Preload) ([]*model.CoursePurchase, error) {
+	db := r.baseQuery(ctx).
+		Where("stripe_checkout_session_id IS NOT NULL AND stripe_checkout_session_id <> ''").
+		Where("status = ?", consts.CoursePurchaseStatusPending).
+		Order("created_at ASC")
+
+	if len(preloads) > 0 {
+		db = applyPreloads(db, preloads)
+	}
+
+	var purchases []*model.CoursePurchase
+	if err := db.Find(&purchases).Error; err != nil {
+		return nil, err
+	}
+
+	return purchases, nil
+}
+
+func (r *coursePurchaseRepository) ListByUserID(ctx context.Context, userID uuid.UUID, preloads []Preload) ([]*model.CoursePurchase, error) {
+	db := r.baseQuery(ctx).
+		Where("user_id = ?", userID).
+		Order("created_at DESC")
+
+	if len(preloads) > 0 {
+		db = applyPreloads(db, preloads)
+	}
+
+	var purchases []*model.CoursePurchase
+	if err := db.Find(&purchases).Error; err != nil {
+		return nil, err
+	}
+
+	return purchases, nil
 }
 
 func (r *coursePurchaseRepository) ExistsPaidByUserAndCourse(ctx context.Context, userID, courseID uuid.UUID) (bool, error) {

@@ -21,6 +21,7 @@ import (
 	billingportalsession "github.com/stripe/stripe-go/v83/billingportal/session"
 	checkoutsession "github.com/stripe/stripe-go/v83/checkout/session"
 	"github.com/stripe/stripe-go/v83/customer"
+	stripeinvoice "github.com/stripe/stripe-go/v83/invoice"
 	"github.com/stripe/stripe-go/v83/paymentintent"
 	"github.com/stripe/stripe-go/v83/price"
 	"github.com/stripe/stripe-go/v83/product"
@@ -33,6 +34,8 @@ import (
 type SubscriptionService interface {
 	GetTransactionsHistory(ctx context.Context, userID uuid.UUID) (*dto.ListTransactionsHistoryResponse, error)
 	CreateSubscriptionCheckoutSession(ctx context.Context, userID uuid.UUID, request dto.CreateSubscriptionCheckoutSessionRequest) (*dto.CheckoutSessionResponse, error)
+	SyncPendingStripeSubscriptions(ctx context.Context) error
+	SyncPendingStripeCoursePurchases(ctx context.Context) error
 	GetSubscribers(ctx context.Context, limit int, offset int) ([]*dto.SubscriberResponse, int64, error)
 	CreateCourseCheckoutSession(ctx context.Context, userID, courseID uuid.UUID, request dto.CreateCoursePurchaseCheckoutSessionRequest) (*dto.CheckoutSessionResponse, error)
 
@@ -195,6 +198,7 @@ func (s *subscriptionService) CreateSubscriptionCheckoutSession(ctx context.Cont
 		SuccessURL: stripe.String(s.stripeConfig.SuccessURL),
 		CancelURL:  stripe.String(s.stripeConfig.CancelURL),
 		Customer:   stripe.String(customerID),
+		ExpiresAt:  stripe.Int64(time.Now().UTC().Add(time.Duration(s.stripeConfig.CheckoutSessionExpirationSeconds) * time.Second).Unix()),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
 				Price:    stripe.String(priceID),
@@ -218,6 +222,23 @@ func (s *subscriptionService) CreateSubscriptionCheckoutSession(ctx context.Cont
 	session, err := checkoutsession.New(params)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to create Stripe checkout session")
+	}
+
+	if _, err := s.subscriptionRepository.Create(ctx, &model.Subscription{
+		UserID:                  userID,
+		PlanID:                  plan.ID,
+		PlanName:                plan.Name,
+		PlanDescription:         plan.Description,
+		PlanPrice:               plan.Price,
+		PlanCurrency:            strings.ToLower(plan.Currency),
+		PlanStripePriceID:       plan.StripePriceID,
+		StripeCheckoutSessionID: session.ID,
+		StripeCustomerID:        customerID,
+		BillingCycle:            billingCycle,
+		Status:                  string(stripe.SubscriptionStatusIncomplete),
+		StartedAt:               time.Now().UTC(),
+	}); err != nil {
+		return nil, apperror.NewInternalServerError("Failed to create pending subscription")
 	}
 
 	return &dto.CheckoutSessionResponse{
@@ -290,6 +311,7 @@ func (s *subscriptionService) CreateCourseCheckoutSession(ctx context.Context, u
 		SuccessURL: stripe.String(s.stripeConfig.SuccessURL),
 		CancelURL:  stripe.String(s.stripeConfig.CancelURL),
 		Customer:   stripe.String(customerID),
+		ExpiresAt:  stripe.Int64(time.Now().UTC().Add(time.Duration(s.stripeConfig.CheckoutSessionExpirationSeconds) * time.Second).Unix()),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
 				Price:    stripe.String(course.StripePriceID),
@@ -424,6 +446,15 @@ func (s *subscriptionService) HandleStripeWebhook(ctx context.Context, payload [
 			return apperror.NewBadRequestError("Invalid checkout session payload")
 		}
 		return s.handleCheckoutSessionCompleted(ctx, &checkoutSession)
+	case "checkout.session.expired":
+		var checkoutSession stripe.CheckoutSession
+		if err := json.Unmarshal(event.Data.Raw, &checkoutSession); err != nil {
+			return apperror.NewBadRequestError("Invalid checkout session payload")
+		}
+		if checkoutSession.Mode == stripe.CheckoutSessionModePayment {
+			return s.handleCoursePurchaseCheckoutFailed(ctx, &checkoutSession)
+		}
+		return s.handleSubscriptionCheckoutExpired(ctx, checkoutSession.ID)
 	case "checkout.session.async_payment_succeeded":
 		var checkoutSession stripe.CheckoutSession
 		if err := json.Unmarshal(event.Data.Raw, &checkoutSession); err != nil {
@@ -441,7 +472,7 @@ func (s *subscriptionService) HandleStripeWebhook(ctx context.Context, payload [
 		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
 			return apperror.NewBadRequestError("Invalid subscription payload")
 		}
-		return s.syncSubscription(ctx, &sub)
+		return s.syncSubscription(ctx, "", &sub)
 	case "invoice.paid":
 		var inv stripe.Invoice
 		if err := json.Unmarshal(event.Data.Raw, &inv); err != nil {
@@ -460,9 +491,15 @@ func (s *subscriptionService) HandleStripeWebhook(ctx context.Context, payload [
 }
 
 func (s *subscriptionService) GetMySubscription(ctx context.Context, userID uuid.UUID) (*dto.MySubscriptionResponse, error) {
-	sub, err := s.subscriptionRepository.GetLatestByUserID(ctx, userID, []repository.Preload{repository.Plan})
+	sub, err := s.subscriptionRepository.GetActiveByUserID(ctx, userID, []repository.Preload{repository.Plan})
 	if err != nil {
-		return nil, apperror.NewInternalServerError("Failed to get subscription")
+		return nil, apperror.NewInternalServerError("Failed to get active subscription")
+	}
+	if sub == nil {
+		sub, err = s.subscriptionRepository.GetLatestByUserID(ctx, userID, []repository.Preload{repository.Plan})
+		if err != nil {
+			return nil, apperror.NewInternalServerError("Failed to get subscription")
+		}
 	}
 	if sub == nil {
 		return nil, apperror.NewNotFoundError("Subscription not found")
@@ -475,12 +512,6 @@ func (s *subscriptionService) CancelAtPeriodEnd(ctx context.Context, userID uuid
 	sub, err := s.subscriptionRepository.GetActiveByUserID(ctx, userID, []repository.Preload{repository.Plan})
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to get active subscription")
-	}
-	if sub == nil {
-		sub, err = s.subscriptionRepository.GetLatestByUserID(ctx, userID, []repository.Preload{repository.Plan})
-		if err != nil {
-			return nil, apperror.NewInternalServerError("Failed to get latest subscription")
-		}
 	}
 
 	if sub == nil || sub.StripeSubscriptionID == "" {
@@ -497,7 +528,7 @@ func (s *subscriptionService) CancelAtPeriodEnd(ctx context.Context, userID uuid
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to cancel subscription")
 	}
-	if err := s.syncSubscription(ctx, stripeSub); err != nil {
+	if err := s.syncSubscription(ctx, "", stripeSub); err != nil {
 		return nil, err
 	}
 
@@ -510,12 +541,15 @@ func (s *subscriptionService) CancelAtPeriodEnd(ctx context.Context, userID uuid
 }
 
 func (s *subscriptionService) Resume(ctx context.Context, userID uuid.UUID) (*dto.MySubscriptionResponse, error) {
-	sub, err := s.subscriptionRepository.GetLatestByUserID(ctx, userID, []repository.Preload{repository.Plan})
+	sub, err := s.subscriptionRepository.GetActiveByUserID(ctx, userID, []repository.Preload{repository.Plan})
 	if err != nil {
-		return nil, apperror.NewInternalServerError("Failed to get subscription")
+		return nil, apperror.NewInternalServerError("Failed to get active subscription")
 	}
 	if sub == nil || sub.StripeSubscriptionID == "" {
-		return nil, apperror.NewNotFoundError("Subscription not found")
+		return nil, apperror.NewNotFoundError("Active subscription not found")
+	}
+	if !sub.CancelAtPeriodEnd {
+		return nil, apperror.NewBadRequestError("Subscription is not scheduled to cancel")
 	}
 
 	params := &stripe.SubscriptionParams{
@@ -525,7 +559,7 @@ func (s *subscriptionService) Resume(ctx context.Context, userID uuid.UUID) (*dt
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to resume subscription")
 	}
-	if err := s.syncSubscription(ctx, stripeSub); err != nil {
+	if err := s.syncSubscription(ctx, "", stripeSub); err != nil {
 		return nil, err
 	}
 
@@ -570,6 +604,44 @@ func (s *subscriptionService) HasActiveSubscription(ctx context.Context, userID 
 		return false, apperror.NewInternalServerError("Failed to get active subscription")
 	}
 	return sub != nil, nil
+}
+
+func (s *subscriptionService) SyncPendingStripeSubscriptions(ctx context.Context) error {
+	subscriptions, err := s.subscriptionRepository.ListPendingByCheckoutSessionID(ctx, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to list subscriptions")
+	}
+
+	for _, sub := range subscriptions {
+		if sub == nil || strings.TrimSpace(sub.StripeCheckoutSessionID) == "" {
+			continue
+		}
+
+		if err := s.syncStripeCheckoutSession(ctx, sub.StripeCheckoutSessionID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *subscriptionService) SyncPendingStripeCoursePurchases(ctx context.Context) error {
+	purchases, err := s.coursePurchaseRepository.ListPendingByCheckoutSessionID(ctx, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to list pending purchases")
+	}
+
+	for _, purchase := range purchases {
+		if purchase == nil || strings.TrimSpace(purchase.StripeCheckoutSessionID) == "" {
+			continue
+		}
+
+		if err := s.syncCoursePurchaseCheckoutSession(ctx, purchase.StripeCheckoutSessionID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *subscriptionService) GetSubscribers(ctx context.Context, limit int, offset int) ([]*dto.SubscriberResponse, int64, error) {
@@ -652,7 +724,7 @@ func (s *subscriptionService) handleCheckoutSessionCompleted(ctx context.Context
 		return apperror.NewInternalServerError("Failed to fetch Stripe subscription")
 	}
 
-	return s.syncSubscription(ctx, stripeSub)
+	return s.syncSubscription(ctx, checkoutSession.ID, stripeSub)
 }
 
 func (s *subscriptionService) handleCoursePurchaseCheckoutCompleted(ctx context.Context, checkoutSession *stripe.CheckoutSession) error {
@@ -753,6 +825,10 @@ func (s *subscriptionService) handleCoursePurchaseCheckoutCompleted(ctx context.
 		}
 	}
 
+	if purchase.Status == string(consts.CoursePurchaseStatusPaid) && !wasPaid {
+		s.cancelOtherPendingCoursePurchases(ctx, userID, purchase.ID)
+	}
+
 	return nil
 }
 
@@ -815,7 +891,89 @@ func (s *subscriptionService) handleCoursePurchaseCheckoutFailed(ctx context.Con
 	return nil
 }
 
-func (s *subscriptionService) syncSubscription(ctx context.Context, stripeSub *stripe.Subscription) error {
+func (s *subscriptionService) syncStripeCheckoutSession(ctx context.Context, checkoutSessionID string) error {
+	checkoutSession, err := checkoutsession.Get(checkoutSessionID, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to fetch Stripe checkout session")
+	}
+	if checkoutSession == nil {
+		return nil
+	}
+
+	// Handle expired session
+	if checkoutSession.Status == stripe.CheckoutSessionStatusExpired {
+		return s.handleSubscriptionCheckoutExpired(ctx, checkoutSessionID)
+	}
+
+	if checkoutSession.Subscription == nil {
+		return nil
+	}
+
+	stripeSub, err := stripesubscription.Get(checkoutSession.Subscription.ID, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to fetch Stripe subscription")
+	}
+
+	return s.syncSubscription(ctx, checkoutSessionID, stripeSub)
+}
+
+func (s *subscriptionService) handleSubscriptionCheckoutExpired(ctx context.Context, checkoutSessionID string) error {
+	subscription, err := s.subscriptionRepository.GetByCheckoutSessionID(ctx, checkoutSessionID, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to get subscription")
+	}
+	if subscription == nil {
+		return nil
+	}
+
+	// Mark as expired if still incomplete
+	if subscription.Status == string(stripe.SubscriptionStatusIncomplete) {
+		updates := map[string]any{
+			"status": string(stripe.SubscriptionStatusIncompleteExpired),
+		}
+		_, _ = s.subscriptionRepository.Update(ctx, subscription.ID, updates)
+	}
+
+	return nil
+}
+
+func (s *subscriptionService) syncCoursePurchaseCheckoutSession(ctx context.Context, checkoutSessionID string) error {
+	checkoutSession, err := checkoutsession.Get(checkoutSessionID, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to fetch Stripe checkout session")
+	}
+	if checkoutSession == nil || checkoutSession.Mode != stripe.CheckoutSessionModePayment {
+		return nil
+	}
+
+	if checkoutSession.PaymentStatus == stripe.CheckoutSessionPaymentStatusPaid {
+		return s.handleCoursePurchaseCheckoutCompleted(ctx, checkoutSession)
+	}
+
+	if checkoutSession.Status == stripe.CheckoutSessionStatusExpired {
+		return s.handleCoursePurchaseCheckoutFailed(ctx, checkoutSession)
+	}
+
+	return nil
+}
+
+func (s *subscriptionService) syncLatestInvoice(ctx context.Context, stripeSub *stripe.Subscription) error {
+	if stripeSub == nil || stripeSub.LatestInvoice == nil || stripeSub.LatestInvoice.ID == "" {
+		return nil
+	}
+
+	latestInvoice, err := stripeinvoice.Get(stripeSub.LatestInvoice.ID, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to fetch Stripe invoice")
+	}
+	if latestInvoice == nil || string(latestInvoice.Status) != "paid" {
+		return nil
+	}
+
+	return s.syncPayment(ctx, latestInvoice, string(consts.PaymentStatusSucceeded))
+}
+
+func (s *subscriptionService) syncSubscription(ctx context.Context, checkoutSessionID string, stripeSub *stripe.Subscription) error {
 	if stripeSub == nil {
 		return nil
 	}
@@ -824,8 +982,51 @@ func (s *subscriptionService) syncSubscription(ctx context.Context, stripeSub *s
 	if err != nil {
 		return apperror.NewInternalServerError("Failed to load subscription")
 	}
+	if existing == nil && strings.TrimSpace(checkoutSessionID) != "" {
+		existing, err = s.subscriptionRepository.GetByCheckoutSessionID(ctx, checkoutSessionID, nil)
+		if err != nil {
+			return apperror.NewInternalServerError("Failed to load pending subscription")
+		}
+	}
 
 	userID, planID, billingCycle := s.extractSubscriptionMetadata(ctx, stripeSub)
+	customerID := ""
+	if stripeSub.Customer != nil {
+		customerID = stripeSub.Customer.ID
+	}
+
+	if existing == nil && userID != uuid.Nil {
+		// Stripe can send customer.subscription.* before checkout.session.completed.
+		// Reuse the latest local pending row instead of creating a duplicate subscription.
+		userSubs, listErr := s.subscriptionRepository.ListByUserID(ctx, userID, nil)
+		if listErr != nil {
+			return apperror.NewInternalServerError("Failed to list user subscriptions")
+		}
+		for _, cand := range userSubs {
+			if cand == nil {
+				continue
+			}
+			if strings.TrimSpace(cand.StripeSubscriptionID) != "" {
+				continue
+			}
+			if strings.TrimSpace(cand.Status) != string(stripe.SubscriptionStatusIncomplete) {
+				continue
+			}
+			if planID != uuid.Nil && cand.PlanID != planID {
+				continue
+			}
+			if billingCycle != "" && cand.BillingCycle != billingCycle {
+				continue
+			}
+			if customerID != "" && strings.TrimSpace(cand.StripeCustomerID) != "" && cand.StripeCustomerID != customerID {
+				continue
+			}
+
+			existing = cand
+			break
+		}
+	}
+
 	if existing != nil {
 		if userID == uuid.Nil {
 			userID = existing.UserID
@@ -880,28 +1081,24 @@ func (s *subscriptionService) syncSubscription(ctx context.Context, stripeSub *s
 		currentPeriodEnd = stripeTimestamp(stripeSub.Items.Data[0].CurrentPeriodEnd)
 	}
 
-	customerID := ""
-	if stripeSub.Customer != nil {
-		customerID = stripeSub.Customer.ID
-	}
-
 	if existing == nil {
 		newSub := &model.Subscription{
-			UserID:               userID,
-			PlanID:               planID,
-			PlanName:             planName,
-			PlanDescription:      planDescription,
-			PlanPrice:            planPrice,
-			PlanCurrency:         planCurrency,
-			PlanStripePriceID:    planStripePriceID,
-			StripeSubscriptionID: stripeSub.ID,
-			StripeCustomerID:     customerID,
-			BillingCycle:         billingCycle,
-			Status:               status,
-			CurrentPeriodStart:   currentPeriodStart,
-			CurrentPeriodEnd:     currentPeriodEnd,
-			CancelAtPeriodEnd:    stripeSub.CancelAtPeriodEnd,
-			StartedAt:            *startedAt,
+			UserID:                  userID,
+			PlanID:                  planID,
+			PlanName:                planName,
+			PlanDescription:         planDescription,
+			PlanPrice:               planPrice,
+			PlanCurrency:            planCurrency,
+			PlanStripePriceID:       planStripePriceID,
+			StripeCheckoutSessionID: checkoutSessionID,
+			StripeSubscriptionID:    stripeSub.ID,
+			StripeCustomerID:        customerID,
+			BillingCycle:            billingCycle,
+			Status:                  status,
+			CurrentPeriodStart:      currentPeriodStart,
+			CurrentPeriodEnd:        currentPeriodEnd,
+			CancelAtPeriodEnd:       stripeSub.CancelAtPeriodEnd,
+			StartedAt:               *startedAt,
 		}
 		if status == string(stripe.SubscriptionStatusCanceled) && stripeSub.CanceledAt > 0 {
 			canceledAt := *stripeTimestamp(stripeSub.CanceledAt)
@@ -913,15 +1110,22 @@ func (s *subscriptionService) syncSubscription(ctx context.Context, stripeSub *s
 		if err != nil {
 			return apperror.NewInternalServerError("Failed to create subscription")
 		}
+		if status == string(stripe.SubscriptionStatusActive) || status == string(stripe.SubscriptionStatusTrialing) {
+			s.cancelOtherPendingSubscriptions(ctx, userID, newSub.ID)
+		}
 		return nil
 	}
 
 	updates := map[string]any{
-		"status":               status,
-		"current_period_start": currentPeriodStart,
-		"current_period_end":   currentPeriodEnd,
-		"cancel_at_period_end": stripeSub.CancelAtPeriodEnd,
-		"stripe_customer_id":   customerID,
+		"status":                 status,
+		"current_period_start":   currentPeriodStart,
+		"current_period_end":     currentPeriodEnd,
+		"cancel_at_period_end":   stripeSub.CancelAtPeriodEnd,
+		"stripe_customer_id":     customerID,
+		"stripe_subscription_id": stripeSub.ID,
+	}
+	if strings.TrimSpace(checkoutSessionID) != "" {
+		updates["stripe_checkout_session_id"] = checkoutSessionID
 	}
 	if billingCycle != "" {
 		updates["billing_cycle"] = billingCycle
@@ -954,15 +1158,29 @@ func (s *subscriptionService) syncSubscription(ctx context.Context, stripeSub *s
 		return apperror.NewInternalServerError("Failed to update subscription")
 	}
 
+	if status == string(stripe.SubscriptionStatusActive) || status == string(stripe.SubscriptionStatusTrialing) {
+		s.cancelOtherPendingSubscriptions(ctx, userID, existing.ID)
+	}
+
+	if err := s.syncLatestInvoice(ctx, stripeSub); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *subscriptionService) syncPayment(ctx context.Context, inv *stripe.Invoice, status string) error {
-	if inv == nil || inv.Parent == nil || inv.Parent.SubscriptionDetails == nil || inv.Parent.SubscriptionDetails.Subscription == nil {
+	if inv == nil {
 		return nil
 	}
 
-	stripeSubscriptionID := inv.Parent.SubscriptionDetails.Subscription.ID
+	stripeSubscriptionID := ""
+	if inv.Parent != nil && inv.Parent.SubscriptionDetails != nil && inv.Parent.SubscriptionDetails.Subscription != nil {
+		stripeSubscriptionID = inv.Parent.SubscriptionDetails.Subscription.ID
+	}
+	if stripeSubscriptionID == "" {
+		return nil
+	}
 	sub, err := s.subscriptionRepository.GetByStripeSubscriptionID(ctx, stripeSubscriptionID, nil)
 	if err != nil {
 		return apperror.NewInternalServerError("Failed to get local subscription")
@@ -1021,6 +1239,7 @@ func (s *subscriptionService) syncPayment(ctx context.Context, inv *stripe.Invoi
 		sub.Status = string(stripe.SubscriptionStatusActive)
 		sub.CurrentPeriodStart = stripeTimestamp(inv.PeriodStart)
 		sub.CurrentPeriodEnd = stripeTimestamp(inv.PeriodEnd)
+		s.cancelOtherPendingSubscriptions(ctx, sub.UserID, sub.ID)
 	case string(consts.PaymentStatusFailed):
 		sub.Status = string(stripe.SubscriptionStatusPastDue)
 	}
@@ -1030,6 +1249,124 @@ func (s *subscriptionService) syncPayment(ctx context.Context, inv *stripe.Invoi
 	}
 
 	return nil
+}
+
+func (s *subscriptionService) cancelOtherPendingCoursePurchases(ctx context.Context, userID uuid.UUID, keepPurchaseID uuid.UUID) {
+	if userID == uuid.Nil || keepPurchaseID == uuid.Nil {
+		return
+	}
+
+	// Get courses from the successful purchase
+	details, err := s.coursePurchaseDetailRepository.ListByPurchaseID(ctx, keepPurchaseID, nil)
+	if err != nil {
+		return
+	}
+
+	successCourseIDs := make(map[uuid.UUID]bool)
+	for _, detail := range details {
+		if detail != nil {
+			successCourseIDs[detail.CourseID] = true
+		}
+	}
+	if len(successCourseIDs) == 0 {
+		return
+	}
+
+	// Get all purchases of the user with details
+	purchases, err := s.coursePurchaseRepository.ListByUserID(ctx, userID, []repository.Preload{repository.Details})
+	if err != nil {
+		return
+	}
+
+	// Cancel only those with overlapping course IDs
+	for _, purchase := range purchases {
+		if purchase == nil || purchase.ID == keepPurchaseID {
+			continue
+		}
+		if purchase.Status != string(consts.CoursePurchaseStatusPending) {
+			continue
+		}
+
+		// Check if this purchase has any of the same courses
+		hasOverlap := false
+		if purchase.Details != nil {
+			for _, detail := range purchase.Details {
+				if detail != nil && successCourseIDs[detail.CourseID] {
+					hasOverlap = true
+					break
+				}
+			}
+		}
+		if !hasOverlap {
+			continue
+		}
+
+		// Cancel this purchase
+		updates := map[string]any{
+			"status": string(consts.CoursePurchaseStatusFailed),
+		}
+		_, _ = s.coursePurchaseRepository.Update(ctx, purchase.ID, updates)
+
+		checkoutSessionID := strings.TrimSpace(purchase.StripeCheckoutSessionID)
+		if checkoutSessionID == "" {
+			continue
+		}
+
+		_, _ = checkoutsession.Expire(checkoutSessionID, nil)
+	}
+}
+
+func (s *subscriptionService) cancelOtherPendingSubscriptions(ctx context.Context, userID uuid.UUID, keepSubscriptionID uuid.UUID) {
+	if userID == uuid.Nil {
+		return
+	}
+
+	subscriptions, err := s.subscriptionRepository.ListByUserID(ctx, userID, nil)
+	if err != nil {
+		return
+	}
+
+	for _, sub := range subscriptions {
+		if sub == nil || sub.ID == keepSubscriptionID {
+			continue
+		}
+		if !isPendingSubscriptionStatus(sub.Status) {
+			continue
+		}
+
+		updates := map[string]any{
+			"status":               string(stripe.SubscriptionStatusCanceled),
+			"canceled_at":          time.Now().UTC(),
+			"ended_at":             time.Now().UTC(),
+			"cancel_at_period_end": false,
+		}
+		_, _ = s.subscriptionRepository.Update(ctx, sub.ID, updates)
+
+		stripeSubscriptionID := strings.TrimSpace(sub.StripeSubscriptionID)
+		if stripeSubscriptionID != "" {
+			_, _ = stripesubscription.Cancel(stripeSubscriptionID, nil)
+			continue
+		}
+
+		checkoutSessionID := strings.TrimSpace(sub.StripeCheckoutSessionID)
+		if checkoutSessionID == "" {
+			continue
+		}
+
+		_, _ = checkoutsession.Expire(checkoutSessionID, nil)
+	}
+}
+
+func isPendingSubscriptionStatus(status string) bool {
+	switch status {
+	case string(stripe.SubscriptionStatusIncomplete),
+		string(stripe.SubscriptionStatusPastDue),
+		string(stripe.SubscriptionStatusIncompleteExpired),
+		string(stripe.SubscriptionStatusUnpaid):
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *subscriptionService) extractSubscriptionMetadata(ctx context.Context, sub *stripe.Subscription) (uuid.UUID, uuid.UUID, string) {

@@ -485,12 +485,16 @@ definitions:
         type: string
       is_active:
         type: boolean
+      is_recommend:
+        type: boolean
       name:
         maxLength: 100
         minLength: 2
         type: string
       price:
         type: number
+      tag:
+        type: string
     required:
     - billing_cycle
     - name
@@ -1016,12 +1020,18 @@ definitions:
         type: string
       description:
         type: string
+      is_recommend:
+        type: boolean
       name:
         maxLength: 100
         minLength: 2
         type: string
       price:
         type: number
+      tag:
+        type: string
+    required:
+    - price
     type: object
   dto.UpdateReadBlogHistoryRequest:
     properties:
@@ -1590,6 +1600,348 @@ paths:
       summary: Reject instructor application
       tags:
       - users
+  /api/v1/admin/instructor-profiles/statistics/teachers/growth:
+    get:
+      consumes:
+      - application/json
+      description: Get current quarter teacher growth statistics, including verified
+        teachers and top category share.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.TeacherGrowthStatisticsResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get teacher growth statistics
+      tags:
+      - statistics
+  /api/v1/admin/revenue/overview:
+    get:
+      consumes:
+      - application/json
+      description: Get current month admin revenue and growth versus previous month
+        for dashboard card.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RevenueOverviewResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get admin revenue overview card
+      tags:
+      - statistics
+  /api/v1/admin/revenue/statistics:
+    get:
+      consumes:
+      - application/json
+      description: Get all-time revenue statistics for the admin dashboard, including
+        course purchases and subscriptions.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RevenueStatisticsResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get admin revenue statistics
+      tags:
+      - statistics
+  /api/v1/admin/revenue/statistics/day:
+    get:
+      consumes:
+      - application/json
+      description: Get daily revenue statistics for the admin dashboard for a specific
+        date, including course purchases and subscriptions across all instructors.
+      parameters:
+      - description: Date in YYYY-MM-DD format
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RevenueStatisticsResponse'
+              type: object
+        "400":
+          description: Invalid date format, expected YYYY-MM-DD
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get admin revenue statistics by day
+      tags:
+      - statistics
+  /api/v1/admin/revenue/statistics/month:
+    get:
+      consumes:
+      - application/json
+      description: Get monthly revenue statistics for the admin dashboard for a specific
+        year and month, including course purchases and subscriptions across all instructors.
+      parameters:
+      - description: Year (e.g., 2026)
+        in: query
+        name: year
+        required: true
+        type: integer
+      - description: Month (1-12)
+        in: query
+        name: month
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RevenueStatisticsResponse'
+              type: object
+        "400":
+          description: Invalid year or month values
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get admin revenue statistics by month
+      tags:
+      - statistics
+  /api/v1/admin/revenue/statistics/sales-segmentation:
+    get:
+      consumes:
+      - application/json
+      description: Get sales segmentation for dashboard card between membership subscriptions
+        and single course purchases.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SalesSegmentationResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get admin sales segmentation
+      tags:
+      - statistics
+  /api/v1/admin/revenue/statistics/year:
+    get:
+      consumes:
+      - application/json
+      description: Get yearly revenue statistics for the admin dashboard for a specific
+        year, including course purchases and subscriptions across all instructors.
+      parameters:
+      - description: Year (e.g., 2026)
+        in: query
+        name: year
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RevenueStatisticsResponse'
+              type: object
+        "400":
+          description: Invalid year value
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get admin revenue statistics by year
+      tags:
+      - statistics
+  /api/v1/admin/revenue/transactions:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated transactions for admin dashboard table from course
+        purchases and subscriptions, sorted by time descending.
+      parameters:
+      - default: 10
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      - default: desc
+        description: Sort direction
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.RevenueTransactionItemResponse'
+                  type: array
+                metadata:
+                  $ref: '#/definitions/dto.Pagination'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get admin transaction table
+      tags:
+      - statistics
   /api/v1/admin/subscription-plans:
     get:
       consumes:
@@ -1825,6 +2177,41 @@ paths:
       summary: Deactivate subscription plan
       tags:
       - plans
+  /api/v1/admin/subscriptions/statistics/members/retention:
+    get:
+      consumes:
+      - application/json
+      description: Get active memberships and retention percentage compared to the
+        previous month for admin dashboard.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.MemberRetentionResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get member retention statistics
+      tags:
+      - subscriptions
   /api/v1/admin/subscriptions/subscribers:
     get:
       consumes:
@@ -4654,6 +5041,216 @@ paths:
       summary: Get my taught courses with revenue
       tags:
       - users
+  /api/v1/users/me/revenue/overview:
+    get:
+      consumes:
+      - application/json
+      description: Get current month instructor revenue and growth versus previous
+        month for dashboard card.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RevenueOverviewResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instructor revenue overview card
+      tags:
+      - statistics
+  /api/v1/users/me/revenue/statistics:
+    get:
+      consumes:
+      - application/json
+      description: Get all-time revenue statistics for the authenticated instructor,
+        including course purchases and subscriptions.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RevenueStatisticsResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instructor revenue statistics
+      tags:
+      - statistics
+  /api/v1/users/me/revenue/statistics/day:
+    get:
+      consumes:
+      - application/json
+      description: Get daily revenue statistics for the authenticated instructor for
+        a specific date, including course purchases and subscriptions.
+      parameters:
+      - description: Date in YYYY-MM-DD format
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RevenueStatisticsResponse'
+              type: object
+        "400":
+          description: Invalid date format, expected YYYY-MM-DD
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instructor revenue statistics by day
+      tags:
+      - statistics
+  /api/v1/users/me/revenue/statistics/month:
+    get:
+      consumes:
+      - application/json
+      description: Get monthly revenue statistics for the authenticated instructor
+        for a specific year and month, including course purchases and subscriptions.
+      parameters:
+      - description: Year (e.g., 2026)
+        in: query
+        name: year
+        required: true
+        type: integer
+      - description: Month (1-12)
+        in: query
+        name: month
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RevenueStatisticsResponse'
+              type: object
+        "400":
+          description: Invalid year or month values
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instructor revenue statistics by month
+      tags:
+      - statistics
+  /api/v1/users/me/revenue/statistics/year:
+    get:
+      consumes:
+      - application/json
+      description: Get yearly revenue statistics for the authenticated instructor
+        for a specific year, including course purchases and subscriptions.
+      parameters:
+      - description: Year (e.g., 2026)
+        in: query
+        name: year
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RevenueStatisticsResponse'
+              type: object
+        "400":
+          description: Invalid year value
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instructor revenue statistics by year
+      tags:
+      - statistics
   /api/v1/users/me/transactions:
     get:
       consumes:

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -121,10 +122,7 @@ func (s *storageProvider) upload(ctx context.Context, folder, fileName string, d
 }
 
 func (s *storageProvider) getURL(objectName string) string {
-	schema := "http://"
-	if s.config.UseSSL {
-		schema = "https://"
-	}
+	schema := s.getExternalSchema()
 	return fmt.Sprintf("%s%s/%s/%s", schema, s.config.ExternalEndpoint, s.config.BucketName, objectName)
 }
 
@@ -134,9 +132,32 @@ func (s *storageProvider) PresignUploadURL(ctx context.Context, filename, filety
 	if err != nil {
 		return "", err
 	}
-	urlStr := u.String()
-	urlStr = strings.ReplaceAll(urlStr, s.config.Endpoint, s.config.ExternalEndpoint)
-	return urlStr, nil
+	parsedURL, err := url.Parse(u.String())
+	if err != nil {
+		return "", err
+	}
+	parsedURL.Host = s.config.ExternalEndpoint
+	if s.useExternalSSL() {
+		parsedURL.Scheme = "https"
+	} else {
+		parsedURL.Scheme = "http"
+	}
+
+	return parsedURL.String(), nil
+}
+
+func (s *storageProvider) useExternalSSL() bool {
+	if s.config.ExternalUseSSL != nil {
+		return *s.config.ExternalUseSSL
+	}
+	return s.config.UseSSL
+}
+
+func (s *storageProvider) getExternalSchema() string {
+	if s.useExternalSSL() {
+		return "https://"
+	}
+	return "http://"
 }
 
 // Check

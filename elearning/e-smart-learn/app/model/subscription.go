@@ -16,6 +16,8 @@ type Plan struct {
 	StripePriceID   string  `gorm:"type:varchar(255);not null;uniqueIndex"`
 	StripeProductID string  `gorm:"type:varchar(255);not null;uniqueIndex"`
 	Currency        string  `gorm:"type:varchar(10);default:'usd'"`
+	Tag             string  `gorm:"type:text"`
+	IsRecommend     bool    `gorm:"default:false"`
 	AccessFeatures  string  `gorm:"type:jsonb;default:'[]'"` // JSON array of feature strings
 	IsActive        bool    `gorm:"default:true"`
 
@@ -39,16 +41,17 @@ type Subscription struct {
 	PlanCurrency      string    `gorm:"type:varchar(10);not null;default:'usd'"`
 	PlanStripePriceID string    `gorm:"type:varchar(255);index"`
 
-	StripeSubscriptionID string `gorm:"type:varchar(255);uniqueIndex"`
-	StripeCustomerID     string `gorm:"type:varchar(255);index"`
-	BillingCycle         string `gorm:"type:billing_cycle_enum;not null"`
-	Status               string `gorm:"type:subscription_status_enum;default:'incomplete'"`
-	CurrentPeriodStart   *time.Time
-	CurrentPeriodEnd     *time.Time
-	CancelAtPeriodEnd    bool      `gorm:"default:false"`
-	StartedAt            time.Time `gorm:"not null"`
-	EndedAt              *time.Time
-	CanceledAt           *time.Time
+	StripeCheckoutSessionID string `gorm:"type:varchar(255);index"`
+	StripeSubscriptionID    string `gorm:"type:varchar(255);uniqueIndex"`
+	StripeCustomerID        string `gorm:"type:varchar(255);index"`
+	BillingCycle            string `gorm:"type:billing_cycle_enum;not null"`
+	Status                  string `gorm:"type:subscription_status_enum;default:'incomplete'"`
+	CurrentPeriodStart      *time.Time
+	CurrentPeriodEnd        *time.Time
+	CancelAtPeriodEnd       bool      `gorm:"default:false"`
+	StartedAt               time.Time `gorm:"not null"`
+	EndedAt                 *time.Time
+	CanceledAt              *time.Time
 
 	// Relations
 	User     *User      `gorm:"foreignKey:UserID;references:ID"`

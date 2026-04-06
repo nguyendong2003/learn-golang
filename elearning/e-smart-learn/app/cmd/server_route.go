@@ -109,6 +109,7 @@ func (server *ApiServer) route() {
 	// Course route
 	{
 		courseGroup := server.router.Group("/api/v1/courses")
+		courseGroup.Use(server.OptionalAuthHandler())
 		courseGroup.GET("", server.courseHandler.GetList())
 		courseGroup.GET("/:id", server.courseHandler.GetByID())
 		courseGroup.GET("/slug/:slug",

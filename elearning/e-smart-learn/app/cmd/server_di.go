@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"elearning-api/config"
 	"elearning-api/handler"
@@ -210,4 +212,43 @@ func (s *ApiServer) initBackgroundJob() {
 			os.Exit(1)
 		}
 	}()
+
+	go s.startStripeSubscriptionSyncCron()
+	go s.startStripeCoursePurchaseSyncCron()
+}
+
+func (s *ApiServer) startStripeSubscriptionSyncCron() {
+	logger := util.WithLayer(util.LayerWorker)
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	logger.Info("started stripe subscription sync cron", "interval", (30 * time.Second).String())
+
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		if err := s.subscriptionService.SyncPendingStripeSubscriptions(ctx); err != nil {
+			logger.Error("stripe subscription sync failed", "error", err)
+		}
+		cancel()
+
+		<-ticker.C
+	}
+}
+
+func (s *ApiServer) startStripeCoursePurchaseSyncCron() {
+	logger := util.WithLayer(util.LayerWorker)
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	logger.Info("started stripe course purchase sync cron", "interval", (30 * time.Second).String())
+
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		if err := s.subscriptionService.SyncPendingStripeCoursePurchases(ctx); err != nil {
+			logger.Error("stripe course purchase sync failed", "error", err)
+		}
+		cancel()
+
+		<-ticker.C
+	}
 }

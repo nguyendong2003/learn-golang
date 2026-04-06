@@ -15,6 +15,8 @@ type PlanResponse struct {
 	BillingCycle   string   `json:"billing_cycle"`
 	Price          float64  `json:"price"`
 	Currency       string   `json:"currency"`
+	Tag            string   `json:"tag"`
+	IsRecommend    bool     `json:"is_recommend"`
 	IsActive       bool     `json:"is_active"`
 }
 
@@ -81,6 +83,8 @@ func NewPlanDetailResponse(p *model.Plan) *PlanResponse {
 		BillingCycle:   p.BillingCycle,
 		Price:          p.Price,
 		Currency:       p.Currency,
+		Tag:            p.Tag,
+		IsRecommend:    p.IsRecommend,
 		IsActive:       p.IsActive,
 	}
 }

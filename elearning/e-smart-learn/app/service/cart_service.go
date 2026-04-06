@@ -87,6 +87,14 @@ func (s *cartService) AddCourse(ctx context.Context, userID, courseID uuid.UUID)
 		return apperror.NewBadRequestError("Course already purchased")
 	}
 
+	isInCart, err := s.cartRepository.Exists(ctx, userID, courseID)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to check cart item")
+	}
+	if isInCart {
+		return apperror.NewBadRequestError("Course already exists in cart")
+	}
+
 	if err := s.cartRepository.AddCourse(ctx, userID, courseID); err != nil {
 		return apperror.NewInternalServerError("Failed to add course to cart")
 	}
@@ -94,6 +102,14 @@ func (s *cartService) AddCourse(ctx context.Context, userID, courseID uuid.UUID)
 }
 
 func (s *cartService) RemoveCourse(ctx context.Context, userID, courseID uuid.UUID) error {
+	isInCart, err := s.cartRepository.Exists(ctx, userID, courseID)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to check cart item")
+	}
+	if !isInCart {
+		return apperror.NewBadRequestError("Course is not in cart")
+	}
+
 	if err := s.cartRepository.RemoveCourse(ctx, userID, courseID); err != nil {
 		return apperror.NewInternalServerError("Failed to remove course from cart")
 	}

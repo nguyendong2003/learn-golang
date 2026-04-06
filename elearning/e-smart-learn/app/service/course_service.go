@@ -586,7 +586,9 @@ func buildCourseQuery(request dto.ListCourseRequest) (string, []any) {
 
 	// EQUAL filters
 	util.AddEqualCondition(&conditions, &args, "category_id", request.CategoryID)
-	util.AddEqualCondition(&conditions, &args, "status", (*string)(request.Status))
+	if request.Status != nil {
+		util.AddEqualCondition(&conditions, &args, "status", (*string)(request.Status))
+	}
 
 	query := strings.Join(conditions, " AND ")
 	return query, args

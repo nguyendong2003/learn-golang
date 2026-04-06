@@ -73,6 +73,14 @@ func (s *planService) Create(ctx context.Context, req dto.CreatePlanRequest) (*d
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
+	tag := ""
+	if req.Tag != nil {
+		tag = strings.TrimSpace(*req.Tag)
+	}
+	isRecommend := false
+	if req.IsRecommend != nil {
+		isRecommend = *req.IsRecommend
+	}
 
 	productParams := &stripe.ProductParams{
 		Name:        stripe.String(req.Name),
@@ -122,6 +130,8 @@ func (s *planService) Create(ctx context.Context, req dto.CreatePlanRequest) (*d
 		StripePriceID:   stripePrice.ID,
 		StripeProductID: stripeProduct.ID,
 		Currency:        currency,
+		Tag:             tag,
+		IsRecommend:     isRecommend,
 		IsActive:        isActive,
 	}
 	if req.Description != nil {
@@ -202,6 +212,12 @@ func (s *planService) Update(ctx context.Context, id uuid.UUID, req dto.UpdatePl
 	if currencyChanged {
 		updates["currency"] = newCurrency
 	}
+	if req.Tag != nil {
+		updates["tag"] = strings.TrimSpace(*req.Tag)
+	}
+	if req.IsRecommend != nil {
+		updates["is_recommend"] = *req.IsRecommend
+	}
 
 	// Handle AccessFeatures
 	if len(req.AccessFeatures) > 0 {
@@ -209,56 +225,60 @@ func (s *planService) Update(ctx context.Context, id uuid.UUID, req dto.UpdatePl
 		updates["access_features"] = string(featuresJSON)
 	}
 
-	stripePriceObj, err := stripeprice.Get(existing.StripePriceID, nil)
-	if err != nil || stripePriceObj == nil {
-		return nil, apperror.NewInternalServerError("Failed to load Stripe price")
-	}
-
-	productID := existing.StripeProductID
-	if productID == "" {
-		return nil, apperror.NewInternalServerError("Stripe product ID not found for plan")
-	}
-
-	if req.Name != nil || req.Description != nil {
-		productParams := &stripe.ProductParams{}
-		if req.Name != nil {
-			productParams.Name = stripe.String(newName)
-		}
-		if req.Description != nil {
-			productParams.Description = stripe.String(newDescription)
-		}
-		if _, err := stripeproduct.Update(productID, productParams); err != nil {
-			return nil, apperror.NewInternalServerError("Failed to update Stripe product")
-		}
-	}
-
-	priceChanged := billingCycleChanged || priceValueChanged || currencyChanged
-	if priceChanged {
-		unitAmount := int64(math.Round(newPrice * 100))
-		if unitAmount <= 0 {
-			return nil, apperror.NewBadRequestError("price must be greater than 0")
+	var isPriceChanged bool = false
+	if existing.Price > 0 {
+		stripePriceObj, err := stripeprice.Get(existing.StripePriceID, nil)
+		if err != nil || stripePriceObj == nil {
+			return nil, apperror.NewInternalServerError("Failed to load Stripe price")
 		}
 
-		interval := "month"
-		if newBillingCycle == string(consts.BillingCycleYearly) {
-			interval = "year"
+		productID := existing.StripeProductID
+		if productID == "" {
+			return nil, apperror.NewInternalServerError("Stripe product ID not found for plan")
 		}
 
-		newStripePrice, err := stripeprice.New(&stripe.PriceParams{
-			Currency:   stripe.String(newCurrency),
-			UnitAmount: stripe.Int64(unitAmount),
-			Product:    stripe.String(productID),
-			Recurring: &stripe.PriceRecurringParams{
-				Interval: stripe.String(interval),
-			},
-			Active: stripe.Bool(existing.IsActive),
-		})
-		if err != nil {
-			return nil, apperror.NewInternalServerError("Failed to create new Stripe price")
+		if req.Name != nil || req.Description != nil {
+			productParams := &stripe.ProductParams{}
+			if req.Name != nil {
+				productParams.Name = stripe.String(newName)
+			}
+			if req.Description != nil {
+				productParams.Description = stripe.String(newDescription)
+			}
+			if _, err := stripeproduct.Update(productID, productParams); err != nil {
+				return nil, apperror.NewInternalServerError("Failed to update Stripe product")
+			}
 		}
 
-		_, _ = stripeprice.Update(existing.StripePriceID, &stripe.PriceParams{Active: stripe.Bool(false)})
-		updates["stripe_price_id"] = newStripePrice.ID
+		isPriceChanged := billingCycleChanged || priceValueChanged || currencyChanged
+		if isPriceChanged {
+			unitAmount := int64(math.Round(newPrice * 100))
+			if unitAmount <= 0 {
+				return nil, apperror.NewBadRequestError("price must be greater than 0")
+			}
+
+			interval := "month"
+			if newBillingCycle == string(consts.BillingCycleYearly) {
+				interval = "year"
+			}
+
+			newStripePrice, err := stripeprice.New(&stripe.PriceParams{
+				Currency:   stripe.String(newCurrency),
+				UnitAmount: stripe.Int64(unitAmount),
+				Product:    stripe.String(productID),
+				Recurring: &stripe.PriceRecurringParams{
+					Interval: stripe.String(interval),
+				},
+				Active: stripe.Bool(existing.IsActive),
+			})
+			if err != nil {
+				return nil, apperror.NewInternalServerError("Failed to create new Stripe price")
+			}
+
+			_, _ = stripeprice.Update(existing.StripePriceID, &stripe.PriceParams{Active: stripe.Bool(false)})
+			updates["stripe_price_id"] = newStripePrice.ID
+		}
+
 	}
 
 	updated, err := s.planRepository.Update(ctx, id, updates)
@@ -267,7 +287,7 @@ func (s *planService) Update(ctx context.Context, id uuid.UUID, req dto.UpdatePl
 	}
 
 	// Only cancel auto-renew subscriptions if billing-related fields changed
-	if priceChanged {
+	if isPriceChanged {
 		if err := s.cancelPlanAutoRenewals(ctx, id); err != nil {
 			return nil, err
 		}
@@ -487,6 +507,7 @@ func buildPlanQuery(request dto.ListPlanRequest) (string, []any) {
 	var args []any
 
 	util.AddEqualBoolCondition(&conditions, &args, "is_active", request.IsActive)
+	util.AddEqualBoolCondition(&conditions, &args, "is_recommend", request.IsRecommend)
 	query := strings.Join(conditions, " AND ")
 	return query, args
 }

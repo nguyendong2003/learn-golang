@@ -449,6 +449,23 @@ func (h *courseHandler) GetList() gin.HandlerFunc {
 			return
 		}
 
+		userRole := util.GetRole(c)
+		// Only admin and instructor can see all courses
+		// Students can only see published courses
+		// Instructors can see their own courses in any status + all published courses
+		if userRole != string(consts.RoleAdmin) {
+			publishedStatus := consts.CoursePublished
+			request.Status = &publishedStatus
+		} else if userRole == string(consts.RoleInstructor) {
+			userID, err := util.GetRequestUserID(c)
+			if err != nil {
+				_ = c.Error(err)
+				return
+			}
+			userIDStr := userID.String()
+			request.UserID = &userIDStr
+		}
+
 		// Process default pagination
 		request.Process()
 

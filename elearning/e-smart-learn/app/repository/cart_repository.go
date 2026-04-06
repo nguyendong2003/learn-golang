@@ -11,6 +11,7 @@ import (
 type CartRepository interface {
 	AddCourse(ctx context.Context, userID, courseID uuid.UUID) error
 	RemoveCourse(ctx context.Context, userID, courseID uuid.UUID) error
+	Exists(ctx context.Context, userID, courseID uuid.UUID) (bool, error)
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]*model.CartItem, error)
 	ClearByUser(ctx context.Context, userID uuid.UUID) error
 }
@@ -34,6 +35,19 @@ func (r *cartRepository) RemoveCourse(ctx context.Context, userID, courseID uuid
 	return r.db.GetDB().WithContext(ctx).
 		Where("user_id = ? AND course_id = ?", userID, courseID).
 		Delete(&model.CartItem{}).Error
+}
+
+func (r *cartRepository) Exists(ctx context.Context, userID, courseID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.GetDB().WithContext(ctx).
+		Model(&model.CartItem{}).
+		Where("user_id = ? AND course_id = ?", userID, courseID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
 func (r *cartRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]*model.CartItem, error) {

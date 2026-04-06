@@ -1,0 +1,9 @@
+-- +goose Up
+ALTER TABLE plans
+ADD COLUMN IF NOT EXISTS tag TEXT,
+ADD COLUMN IF NOT EXISTS is_recommend BOOLEAN NOT NULL DEFAULT false;
+
+-- +goose Down
+ALTER TABLE plans
+DROP COLUMN IF EXISTS is_recommend,
+DROP COLUMN IF EXISTS tag;

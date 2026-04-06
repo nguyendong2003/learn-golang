@@ -16,9 +16,11 @@ import (
 type SubscriptionRepository interface {
 	Repository[model.Subscription]
 	GetLatestByUserID(ctx context.Context, userID uuid.UUID, preloads []Preload) (*model.Subscription, error)
+	GetByCheckoutSessionID(ctx context.Context, checkoutSessionID string, preloads []Preload) (*model.Subscription, error)
 	GetByStripeSubscriptionID(ctx context.Context, stripeSubscriptionID string, preloads []Preload) (*model.Subscription, error)
 	GetActiveByUserID(ctx context.Context, userID uuid.UUID, preloads []Preload) (*model.Subscription, error)
 	ListByUserID(ctx context.Context, userID uuid.UUID, preloads []Preload) ([]*model.Subscription, error)
+	ListPendingByCheckoutSessionID(ctx context.Context, preloads []Preload) ([]*model.Subscription, error)
 	CountByPlanID(ctx context.Context, planID uuid.UUID) (int64, error)
 	CountActiveAsOf(ctx context.Context, asOf time.Time) (int64, error)
 	CountRetainedAsOf(ctx context.Context, previousAsOf, currentAsOf time.Time) (int64, error)
@@ -52,6 +54,10 @@ func (r *subscriptionRepository) GetLatestByUserID(ctx context.Context, userID u
 	return &sub, nil
 }
 
+func (r *subscriptionRepository) GetByCheckoutSessionID(ctx context.Context, checkoutSessionID string, preloads []Preload) (*model.Subscription, error) {
+	return r.Find(ctx, "stripe_checkout_session_id = ?", preloads, checkoutSessionID)
+}
+
 func (r *subscriptionRepository) GetByStripeSubscriptionID(ctx context.Context, stripeSubscriptionID string, preloads []Preload) (*model.Subscription, error) {
 	return r.Find(ctx, "stripe_subscription_id = ?", preloads, stripeSubscriptionID)
 }
@@ -63,11 +69,47 @@ func (r *subscriptionRepository) GetActiveByUserID(ctx context.Context, userID u
 		AND status IN ('%s', '%s', '%s')
 		AND (ended_at IS NULL OR ended_at > ?)
 	`, consts.SubscriptionStatusActive, consts.SubscriptionStatusTrialing, consts.SubscriptionStatusPastDue)
-	return r.Find(ctx, query, preloads, userID, now)
+	db := r.baseQuery(ctx).Where(query, userID, now).Order("started_at DESC, created_at DESC")
+	if len(preloads) > 0 {
+		db = applyPreloads(db, preloads)
+	}
+
+	var sub model.Subscription
+	if err := db.First(&sub).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &sub, nil
 }
 
 func (r *subscriptionRepository) ListByUserID(ctx context.Context, userID uuid.UUID, preloads []Preload) ([]*model.Subscription, error) {
 	db := r.baseQuery(ctx).Where("user_id = ?", userID).Order("created_at DESC")
+
+	if len(preloads) > 0 {
+		db = applyPreloads(db, preloads)
+	}
+
+	var subs []*model.Subscription
+	if err := db.Find(&subs).Error; err != nil {
+		return nil, err
+	}
+
+	return subs, nil
+}
+
+func (r *subscriptionRepository) ListPendingByCheckoutSessionID(ctx context.Context, preloads []Preload) ([]*model.Subscription, error) {
+	db := r.baseQuery(ctx).
+		Where("stripe_checkout_session_id IS NOT NULL AND stripe_checkout_session_id <> ''").
+		Where("status IN (?, ?, ?, ?)",
+			consts.SubscriptionStatusIncomplete,
+			consts.SubscriptionStatusPastDue,
+			consts.SubscriptionStatusIncompleteExpired,
+			consts.SubscriptionStatusUnpaid,
+		).
+		Order("created_at ASC")
 
 	if len(preloads) > 0 {
 		db = applyPreloads(db, preloads)
