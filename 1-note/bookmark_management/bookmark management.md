@@ -584,16 +584,170 @@ docker compose down
         docker build -t dongcoi14122003/bookmark_service:dev .
         docker push donggcoi14122003/bookmark_service:dev
         ```
-- Login vào VPS và setup trên VPS
-    ```
-    ssh root@103.118.29.20
-    apt install docker.io
+- Login vào VPS và setup trên VPS (cách cài đặt: https://docs.docker.com/engine/install/ubuntu/)
+    ```bash
+    ssh root@103.118.29.123
+
+    # Run the following command to uninstall all conflicting packages
+    sudo apt remove $(dpkg --get-selections docker.io docker-compose docker-compose-v2 docker-doc podman-docker containerd runc | cut -f1)
+
+    # Install using the apt repository
+    # 1. Set up Docker's apt repository.
+    # Add Docker's official GPG key:
+    sudo apt update
+    sudo apt install ca-certificates curl
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+    # Add the repository to Apt sources:
+    sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+    Types: deb
+    URIs: https://download.docker.com/linux/ubuntu
+    Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+    Components: stable
+    Architectures: $(dpkg --print-architecture)
+    Signed-By: /etc/apt/keyrings/docker.asc
+    EOF
+
+    sudo apt update
+
+    # 2. Install the Docker packages.
+    sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+
     apt install docker-compose
     apt install git
     git clone <địa chỉ repo project deployment>
     make up
     ```
+- VM:
+```
+IP Address: 103.118.29.123
+User: root
+Password: Qwerty1234zxcv#
+Port ssh: 22
+```
 
-    
+### 17. Link API
+https://ebvn.top/api/bookmark_service/swagger/index.html
 
-    
+### 18. Clear all data in docker
+```
+docker rm -f $(docker ps -aq)
+docker rmi -f $(docker images -q)
+docker volume rm $(docker volume ls -q)
+docker network prune
+```
+
+### 19. Lecture 5
+- Phần deploy nếu môi trường server có cho cài đặt `go` thì chỉ cần dùng file `ci-native.yaml` và `cd.yaml`
+- Nếu môi trường server không cho cài đặt `go` thì cần dùng file `ci-pure.yaml` và `cd.yaml`
+- Lưu ý khi `Merge pull request` thì chuyền sang `Squash and merge` để ví dụ nhánh đó có nhiều commit thì chỉ lấy 1 commit mới nhất của nhánh khác vào nhánh `main` thôi
+
+- Setup self hosted runners
+1. Bước 1: SSH vào VPS với quyền root
+```bash
+ssh root@103.118.29.123
+```
+2. Bước 2: Thiết lập User mới (Nếu chưa làm)
+- Để bảo mật, GitHub không cho chạy Runner bằng root. Chúng ta tạo user nguyendong và cấp quyền sudo cho nó:
+
+```bash
+# Tạo user và đặt mật khẩu
+adduser nguyendong
+
+# Thêm vào nhóm sudo
+usermod -aG sudo nguyendong
+
+# Thêm vào group docker
+sudo usermod -aG docker nguyendong
+
+# Apply group (👉 hoặc logout/login lại)
+newgrp docker
+
+# Chuyển sang dùng user này luôn
+su - nguyendong
+```
+
+3. Bước 3: Cài đặt Runner
+- Bây giờ bạn đang ở thư mục `/home/nguyendong`, hãy bắt đầu tải Runner:
+```bash
+# Create a folder
+mkdir actions-runner && cd actions-runner
+
+# Download the latest runner package
+curl -o actions-runner-linux-x64-2.333.1.tar.gz -L https://github.com/actions/runner/releases/download/v2.333.1/actions-runner-linux-x64-2.333.1.tar.gz
+
+# Optional: Validate the hash
+echo "18f8f68ed1892854ff2ab1bab4fcaa2f5abeedc98093b6cb13638991725cab74  actions-runner-linux-x64-2.333.1.tar.gz" | shasum -a 256 -c
+
+# Extract the installer
+tar xzf ./actions-runner-linux-x64-2.333.1.tar.gz
+```
+
+4. Bước 4: Cấu hình kết nối với GitHub (Config)
+- Đây là bước quan trọng nhất. Bạn cần quay lại trình duyệt (phần Settings > Actions > Runners trên GitHub) để lấy Token mới (vì Token cũ thường hết hạn sau vài phút).
+
+```bash
+./config.sh --url https://github.com/nguyendong2003/bookmark-management --token <TOKEN_MOI_NHAT>
+```
+
+5. Bước 5: Chạy Runner
+```
+./run.sh
+```
+
+### 20. Cách thao tác trong thực tế và Luồng hoạt động CI, CD
+1. Bước 1: Đứng ở main → tạo branch feature
+```bash
+# đang ở main
+git checkout main
+
+# cập nhật code mới nhất
+git pull origin main
+
+# tạo branch mới
+git checkout -b feature/login
+```
+
+2. Bước 2: Code + commit + push
+```bash
+# đang ở feature/login
+git add .
+git commit -m "feat: add login feature"
+git push origin feature/login
+```
+
+3. Bước 3: Tạo Pull Request (trên GitHub)
+- Từ: `feature/login`
+- Sang: `main`
+
+👉 Lúc này: CI chạy (do PR vào main)
+
+4. Bước 4: Merge PR → quay lại main
+- Sau khi merge trên GitHub:
+```bash
+# chuyển về main
+git checkout main
+
+# kéo code mới nhất
+git pull origin main
+```
+
+5. Bước 5: Tạo tag (QUAN TRỌNG)
+```bash
+# đang ở main
+git tag v1.1.0
+git push origin v1.1.0
+```
+- Sau bước này:
+
+    ```
+    👉 Tag được tạo từ main
+    👉 CI chạy với tag
+    👉 Docker image: v1.1.0
+    ```
+### 21. DevSecOps
+- Dùng `SonarQube` để cài đặt tool thêm Security vào luồng CI-CD
+
