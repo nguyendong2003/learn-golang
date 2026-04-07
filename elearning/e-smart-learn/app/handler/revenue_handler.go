@@ -27,6 +27,8 @@ type RevenueHandler interface {
 
 	GetAdminSalesSegmentation() gin.HandlerFunc
 	GetAdminTransactions() gin.HandlerFunc
+
+	GetAllTeachersRevenue() gin.HandlerFunc
 }
 
 type revenueHandler struct {
@@ -479,6 +481,48 @@ func (h *revenueHandler) GetAdminTransactions() gin.HandlerFunc {
 		res.Request = dto.GetRequestClient(c)
 		res.Data = data
 		res.Metadata = dto.NewPagination(pagingRequest.Limit, pagingRequest.Offset, int(total), "created_at", pagingRequest.SortOrder)
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// GetAllTeachersRevenue godoc
+// @Summary Get revenue statistics for all teachers
+// @Description Get paginated revenue breakdown (gross, stripe fee, net) per instructor. Admin only. Supports optional date range filtering.
+// @Tags statistics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param start_date query string  false "Start date (YYYY-MM-DD)"
+// @Param end_date   query string  false "End date   (YYYY-MM-DD)"
+// @Param limit      query int     false "Limit"      default(10)
+// @Param offset     query int     false "Offset"     default(0)
+// @Param sort_order query string  false "Sort order" Enums(asc,desc) default(desc)
+// @Success 200 {object} dto.ApiResponse{data=[]dto.TeacherRevenueItemResponse,metadata=dto.Pagination}
+// @Failure 400 {object} dto.ApiResponse
+// @Failure 401 {object} dto.ApiResponse
+// @Failure 403 {object} dto.ApiResponse
+// @Failure 500 {object} dto.ApiResponse
+// @Router /api/v1/admin/revenue/statistics/teachers/revenue [get]
+func (h *revenueHandler) GetAllTeachersRevenue() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req dto.TeacherRevenueFilterRequest
+		if err := c.ShouldBindQuery(&req); err != nil {
+			_ = c.Error(apperror.NewBadRequestError("Invalid query parameters"))
+			return
+		}
+		req.Process()
+
+		data, total, err := h.revenueService.GetAllTeachersRevenue(c.Request.Context(), req)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		res := dto.NewApiResponse(c)
+		res.Request = dto.GetRequestClient(c)
+		res.Data = data
+		res.Metadata = dto.NewPagination(req.Limit, req.Offset, int(total), "total_amount", req.SortOrder)
 
 		c.JSON(http.StatusOK, res)
 	}

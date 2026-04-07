@@ -426,6 +426,8 @@ func (server *ApiServer) route() {
 			adminRevenue.GET("/statistics/sales-segmentation", server.revenueHandler.GetAdminSalesSegmentation())
 
 			adminRevenue.GET("/transactions", server.revenueHandler.GetAdminTransactions())
+			
+			adminRevenue.GET("/statistics/teachers/revenue", server.revenueHandler.GetAllTeachersRevenue())
 		}
 	}
 }

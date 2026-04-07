@@ -27,6 +27,8 @@ type RevenueService interface {
 
 	GetAdminSalesSegmentation(ctx context.Context) (*dto.SalesSegmentationResponse, error)
 	GetAdminTransactions(ctx context.Context, limit, offset int, sortBy, sortOrder string) ([]*dto.RevenueTransactionItemResponse, int64, error)
+
+	GetAllTeachersRevenue(ctx context.Context, req dto.TeacherRevenueFilterRequest) ([]*dto.TeacherRevenueItemResponse, int64, error)
 }
 
 type revenueService struct {
@@ -248,4 +250,54 @@ func buildRevenueStatistics(coursePurchase, subscription *repository.RevenueBrea
 
 func centsToDollars(value int64) float64 {
 	return float64(value) / 100.0
+}
+
+func (s *revenueService) GetAllTeachersRevenue(ctx context.Context, req dto.TeacherRevenueFilterRequest) ([]*dto.TeacherRevenueItemResponse, int64, error) {
+	var startDate, endDate *time.Time
+
+	if req.StartDate != "" {
+		t, err := time.Parse("2006-01-02", req.StartDate)
+		if err != nil {
+			return nil, 0, apperror.NewBadRequestError("Invalid start_date format, expected YYYY-MM-DD")
+		}
+		startDate = &t
+	}
+
+	if req.EndDate != "" {
+		// End of the given day so purchases on that date are included.
+		t, err := time.Parse("2006-01-02", req.EndDate)
+		if err != nil {
+			return nil, 0, apperror.NewBadRequestError("Invalid end_date format, expected YYYY-MM-DD")
+		}
+		end := t.Add(24*time.Hour - time.Second)
+		endDate = &end
+	}
+
+	rows, total, err := s.revenueRepository.GetAllTeachersRevenue(
+		ctx,
+		startDate,
+		endDate,
+		req.Limit,
+		req.Offset,
+		req.SortOrder,
+	)
+	if err != nil {
+		return nil, 0, apperror.NewInternalServerError("Failed to retrieve teacher revenue statistics")
+	}
+
+	items := make([]*dto.TeacherRevenueItemResponse, len(rows))
+	for i, row := range rows {
+		items[i] = &dto.TeacherRevenueItemResponse{
+			TeacherID:     row.TeacherID,
+			TeacherName:   row.TeacherName,
+			TeacherEmail:  row.TeacherEmail,
+			TeacherAvatar: row.TeacherAvatar,
+			TotalAmount:   centsToDollars(row.TotalAmount),
+			StripeFee:     centsToDollars(row.StripeFee),
+			InstructorNet: centsToDollars(row.InstructorNet),
+			TotalCourses:  row.TotalCourses,
+		}
+	}
+
+	return items, total, nil
 }

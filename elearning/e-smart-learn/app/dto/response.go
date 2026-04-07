@@ -39,7 +39,8 @@ type RequestClient struct {
 }
 
 type PresignUploadURLResponse struct {
-	URL string `json:"url"`
+	PresignURL string `json:"presign_url"`
+	ObjectURL  string `json:"object_url"`
 }
 
 func GetRequestClient(c *gin.Context) RequestClient {

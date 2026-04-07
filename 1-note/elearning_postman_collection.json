@@ -1,0 +1,1399 @@
+{
+  "info": {
+    "name": "elearning",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \t\"username\": \"admin1\",\n    \"password\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "register",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/auth/register"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"hung@gmail.com\",\n  \"username\": \"hung\",\n    \"password\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/users/me"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "category",
+      "item": [
+        {
+          "name": "get all categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/categories/all"
+            }
+          }
+        },
+        {
+          "name": "get categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/categories"
+            }
+          }
+        },
+        {
+          "name": "create category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/categories"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Golang Development\",\n    \"description\": \"Golang category\"\n}"
+            }
+          }
+        },
+        {
+          "name": "update category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/categories/{{id}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Golang 123 Development\",\n    \"description\": \"Golang 123 category\"\n}"
+            }
+          }
+        },
+        {
+          "name": "delete category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/categories/{{id}}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "instructor profile",
+      "item": [
+        {
+          "name": "get instructor profiles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/instructor-profiles"
+            }
+          }
+        },
+        {
+          "name": "get instructor profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/instructor-profiles/{{id}}"
+            }
+          }
+        },
+        {
+          "name": "create instructor profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/instructor-profiles"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"bio\": \"T\u00f4i l\u00e0 dev \u0111\u1eb9p trai\",\n    \"education\": \"Havard University\",\n    \"linkedin_url\": \"https://www.linkedin.com/\",\n    \"youtube_url\": \"https://www.youtube.com/\",\n    \"instagram_url\": \"https://www.instagram.com/\"\n}"
+            }
+          }
+        },
+        {
+          "name": "update instructor profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/instructor-profiles/{{id}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"bio\": \"T\u00f4i l\u00e0 dev \u0111\u1eb9p trai\",\n    \"education\": \"Havard University\",\n    \"linkedin_url\": \"https://www.linkedin.com/\",\n    \"youtube_url\": \"https://www.youtube.com/\",\n    \"instagram_url\": \"https://www.instagram.com/\"\n}"
+            }
+          }
+        },
+        {
+          "name": "delete instructor profile",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/instructor-profiles/{{id}}"
+            }
+          }
+        },
+        {
+          "name": "review",
+          "item": []
+        }
+      ]
+    },
+    {
+      "name": "course",
+      "item": [
+        {
+          "name": "get courses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/courses"
+            }
+          }
+        },
+        {
+          "name": "get course",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/courses/{{id}}"
+            }
+          }
+        },
+        {
+          "name": "get course by slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/courses/slug/{{slug}}"
+            }
+          }
+        },
+        {
+          "name": "create course",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/courses"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": [
+                {
+                  "key": "data",
+                  "active": true,
+                  "isFile": false,
+                  "value": "{    \"title\": \"Go Backend Development Masterclass\",    \"description\": \"Learn scalable backend with Golang\",    \"price\": 49.99,    \"category_id\": \"6833eca2-41ef-4cf4-94ff-346beada2a25\"}"
+                },
+                {
+                  "key": "image",
+                  "active": true,
+                  "isFile": false,
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "update course",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/courses/{{id}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": [
+                {
+                  "key": "data",
+                  "active": true,
+                  "isFile": false,
+                  "value": "{\n    \"title\": \"Kh\u00f3a h\u1ecdc Golang promax updated\",\n    \"description\": \"Kh\u00f3a h\u1ecdc golang t\u1eeb A-Z updated\",\n    \"price\": 40.66,\n    \"category_id\": \"9801a392-039b-4833-8813-2c2c90358779\"\n}"
+                },
+                {
+                  "key": "image",
+                  "active": true,
+                  "isFile": false,
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "delete course",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/courses/{{id}}"
+            }
+          }
+        },
+        {
+          "name": "submit course to admin",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/courses/{{courseId}}/submit"
+            }
+          }
+        },
+        {
+          "name": "publish course",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/courses/{{id}}/publish"
+            }
+          }
+        },
+        {
+          "name": "learn course",
+          "item": [
+            {
+              "name": "update course progress",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/users/me/courses/progress"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"courseId\": \"b95080ec-49bb-4561-9233-3450614b16c6\",\n  \"lessonId\": \"064ae794-2a9a-41f4-ac6a-d50ef2d61c73\"\n}"
+                }
+              }
+            },
+            {
+              "name": "View personal progress",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/users/me/courses"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"courseId\": \"6e082d22-901d-49c0-b65c-c61773a7ff81\",\n  \"lessonId\": \"07b15d6a-6554-4478-a9fc-58c99afe4214\"\n}"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "feedback",
+          "item": [
+            {
+              "name": "ViewFeedback",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/courses/ef2b0e66-af4a-46b9-9149-996ccd7f5b23/feedbacks"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"comment\": \"Nice cours22e7\",\n  \"course_id\": \"ef2b0e66-af4a-46b9-9149-996ccd7f5b23\",\n  \"rating\": 5\n}"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "chapter",
+          "item": [
+            {
+              "name": "get all chapters by course id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/courses/{{id}}"
+                }
+              }
+            },
+            {
+              "name": "get chapter",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/courses/{{id}}"
+                }
+              }
+            },
+            {
+              "name": "create chapter",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/courses/{{id}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"title\": \"Setup requirements 3\",\n    \"description\": \"\u0110\u00e2y l\u00e0 b\u01b0\u1edbc c\u1ea7n c\u00e0i \u0111\u1eb7t 3\"\n}"
+                }
+              }
+            },
+            {
+              "name": "update chapter",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/courses/{{id}}/chapters/{{chapter_id}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"title\": \"Setup requirements 3 update\",\n    \"description\": \"\u0110\u00e2y l\u00e0 b\u01b0\u1edbc c\u1ea7n c\u00e0i \u0111\u1eb7t 3 update\"\n}"
+                }
+              }
+            },
+            {
+              "name": "delete chapter",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/courses/{{id}}/chapters/{{chapter_id}}"
+                }
+              }
+            },
+            {
+              "name": "lesson",
+              "item": [
+                {
+                  "name": "get lesson",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{HOST}}/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/lessons/64a2e568-1ccf-488d-80e5-2740e37d8dd2"
+                    }
+                  }
+                },
+                {
+                  "name": "create lesson",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{HOST}}/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/chapters/2c4a127a-da60-4bb4-84b3-eb62966ba1ee/lessons"
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"title\": \"Install vscode 4\",\n    \"content\": \"\u0110\u00e2y l\u00e0 b\u01b0\u1edbc setup c\u00e0i \u0111\u1eb7t vscode 4\",\n    \"is_able_to_preview\": false,\n    \"video_url\": \"http://localhost:9002/elearning/videos/1773824725683951843_messi_4.mp4\"\n}"
+                    }
+                  }
+                },
+                {
+                  "name": "update lesson",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{HOST}}/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/lessons/21e54cca-b861-436d-bd45-cf779378d621"
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"title\": \"Install vscode 1 update 3 update\",\n    \"content\": \"\u0110\u00e2y l\u00e0 b\u01b0\u1edbc setup c\u00e0i \u0111\u1eb7t vscode 3 update\",\n    \"is_able_to_preview\": false,\n    \"video_url\": \"http://localhost:9002/elearning/videos/1773822146726835496_messi_2.mp4\"\n}"
+                    }
+                  }
+                },
+                {
+                  "name": "delete chapter",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{HOST}}/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/lessons/21e54cca-b861-436d-bd45-cf779378d621"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "admin",
+          "item": [
+            {
+              "name": "reject course",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/courses/{{courseId}}/reject"
+                }
+              }
+            },
+            {
+              "name": "approve course",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/courses/{{courseId}}/approve"
+                }
+              }
+            },
+            {
+              "name": "publish course (legacy, same meaning with approve course)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/courses/{{id}}/publish"
+                }
+              }
+            },
+            {
+              "name": "update course status (legacy)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/courses/{{id}}/update-status"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \t\"status\": \"published\"\n}"
+                }
+              }
+            },
+            {
+              "name": "view statistic",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/courses/admin/statistics"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "enroll",
+          "item": [
+            {
+              "name": "enroll directly",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/courses/5abe4633-d7b2-4930-b24f-3e1915ea84c3/enroll"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "media",
+      "item": [
+        {
+          "name": "presign video url",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/upload/presign"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"filename\": \"messi_4.mp4\",\n    \"filetype\": \"videos\"\n}"
+            }
+          }
+        },
+        {
+          "name": "upload video",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:9002/elearning/videos/1773824725683951843_messi_4.mp4"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "plan",
+      "item": [
+        {
+          "name": "get plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscription-plans"
+            }
+          }
+        },
+        {
+          "name": "get active plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscription-plans/active"
+            }
+          }
+        },
+        {
+          "name": "get plan by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscription-plans/{{id}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"access_features\": [\n    \"string\"\n  ],\n  \"description\": \"string\",\n  \"is_active\": true,\n  \"is_default\": true,\n  \"name\": \"string\",\n  \"price_monthly\": 0,\n  \"price_yearly\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "create plan",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscription-plans"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Premium Yearly\",\n  \"description\": \"Premium Plan - Subscription h\u00e0ng n\u0103m\",\n  \"billing_cycle\": \"yearly\",\n  \"price\": 100,\n  \"access_features\": [\n    \"Advanced analytics\",\n    \"Priority support\",\n    \"Custom integrations\",\n    \"Api access\"\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "update plan",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscription-plans/{{id}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Premium Plan 7 updated\",\n  \"description\": \"Premium features 7 updated\",\n  \"access_features\": [\n    \"Advanced analytics 7 updated\",\n    \"Priority support 7 \",\n    \"Custom integrations 7\"\n  ],\n  \"billing_cycle\": \"yearly\",\n  \"price\": 250\n}"
+            }
+          }
+        },
+        {
+          "name": "activate plan",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscription-plans/{{id}}/activate"
+            }
+          }
+        },
+        {
+          "name": "deactivate plan",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscription-plans/{{id}}/deactivate"
+            }
+          }
+        },
+        {
+          "name": "delete plan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscription-plans/{{id}}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "blog",
+      "item": [
+        {
+          "name": "get blogs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/blogs?category_id=6c476863-d6a9-44a2-9e1b-0166b89d9156"
+            }
+          }
+        },
+        {
+          "name": "get blog detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://echo.hoppscotch.io"
+            }
+          }
+        },
+        {
+          "name": "create blog",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/blogs"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Deploying Golang Applications with Docker and CI/CD\",\n    \"content\": \"Learn how to containerize Golang applications, optimize Dockerfiles, build production images, and set up CI/CD pipelines for automated deployment.\",\n    \"image_url\": \"https://placehold.co/600x400?text=docker-ci-cd\",\n    \"category_id\": \"c77156fe-ac90-403e-afd8-ecbc4252a9cd\",\n    \"tags\": [\"docker\", \"ci-cd\", \"devops\", \"golang\"],\n    \"status\": \"published\"\n}"
+            }
+          }
+        },
+        {
+          "name": "read",
+          "item": [
+            {
+              "name": "get reading history",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/users/me/blogs/read"
+                }
+              }
+            },
+            {
+              "name": "update reading history",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/users/me/blogs/read"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"blog_id\": \"57fdbc21-ef49-4604-9cf9-fb57b05fe754\"\n}"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "follow",
+      "item": [
+        {
+          "name": "get followers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/users/{{user_id}}/followers"
+            }
+          }
+        },
+        {
+          "name": "get followings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/users/{{user_id}}/followers"
+            }
+          }
+        },
+        {
+          "name": "follow",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/users/{{user_id}}/follow"
+            }
+          }
+        },
+        {
+          "name": "unfollow",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/users/{{user_id}}/follow"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "application",
+      "item": [
+        {
+          "name": "get pending list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/admin/instructor-applications"
+            }
+          }
+        },
+        {
+          "name": "apply instructor",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/users/me/apply-instructor"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"string hung appling to instructor\",\n  \"certifications\": [\n    \"string\",\n    \"string\"\n  ],\n  \"cv_url\": \"https://hoppscotch.io/\",\n  \"education\": \"string\",\n  \"instagram_url\": \"https://hoppscotch.io/\",\n  \"linkedin_url\": \"https://hoppscotch.io/\",\n  \"portfolio_url\": \"https://hoppscotch.io/\",\n  \"years_of_experience\": 10,\n  \"youtube_url\": \"https://hoppscotch.io/\"\n}"
+            }
+          }
+        },
+        {
+          "name": "approve application",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/admin/instructor-applications/6426fab8-ad45-4aec-a9c0-38d00002995a/approve"
+            }
+          }
+        },
+        {
+          "name": "reject application",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/admin/instructor-applications//reject"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "coupon",
+      "item": [
+        {
+          "name": "get coupons",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "",
+                "active": true,
+                "description": ""
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/coupons"
+            }
+          }
+        },
+        {
+          "name": "get coupon",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "",
+                "active": true,
+                "description": ""
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/coupons/{{id}}"
+            }
+          }
+        },
+        {
+          "name": "create coupon",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "",
+                "active": true,
+                "description": ""
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/admin/coupons"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SUMMER2000\",\n  \"currency\": \"usd\",\n  \"discount_type\": \"percent\",\n  \"discount_value\": 2000,\n  \"max_redemptions\": 100,\n  \"expires_at\": \"2026-12-31T23:59:59Z\"\n}"
+            }
+          }
+        },
+        {
+          "name": "deactive coupon",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "",
+                "active": true,
+                "description": ""
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/coupons/{{coupon_id}}/deactivate"
+            }
+          }
+        },
+        {
+          "name": "delete coupon",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "",
+                "active": true,
+                "description": ""
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/coupons/{{id}}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "cart",
+      "item": [
+        {
+          "name": "get my cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "",
+                "active": true,
+                "description": ""
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/carts"
+            }
+          }
+        },
+        {
+          "name": "add course to cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "",
+                "active": true,
+                "description": ""
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/carts/courses/{{course_id}}"
+            }
+          }
+        },
+        {
+          "name": "remove course from cart",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "",
+                "active": true,
+                "description": ""
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/carts/courses/{{course_id}}"
+            }
+          }
+        },
+        {
+          "name": "checkout session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "",
+                "active": true,
+                "description": ""
+              }
+            ],
+            "url": {
+              "raw": "{{HOST}}/api/v1/carts/checkout-session"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"coupon_code\": \"ABC1\"\n}\n"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "purchase course",
+      "item": [
+        {
+          "name": "create purchase checkout session",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/courses/{{id}}/purchase-checkout-session"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \t\"coupon_code\": \"ABCD1\"\n}"
+            }
+          }
+        },
+        {
+          "name": "check payment status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/course-purchase/{{session_id}}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "subscription",
+      "item": [
+        {
+          "name": "get subscription plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscription-plans"
+            }
+          }
+        },
+        {
+          "name": "create checkout session",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscriptions/checkout-session"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"plan_id\": \"f2bafbc8-8998-4843-9fd1-ffe1ff55940e\"\n}"
+            }
+          }
+        },
+        {
+          "name": "my subscription",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscriptions/me"
+            }
+          }
+        },
+        {
+          "name": "cancel subscription",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscriptions/cancel"
+            }
+          }
+        },
+        {
+          "name": "resume subscription",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscriptions/resume"
+            }
+          }
+        },
+        {
+          "name": "create billing portal",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{HOST}}/api/v1/subscriptions/billing-portal"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "upload file",
+      "item": [
+        {
+          "name": "get presigned url",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://echo.hoppscotch.io"
+            }
+          }
+        },
+        {
+          "name": "upload with presigned url",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:9002/elearning/images/1774345445396559130_hello.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20260324%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260324T094405Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host&X-Amz-Signature=06ea8ab6abe2f839a6bdb5887341a9d93bb9341bd9184178428e2b7a932f0acd"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "admin",
+      "item": [
+        {
+          "name": "statistics",
+          "item": [
+            {
+              "name": "get active students statisctics",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/users/statistics/active-students"
+                }
+              }
+            },
+            {
+              "name": "get total courses created in the last 30 days",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/courses/statistics/new"
+                }
+              }
+            },
+            {
+              "name": "get member retention",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/subscriptions/statistics/members/retention"
+                }
+              }
+            },
+            {
+              "name": "get teacher growth",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/statistics/teachers/growth"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "revenue",
+          "item": [
+            {
+              "name": "get instructor revenue overview",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/users/me/revenue/overview"
+                }
+              }
+            },
+            {
+              "name": "get instructor revenue",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/users/me/revenue/statistics"
+                }
+              }
+            },
+            {
+              "name": "get instructor revenue by day",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/users/me/revenue/statistics/day"
+                }
+              }
+            },
+            {
+              "name": "get instructor revenue by month",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/users/me/revenue/statistics/month"
+                }
+              }
+            },
+            {
+              "name": "get instructor revenue by year",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/users/me/revenue/statistics/year"
+                }
+              }
+            },
+            {
+              "name": "get admin revenue overview",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/revenue/overview"
+                }
+              }
+            },
+            {
+              "name": "get admin revenue",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/revenue/statistics"
+                }
+              }
+            },
+            {
+              "name": "get admin revenue by day",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/revenue/statistics/day"
+                }
+              }
+            },
+            {
+              "name": "get admin revenue by month",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/revenue/statistics/month"
+                }
+              }
+            },
+            {
+              "name": "get admin revenue by year",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/revenue/statistics/year"
+                }
+              }
+            },
+            {
+              "name": "get admin sales segmentation",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/revenue/statistics/sales-segmentation"
+                }
+              }
+            },
+            {
+              "name": "get admin transactions",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{HOST}}/api/v1/admin/revenue/transactions"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

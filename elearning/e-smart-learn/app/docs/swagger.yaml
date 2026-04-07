@@ -713,7 +713,9 @@ definitions:
     type: object
   dto.PresignUploadURLResponse:
     properties:
-      url:
+      object_url:
+        type: string
+      presign_url:
         type: string
     type: object
   dto.RefreshTokenRequest:
@@ -879,6 +881,29 @@ definitions:
       share_pct:
         type: number
     type: object
+  dto.TeacherRevenueItemResponse:
+    properties:
+      instructor_net:
+        description: total_amount - stripe_fee
+        type: number
+      stripe_fee:
+        description: Stripe processing fee share
+        type: number
+      teacher_avatar:
+        type: string
+      teacher_email:
+        type: string
+      teacher_id:
+        type: string
+      teacher_name:
+        type: string
+      total_amount:
+        description: gross revenue from course sales
+        type: number
+      total_courses:
+        description: number of courses owned
+        type: integer
+    type: object
   dto.UpdateBlogRequest:
     properties:
       category_id:
@@ -1030,8 +1055,6 @@ definitions:
         type: number
       tag:
         type: string
-    required:
-    - price
     type: object
   dto.UpdateReadBlogHistoryRequest:
     properties:
@@ -1833,6 +1856,76 @@ paths:
       security:
       - BearerAuth: []
       summary: Get admin sales segmentation
+      tags:
+      - statistics
+  /api/v1/admin/revenue/statistics/teachers/revenue:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated revenue breakdown (gross, stripe fee, net) per instructor.
+        Admin only. Supports optional date range filtering.
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date   (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - default: 10
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      - default: desc
+        description: Sort order
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.TeacherRevenueItemResponse'
+                  type: array
+                metadata:
+                  $ref: '#/definitions/dto.Pagination'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get revenue statistics for all teachers
       tags:
       - statistics
   /api/v1/admin/revenue/statistics/year:

@@ -34,6 +34,7 @@ type blogService struct {
 	blogRepository     repository.BlogRepository
 	categoryRepository repository.CategoryRepository
 	userRepository     repository.UserRepository
+	uploadService      UploadService
 	asynqClient        *asynq.Client
 	followRepository   repository.FollowRepository
 }
@@ -45,6 +46,7 @@ func NewBlogService(
 	userRepository repository.UserRepository,
 	asynqClient *asynq.Client,
 	followRepository repository.FollowRepository,
+	uploadService UploadService,
 ) BlogService {
 	return &blogService{
 		db:                 db,
@@ -53,6 +55,7 @@ func NewBlogService(
 		userRepository:     userRepository,
 		asynqClient:        asynqClient,
 		followRepository:   followRepository,
+		uploadService:      uploadService,
 	}
 }
 
@@ -93,6 +96,30 @@ func (s *blogService) Create(
 		}
 		if author == nil {
 			return apperror.NewNotFoundError("Author not found")
+		}
+
+		if data.ImageURL != "" {
+			isValid, err := s.uploadService.ValidateImageURL(ctx, data.ImageURL)
+			if !isValid {
+				return apperror.NewNotFoundError("Image URL is not valid")
+			}
+			if err != nil {
+				return apperror.NewInternalServerError("Failed to validate image URL")
+			}
+			trackingRepo := repository.NewPresignedUploadTrackingRepository(txDb)
+			presignUrl, err := trackingRepo.Find(ctx, "object_url = ?", nil, data.ImageURL)
+			if err != nil {
+				return apperror.NewInternalServerError("Failed to retrieve presigned URL")
+			}
+			if presignUrl == nil {
+				return apperror.NewNotFoundError("Presigned URL not found")
+			}
+			if presignUrl.Status == consts.PresignedUploadStatusConfirmed {
+				return apperror.NewBadRequestError("Image URL already used")
+			}
+			if err := trackingRepo.ConfirmByObjectURL(ctx, data.ImageURL); err != nil {
+				return apperror.NewInternalServerError("Failed to confirm image URL")
+			}
 		}
 
 		blog := &model.Blog{
@@ -279,6 +306,31 @@ func (s *blogService) UpdateBlogs(ctx context.Context, authorId, blogId uuid.UUI
 		if category == nil {
 			return apperror.NewNotFoundError("Category not found")
 		}
+
+		if data.ImageURL != "" && blog.ImageURL != data.ImageURL {
+			isValid, err := s.uploadService.ValidateImageURL(ctx, data.ImageURL)
+			if !isValid {
+				return apperror.NewNotFoundError("Image URL is not valid")
+			}
+			if err != nil {
+				return apperror.NewInternalServerError("Failed to validate image URL")
+			}
+			trackingRepo := repository.NewPresignedUploadTrackingRepository(txDb)
+			presignUrl, err := trackingRepo.Find(ctx, "object_url = ?", nil, data.ImageURL)
+			if err != nil {
+				return apperror.NewInternalServerError("Failed to retrieve presigned URL")
+			}
+			if presignUrl == nil {
+				return apperror.NewNotFoundError("Presigned URL not found")
+			}
+			if presignUrl.Status == consts.PresignedUploadStatusConfirmed {
+				return apperror.NewBadRequestError("Image URL already used")
+			}
+			if err := trackingRepo.ConfirmByObjectURL(ctx, data.ImageURL); err != nil {
+				return apperror.NewInternalServerError("Failed to confirm image URL")
+			}
+		}
+		
 
 		blog.Title = data.Title
 		blog.CategoryID = data.CategoryID

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +21,30 @@ type RevenueRepository interface {
 	GetAdminRevenueByYear(ctx context.Context, year int) (*RevenueBreakdownCents, *RevenueBreakdownCents, error)
 
 	GetAdminTransactions(ctx context.Context, limit, offset int, sortBy, sortOrder string) ([]*RevenueTransactionRow, int64, error)
+
+	// GetAllTeachersRevenue returns paginated revenue stats for every instructor.
+	// startDate / endDate are optional — pass nil to query all-time.
+	GetAllTeachersRevenue(
+		ctx context.Context,
+		startDate *time.Time,
+		endDate *time.Time,
+		limit int,
+		offset int,
+		sortOrder string,
+	) ([]*TeacherRevenueRow, int64, error)
+}
+
+// TeacherRevenueRow is the raw database scan target for the all-teachers query.
+// Monetary values are in cents (int64) — the service layer converts to dollars.
+type TeacherRevenueRow struct {
+	TeacherID     string `gorm:"column:teacher_id"`
+	TeacherName   string `gorm:"column:teacher_name"`
+	TeacherEmail  string `gorm:"column:teacher_email"`
+	TeacherAvatar string `gorm:"column:teacher_avatar"`
+	TotalAmount   int64  `gorm:"column:total_amount"`
+	StripeFee     int64  `gorm:"column:stripe_fee"`
+	InstructorNet int64  `gorm:"column:instructor_net"`
+	TotalCourses  int64  `gorm:"column:total_courses"`
 }
 
 type RevenueBreakdownCents struct {
@@ -232,4 +257,112 @@ func (r *revenueRepository) getBreakdown(ctx context.Context, query string, args
 		return nil, err
 	}
 	return &result, nil
+}
+
+// GetAllTeachersRevenue queries course-purchase revenue aggregated per instructor.
+// startDate and endDate are optional — passing nil means no date filter (all-time).
+// Results are sorted by total_amount DESC or ASC and paginated.
+func (r *revenueRepository) GetAllTeachersRevenue(
+	ctx context.Context,
+	startDate *time.Time,
+	endDate *time.Time,
+	limit int,
+	offset int,
+	sortOrder string,
+) ([]*TeacherRevenueRow, int64, error) {
+	// Build optional WHERE clauses for date filtering on course_purchases.
+	var dateConditions []string
+	var dateArgs []any
+	if startDate != nil {
+		dateConditions = append(dateConditions, "cp.purchased_at >= ?")
+		dateArgs = append(dateArgs, *startDate)
+	}
+	if endDate != nil {
+		dateConditions = append(dateConditions, "cp.purchased_at <= ?")
+		dateArgs = append(dateArgs, *endDate)
+	}
+
+	dateFilter := ""
+	if len(dateConditions) > 0 {
+		dateFilter = "AND " + strings.Join(dateConditions, " AND ")
+	}
+
+	// CTE: aggregate course-purchase revenue per instructor.
+	// stripe_fee is prorated per course-detail line proportionally to its price.
+	baseCTE := `
+		WITH course_revenue AS (
+			SELECT
+				c.user_id AS teacher_id,
+				SUM(cpd.price)                                                         AS total_amount,
+				SUM(cp.stripe_fee * cpd.price / NULLIF(cp.amount, 0))                  AS stripe_fee,
+				SUM(cpd.price) - SUM(cp.stripe_fee * cpd.price / NULLIF(cp.amount, 0)) AS instructor_net
+			FROM course_purchase_details cpd
+			JOIN course_purchases cp
+				ON  cp.id         = cpd.course_purchase_id
+				AND cp.status     = 'paid'
+				AND cp.deleted_at IS NULL
+				` + dateFilter + `
+			JOIN courses c
+				ON  c.id         = cpd.course_id
+				AND c.deleted_at IS NULL
+			WHERE cpd.deleted_at IS NULL
+			GROUP BY c.user_id
+		)
+	`
+
+	// Prepare args: date args first, then will add limit/offset for list query.
+	countArgs := make([]any, len(dateArgs))
+	copy(countArgs, dateArgs)
+
+	countQuery := baseCTE + `
+		SELECT COUNT(DISTINCT u.id)
+		FROM users u
+		JOIN roles ro ON ro.id = u.role_id AND ro.deleted_at IS NULL AND ro.name = 'instructor'
+		WHERE u.deleted_at IS NULL
+	`
+
+	var total int64
+	if err := r.db.GetDB().WithContext(ctx).Raw(countQuery, countArgs...).Scan(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Allowed sort orders; default to DESC to avoid SQL injection.
+	if sortOrder != "asc" {
+		sortOrder = "desc"
+	}
+	orderClause := fmt.Sprintf("total_amount %s", sortOrder)
+
+	listArgs := append(dateArgs, limit, offset) //nolint:gocritic
+	listQuery := baseCTE + `
+		SELECT
+			u.id::text                AS teacher_id,
+			u.name                    AS teacher_name,
+			u.email                   AS teacher_email,
+			COALESCE(u.avatar, '')   AS teacher_avatar,
+			COALESCE(cr.total_amount,   0) AS total_amount,
+			COALESCE(cr.stripe_fee,     0) AS stripe_fee,
+			COALESCE(cr.instructor_net, 0) AS instructor_net,
+			COUNT(DISTINCT c.id)          AS total_courses
+		FROM users u
+		JOIN roles ro
+			ON  ro.id         = u.role_id
+			AND ro.deleted_at IS NULL
+			AND ro.name       = 'instructor'
+		LEFT JOIN course_revenue cr ON cr.teacher_id = u.id
+		LEFT JOIN courses c
+			ON  c.user_id    = u.id
+			AND c.deleted_at IS NULL
+		WHERE u.deleted_at IS NULL
+		GROUP BY u.id, u.name, u.email, u.avatar,
+		         cr.total_amount, cr.stripe_fee, cr.instructor_net
+		ORDER BY ` + orderClause + `
+		LIMIT ? OFFSET ?
+	`
+
+	rows := make([]*TeacherRevenueRow, 0)
+	if err := r.db.GetDB().WithContext(ctx).Raw(listQuery, listArgs...).Scan(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return rows, total, nil
 }

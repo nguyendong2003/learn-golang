@@ -61,6 +61,7 @@ func (s *ApiServer) initDatabase(config *config.Config) {
 	s.revenueRepository = repository.NewRevenueRepository(db)
 	s.couponRepository = repository.NewCouponRepository(db)
 	s.cartRepository = repository.NewCartRepository(db)
+	s.presignUploadTrackingRepository = repository.NewPresignedUploadTrackingRepository(db)
 }
 
 func (s *ApiServer) initServices(config *config.Config) {
@@ -80,6 +81,7 @@ func (s *ApiServer) initServices(config *config.Config) {
 		logger.Error("failed to initialize storage provider")
 		os.Exit(1)
 	}
+	s.storageProvider = storage
 
 	googleOAuthConfig := &config.OAuth.Google
 
@@ -104,6 +106,7 @@ func (s *ApiServer) initServices(config *config.Config) {
 		googleOAuthConfig,
 		mailer,
 		cache)
+	s.uploadService = service.NewUploadService(storage, s.presignUploadTrackingRepository)
 	s.blogService = service.NewBlogService(
 		s.dbRepository,
 		s.blogRepository,
@@ -111,8 +114,8 @@ func (s *ApiServer) initServices(config *config.Config) {
 		s.userRepository,
 		s.asynqClient,
 		s.followRepository,
+		s.uploadService,
 	)
-	s.uploadService = service.NewUploadService(storage)
 	s.categoryService = service.NewCategoryService(s.categoryRepository)
 	s.planService = service.NewPlanService(s.planRepository, s.subscriptionRepository, &config.Stripe)
 	s.enrollmentService = service.NewEnrollmentService(s.enrollmentRepository, s.paymentRepository)
@@ -194,6 +197,7 @@ func (s *ApiServer) initBackgroundJob() {
 	srv := asynq.NewServer(redisOpt, asynq.Config{
 		Concurrency: 10,
 	})
+
 	emailWorkerHandler := worker.NewEmailWorkerHandler(
 		s.courseEventRepository,
 		s.userRepository,
@@ -203,8 +207,12 @@ func (s *ApiServer) initBackgroundJob() {
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(job.TypeEventNotification, emailWorkerHandler.HandleEventNotification)
 	mux.HandleFunc(job.TypeSendSingleEmail, emailWorkerHandler.HandleSendEmail)
+
 	blogWorkerHandler := worker.NewBlogScheduledWorkerHandler(s.blogRepository)
 	mux.HandleFunc(job.TypeBlogPublish, blogWorkerHandler.HandlePublish)
+
+	cleanupWorker := worker.NewPresignedUploadCleanupWorker(s.presignUploadTrackingRepository, s.storageProvider)
+	go cleanupWorker.Start(context.Background())
 
 	go func() {
 		if err := srv.Run(mux); err != nil {

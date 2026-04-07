@@ -6,27 +6,37 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"elearning-api/apperror"
+	"elearning-api/consts"
+	"elearning-api/model"
 	"elearning-api/pkg"
+	"elearning-api/repository"
 )
 
 type UploadService interface {
 	UploadImage(ctx context.Context, file *multipart.FileHeader) (string, error)
-	PresignUploadURL(ctx context.Context, filename, filetype string) (string, error)
+	PresignUploadURL(ctx context.Context, filename, filetype string) (string, string, error)
 	DeleteImage(ctx context.Context, fileURL string) error
 
 	ValidateVideoURL(ctx context.Context, fileURL string) (bool, error)
 	ValidateDocumentURL(ctx context.Context, fileURL string) (bool, error)
+	ValidateImageURL(ctx context.Context, fileURL string) (bool, error)
 }
 
 type uploadService struct {
 	storageProvider pkg.StorageProvider
+	trackingRepo    repository.PresignedUploadTrackingRepository
 }
 
-func NewUploadService(storageProvider pkg.StorageProvider) UploadService {
+func NewUploadService(
+	storageProvider pkg.StorageProvider,
+	trackingRepo repository.PresignedUploadTrackingRepository,
+) UploadService {
 	return &uploadService{
 		storageProvider: storageProvider,
+		trackingRepo:    trackingRepo,
 	}
 }
 
@@ -65,16 +75,28 @@ func (u *uploadService) UploadImage(ctx context.Context, file *multipart.FileHea
 	return url, nil
 }
 
-func (u *uploadService) PresignUploadURL(ctx context.Context, filename, filetype string) (string, error) {
+func (u *uploadService) PresignUploadURL(ctx context.Context, filename, filetype string) (string, string, error) {
 	if filetype != "images" && filetype != "videos" && filetype != "documents" {
-		return "", apperror.NewBadRequestError("Invalid file type. Allowed: images, videos, documents")
+		return "", "", apperror.NewBadRequestError("Invalid file type. Allowed: images, videos, documents")
+	}
+	presignURL, objectURL, objectName, err := u.storageProvider.PresignUploadURL(ctx, filename, filetype)
+	if err != nil {
+		return "", "", apperror.NewInternalServerError("Failed to generate presigned URL")
+	}
+	expiresAt := time.Now().Add(15 * time.Minute)
+	tracking := &model.PresignedUploadTracking{
+		ObjectURL:  objectURL,
+		ObjectName: objectName,
+		Filetype:   filetype,
+		Status:     consts.PresignedUploadStatusPending,
+		ExpiresAt:  expiresAt,
 	}
 
-	url, err := u.storageProvider.PresignUploadURL(ctx, filename, filetype)
-	if err != nil {
-		return "", apperror.NewInternalServerError("Failed to generate presigned URL")
+	if _, err := u.trackingRepo.Create(ctx, tracking); err != nil {
+		return "", "", apperror.NewInternalServerError("Failed to track presigned URL")
 	}
-	return url, nil
+
+	return presignURL, objectURL, nil
 }
 
 func (u *uploadService) DeleteImage(ctx context.Context, fileURL string) error {
@@ -94,6 +116,10 @@ func (u *uploadService) ValidateVideoURL(ctx context.Context, fileURL string) (b
 
 func (u *uploadService) ValidateDocumentURL(ctx context.Context, fileURL string) (bool, error) {
 	return u.validateStorageURL(ctx, fileURL, "documents")
+}
+
+func (u *uploadService) ValidateImageURL(ctx context.Context, fileURL string) (bool, error) {
+	return u.validateStorageURL(ctx, fileURL, "images")
 }
 
 func (u *uploadService) validateStorageURL(ctx context.Context, fileURL string, folder string) (bool, error) {

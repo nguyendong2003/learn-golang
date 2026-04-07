@@ -62,3 +62,38 @@ type SalesSegmentationResponse struct {
 	MembershipSubs  SalesSegmentationItemResponse `json:"membership_subs"`
 	SinglePurchases SalesSegmentationItemResponse `json:"single_purchases"`
 }
+
+// TeacherRevenueFilterRequest holds optional date range + pagination query params
+// for the GET /api/v1/admin/revenue/statistics/teachers/revenue endpoint.
+type TeacherRevenueFilterRequest struct {
+	StartDate string `form:"start_date" binding:"omitempty,datetime=2006-01-02"`
+	EndDate   string `form:"end_date"   binding:"omitempty,datetime=2006-01-02"`
+	Limit     int    `form:"limit"      binding:"omitempty,min=1,max=100"`
+	Offset    int    `form:"offset"     binding:"omitempty,min=0"`
+	SortOrder string `form:"sort_order" binding:"omitempty,oneof=asc desc"`
+}
+
+func (r *TeacherRevenueFilterRequest) Process() {
+	if r.Limit <= 0 {
+		r.Limit = 10
+	}
+	if r.Offset < 0 {
+		r.Offset = 0
+	}
+	if r.SortOrder == "" {
+		r.SortOrder = "desc"
+	}
+}
+
+// TeacherRevenueItemResponse is one row in the teacher revenue list.
+// Monetary values are in USD (dollars), converted from cents.
+type TeacherRevenueItemResponse struct {
+	TeacherID       string  `json:"teacher_id"`
+	TeacherName     string  `json:"teacher_name"`
+	TeacherEmail    string  `json:"teacher_email"`
+	TeacherAvatar   string  `json:"teacher_avatar"`
+	TotalAmount     float64 `json:"total_amount"`     // gross revenue from course sales
+	StripeFee       float64 `json:"stripe_fee"`       // Stripe processing fee share
+	InstructorNet   float64 `json:"instructor_net"`   // total_amount - stripe_fee
+	TotalCourses    int64   `json:"total_courses"`    // number of courses owned
+}

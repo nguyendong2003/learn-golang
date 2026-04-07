@@ -20,7 +20,7 @@ type StorageProvider interface {
 	UploadImage(ctx context.Context, fileName string, data []byte) (string, error)
 	UploadVideo(ctx context.Context, fileName string, data []byte) (string, error)
 	Delete(ctx context.Context, fileURL string) error
-	PresignUploadURL(ctx context.Context, filename, filetype string) (string, error)
+	PresignUploadURL(ctx context.Context, filename, filetype string) (string, string, string, error)
 
 	IsObjectExist(ctx context.Context, objectName string) (bool, error)
 	GetConfig() *config.MinioConfig
@@ -126,15 +126,15 @@ func (s *storageProvider) getURL(objectName string) string {
 	return fmt.Sprintf("%s%s/%s/%s", schema, s.config.ExternalEndpoint, s.config.BucketName, objectName)
 }
 
-func (s *storageProvider) PresignUploadURL(ctx context.Context, filename, filetype string) (string, error) {
+func (s *storageProvider) PresignUploadURL(ctx context.Context, filename, filetype string) (string, string, string, error) {
 	objectName := fmt.Sprintf("%s/%d_%s", filetype, time.Now().UnixNano(), filename)
 	u, err := s.minioClient.PresignedPutObject(ctx, s.config.BucketName, objectName, time.Minute*15)
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	}
 	parsedURL, err := url.Parse(u.String())
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	}
 	parsedURL.Host = s.config.ExternalEndpoint
 	if s.useExternalSSL() {
@@ -143,7 +143,7 @@ func (s *storageProvider) PresignUploadURL(ctx context.Context, filename, filety
 		parsedURL.Scheme = "http"
 	}
 
-	return parsedURL.String(), nil
+	return parsedURL.String(), s.getURL(objectName), objectName, nil
 }
 
 func (s *storageProvider) useExternalSSL() bool {

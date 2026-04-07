@@ -42,7 +42,8 @@ type ApiServer struct {
 	coursePurchaseDetailRepository repository.CoursePurchaseDetailRepository
 	revenueRepository              repository.RevenueRepository
 	couponRepository               repository.CouponRepository
-	cartRepository                 repository.CartRepository
+	cartRepository                    repository.CartRepository
+	presignUploadTrackingRepository   repository.PresignedUploadTrackingRepository
 
 	userService              service.UserService
 	authService              service.AuthService
@@ -56,6 +57,7 @@ type ApiServer struct {
 	feedbackService          service.FeedbackService
 	revenueService           service.RevenueService
 	mailService              pkg.EmailProvider
+	storageProvider          pkg.StorageProvider
 	asynqClient              *asynq.Client
 	lessonService            service.LessonService
 	followService            service.FollowService

@@ -83,7 +83,7 @@ func (h *fileUploadHandler) PresignUploadURL() gin.HandlerFunc {
 			return
 		}
 
-		url, err := h.uploadService.PresignUploadURL(c.Request.Context(), req.Filename, req.Filetype)
+		presignURL, objectURL, err := h.uploadService.PresignUploadURL(c.Request.Context(), req.Filename, req.Filetype)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -91,7 +91,8 @@ func (h *fileUploadHandler) PresignUploadURL() gin.HandlerFunc {
 
 		resp := dto.NewApiResponse(c)
 		resp.Data = dto.PresignUploadURLResponse{
-			URL: url,
+			PresignURL: presignURL,
+			ObjectURL:  objectURL,
 		}
 		c.JSON(http.StatusOK, resp)
 	}

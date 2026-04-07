@@ -1187,6 +1187,115 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/revenue/statistics/teachers/revenue": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get paginated revenue breakdown (gross, stripe fee, net) per instructor. Admin only. Supports optional date range filtering.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "statistics"
+                ],
+                "summary": "Get revenue statistics for all teachers",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date   (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort order",
+                        "name": "sort_order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.TeacherRevenueItemResponse"
+                                            }
+                                        },
+                                        "metadata": {
+                                            "$ref": "#/definitions/dto.Pagination"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/revenue/statistics/year": {
             "get": {
                 "security": [
@@ -7607,7 +7716,10 @@ const docTemplate = `{
         "dto.PresignUploadURLResponse": {
             "type": "object",
             "properties": {
-                "url": {
+                "object_url": {
+                    "type": "string"
+                },
+                "presign_url": {
                     "type": "string"
                 }
             }
@@ -7859,6 +7971,39 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.TeacherRevenueItemResponse": {
+            "type": "object",
+            "properties": {
+                "instructor_net": {
+                    "description": "total_amount - stripe_fee",
+                    "type": "number"
+                },
+                "stripe_fee": {
+                    "description": "Stripe processing fee share",
+                    "type": "number"
+                },
+                "teacher_avatar": {
+                    "type": "string"
+                },
+                "teacher_email": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "string"
+                },
+                "teacher_name": {
+                    "type": "string"
+                },
+                "total_amount": {
+                    "description": "gross revenue from course sales",
+                    "type": "number"
+                },
+                "total_courses": {
+                    "description": "number of courses owned",
+                    "type": "integer"
+                }
+            }
+        },
         "dto.UpdateBlogRequest": {
             "type": "object",
             "required": [
@@ -8038,9 +8183,6 @@ const docTemplate = `{
         },
         "dto.UpdatePlanRequest": {
             "type": "object",
-            "required": [
-                "price"
-            ],
             "properties": {
                 "access_features": {
                     "type": "array",

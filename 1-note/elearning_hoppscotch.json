@@ -1,0 +1,3190 @@
+{
+  "v": 11,
+  "id": "cmmvu0qg03lm1f21m781umorf",
+  "name": "elearning",
+  "folders": [
+    {
+      "v": 11,
+      "id": "cmmvu0qga3lm2f21m0dcsfuer",
+      "name": "auth",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "login",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/auth/login",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "const res = hopp.response.body.asJSON()\n\nif (res?.data?.access_token) {\n    hopp.env.set(\"access_token\", res.data.access_token)\n}\n\nif (res?.data?.refresh_token) {\n    hopp.env.set(\"refresh_token\", res.data.refresh_token)\n}",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \t\"username\": \"student1\",\n    \"password\": \"123456\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "register",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/auth/register",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n    \"email\": \"hung@gmail.com\",\n  \"username\": \"hung\",\n    \"password\": \"123456\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "me",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/users/me",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmmvu0qgv3lm7f21mti2b7hol",
+      "name": "category",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "get all categories",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/categories/all",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "get categories",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/categories",
+          "params": [
+            {
+              "key": "limit",
+              "value": "10",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortBy",
+              "value": "created_at",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortOrder",
+              "value": "asc",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "name",
+              "value": "mo",
+              "active": false,
+              "description": ""
+            }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "text/plain",
+            "body": ""
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "create category",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/categories",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "bearer",
+            "token": "<<access_token>>",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n    \"name\": \"Golang Development\",\n    \"description\": \"Golang category\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "update category",
+          "method": "PUT",
+          "endpoint": "<<HOST>>/api/v1/categories/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "bearer",
+            "token": "<<access_token>>",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n    \"name\": \"Golang 123 Development\",\n    \"description\": \"Golang 123 category\"\n}"
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "b112f934-2915-4a1b-bd69-5ce0af967fcb",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "delete category",
+          "method": "DELETE",
+          "endpoint": "<<HOST>>/api/v1/categories/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "bearer",
+            "token": "<<access_token>>",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "b112f934-2915-4a1b-bd69-5ce0af967fcb",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmmvu0qhv3lmif21m4r8p1qu5",
+      "name": "instructor profile",
+      "folders": [
+        {
+          "v": 11,
+          "id": "cmn78wgf91lc4f21m2x9hb16a",
+          "name": "review",
+          "folders": [],
+          "requests": [],
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "headers": [],
+          "variables": [],
+          "description": null
+        }
+      ],
+      "requests": [
+        {
+          "v": "17",
+          "name": "get instructor profiles",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/instructor-profiles",
+          "params": [
+            {
+              "key": "limit",
+              "value": "10",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortBy",
+              "value": "updated_at",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortOrder",
+              "value": "desc",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "name",
+              "value": "1",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "text/plain",
+            "body": ""
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "get instructor profile",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/instructor-profiles/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "text/plain",
+            "body": ""
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "c88af232-0f5e-4913-ada0-84a8a632f53d",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "create instructor profile",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/instructor-profiles",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "bearer",
+            "token": "<<access_token>>",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n    \"bio\": \"Tôi là dev đẹp trai\",\n    \"education\": \"Havard University\",\n    \"linkedin_url\": \"https://www.linkedin.com/\",\n    \"youtube_url\": \"https://www.youtube.com/\",\n    \"instagram_url\": \"https://www.instagram.com/\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "update instructor profile",
+          "method": "PUT",
+          "endpoint": "<<HOST>>/api/v1/instructor-profiles/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "bearer",
+            "token": "<<access_token>>",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n    \"bio\": \"Tôi là dev đẹp trai\",\n    \"education\": \"Havard University\",\n    \"linkedin_url\": \"https://www.linkedin.com/\",\n    \"youtube_url\": \"https://www.youtube.com/\",\n    \"instagram_url\": \"https://www.instagram.com/\"\n}"
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "721c2764-b415-4f82-a35b-397b74e1c1d9",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "delete instructor profile",
+          "method": "DELETE",
+          "endpoint": "<<HOST>>/api/v1/instructor-profiles/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "bearer",
+            "token": "<<access_token>>",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "c88af232-0f5e-4913-ada0-84a8a632f53d",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmmvu0qix3lmtf21mxbo2nnzb",
+      "name": "course",
+      "folders": [
+        {
+          "v": 11,
+          "id": "cmmvu0qns3lo3f21mss7uk1mu",
+          "name": "learn course",
+          "folders": [],
+          "requests": [
+            {
+              "v": "17",
+              "name": "update course progress",
+              "method": "POST",
+              "endpoint": "<<HOST>>/api/v1/users/me/courses/progress",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "bearer",
+                "token": "<<access_token>>",
+                "authActive": true
+              },
+              "body": {
+                "contentType": "application/json",
+                "body": "{\n  \"courseId\": \"b95080ec-49bb-4561-9233-3450614b16c6\",\n  \"lessonId\": \"064ae794-2a9a-41f4-ac6a-d50ef2d61c73\"\n}"
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "View personal progress",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/users/me/courses",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "bearer",
+                "token": "<<access_token>>",
+                "authActive": true
+              },
+              "body": {
+                "contentType": "application/json",
+                "body": "{\n  \"courseId\": \"6e082d22-901d-49c0-b65c-c61773a7ff81\",\n  \"lessonId\": \"07b15d6a-6554-4478-a9fc-58c99afe4214\"\n}"
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            }
+          ],
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "headers": [],
+          "variables": [],
+          "description": null
+        },
+        {
+          "v": 11,
+          "id": "cmmvu0qod3lo8f21m5wgc6cbc",
+          "name": "feedback",
+          "folders": [],
+          "requests": [
+            {
+              "v": "17",
+              "name": "ViewFeedback",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/courses/ef2b0e66-af4a-46b9-9149-996ccd7f5b23/feedbacks",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": "application/json",
+                "body": "{\n  \"comment\": \"Nice cours22e7\",\n  \"course_id\": \"ef2b0e66-af4a-46b9-9149-996ccd7f5b23\",\n  \"rating\": 5\n}"
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            }
+          ],
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "headers": [],
+          "variables": [],
+          "description": null
+        },
+        {
+          "v": 11,
+          "id": "cmmvu0qkq3lnbf21mxk13iqwh",
+          "name": "chapter",
+          "folders": [
+            {
+              "v": 11,
+              "id": "cmmvu0qlq3lnmf21mbh58ai6n",
+              "name": "lesson",
+              "folders": [],
+              "requests": [
+                {
+                  "v": "17",
+                  "name": "get lesson",
+                  "method": "GET",
+                  "endpoint": "<<HOST>>/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/lessons/64a2e568-1ccf-488d-80e5-2740e37d8dd2",
+                  "params": [],
+                  "headers": [],
+                  "preRequestScript": "",
+                  "testScript": "",
+                  "auth": {
+                    "authType": "inherit",
+                    "authActive": true
+                  },
+                  "body": {
+                    "contentType": null,
+                    "body": null
+                  },
+                  "requestVariables": [
+                    {
+                      "key": "id",
+                      "value": "c859df10-2232-4cce-9e34-353be841b225",
+                      "active": true
+                    },
+                    {
+                      "key": "lesson_id",
+                      "value": "64a2e568-1ccf-488d-80e5-2740e37d8dd2",
+                      "active": true
+                    }
+                  ],
+                  "responses": {},
+                  "description": null
+                },
+                {
+                  "v": "17",
+                  "name": "create lesson",
+                  "method": "POST",
+                  "endpoint": "<<HOST>>/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/chapters/2c4a127a-da60-4bb4-84b3-eb62966ba1ee/lessons",
+                  "params": [],
+                  "headers": [],
+                  "preRequestScript": "",
+                  "testScript": "",
+                  "auth": {
+                    "authType": "bearer",
+                    "token": "<<access_token>>",
+                    "authActive": true
+                  },
+                  "body": {
+                    "contentType": "application/json",
+                    "body": "{\n    \"title\": \"Install vscode 4\",\n    \"content\": \"Đây là bước setup cài đặt vscode 4\",\n    \"is_able_to_preview\": false,\n    \"video_url\": \"http://localhost:9002/elearning/videos/1773824725683951843_messi_4.mp4\"\n}"
+                  },
+                  "requestVariables": [
+                    {
+                      "key": "id",
+                      "value": "c859df10-2232-4cce-9e34-353be841b225",
+                      "active": true
+                    },
+                    {
+                      "key": "chapter_id",
+                      "value": "2c4a127a-da60-4bb4-84b3-eb62966ba1ee",
+                      "active": true
+                    }
+                  ],
+                  "responses": {},
+                  "description": null
+                },
+                {
+                  "v": "17",
+                  "name": "update lesson",
+                  "method": "PUT",
+                  "endpoint": "<<HOST>>/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/lessons/21e54cca-b861-436d-bd45-cf779378d621",
+                  "params": [],
+                  "headers": [],
+                  "preRequestScript": "",
+                  "testScript": "",
+                  "auth": {
+                    "authType": "bearer",
+                    "token": "<<access_token>>",
+                    "authActive": true
+                  },
+                  "body": {
+                    "contentType": "application/json",
+                    "body": "{\n    \"title\": \"Install vscode 1 update 3 update\",\n    \"content\": \"Đây là bước setup cài đặt vscode 3 update\",\n    \"is_able_to_preview\": false,\n    \"video_url\": \"http://localhost:9002/elearning/videos/1773822146726835496_messi_2.mp4\"\n}"
+                  },
+                  "requestVariables": [
+                    {
+                      "key": "id",
+                      "value": "c859df10-2232-4cce-9e34-353be841b225",
+                      "active": true
+                    },
+                    {
+                      "key": "lesson_id",
+                      "value": "21e54cca-b861-436d-bd45-cf779378d621",
+                      "active": true
+                    }
+                  ],
+                  "responses": {},
+                  "description": null
+                },
+                {
+                  "v": "17",
+                  "name": "delete chapter",
+                  "method": "DELETE",
+                  "endpoint": "<<HOST>>/api/v1/courses/c859df10-2232-4cce-9e34-353be841b225/lessons/21e54cca-b861-436d-bd45-cf779378d621",
+                  "params": [],
+                  "headers": [],
+                  "preRequestScript": "",
+                  "testScript": "",
+                  "auth": {
+                    "authType": "bearer",
+                    "token": "<<access_token>>",
+                    "authActive": true
+                  },
+                  "body": {
+                    "contentType": null,
+                    "body": null
+                  },
+                  "requestVariables": [
+                    {
+                      "key": "id",
+                      "value": "c859df10-2232-4cce-9e34-353be841b225",
+                      "active": true
+                    },
+                    {
+                      "key": "lesson_id",
+                      "value": "21e54cca-b861-436d-bd45-cf779378d621",
+                      "active": true
+                    }
+                  ],
+                  "responses": {},
+                  "description": null
+                }
+              ],
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "headers": [],
+              "variables": [],
+              "description": null
+            }
+          ],
+          "requests": [
+            {
+              "v": "17",
+              "name": "get all chapters by course id",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [
+                {
+                  "key": "id",
+                  "value": "c859df10-2232-4cce-9e34-353be841b225",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get chapter",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [
+                {
+                  "key": "id",
+                  "value": "6b73f8f9-82c3-45b5-b6b1-e84de9785b0c",
+                  "active": true
+                },
+                {
+                  "key": "chapter_id",
+                  "value": "e7ab391a-c97a-4ee4-bb3a-07ed5aacc005",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "create chapter",
+              "method": "POST",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "bearer",
+                "token": "<<access_token>>",
+                "authActive": true
+              },
+              "body": {
+                "contentType": "application/json",
+                "body": "{\n    \"title\": \"Setup requirements 3\",\n    \"description\": \"Đây là bước cần cài đặt 3\"\n}"
+              },
+              "requestVariables": [
+                {
+                  "key": "id",
+                  "value": "c859df10-2232-4cce-9e34-353be841b225",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "update chapter",
+              "method": "PUT",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>/chapters/<<chapter_id>>",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "bearer",
+                "token": "<<access_token>>",
+                "authActive": true
+              },
+              "body": {
+                "contentType": "application/json",
+                "body": "{\n    \"title\": \"Setup requirements 3 update\",\n    \"description\": \"Đây là bước cần cài đặt 3 update\"\n}"
+              },
+              "requestVariables": [
+                {
+                  "key": "id",
+                  "value": "c859df10-2232-4cce-9e34-353be841b225",
+                  "active": true
+                },
+                {
+                  "key": "chapter_id",
+                  "value": "2c4a127a-da60-4bb4-84b3-eb62966ba1ee",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "delete chapter",
+              "method": "DELETE",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>/chapters/<<chapter_id>>",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "bearer",
+                "token": "<<access_token>>",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [
+                {
+                  "key": "id",
+                  "value": "c859df10-2232-4cce-9e34-353be841b225",
+                  "active": true
+                },
+                {
+                  "key": "chapter_id",
+                  "value": "2c4a127a-da60-4bb4-84b3-eb62966ba1ee",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            }
+          ],
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "headers": [],
+          "variables": [],
+          "description": null
+        },
+        {
+          "v": 11,
+          "id": "cmn78wx8q1lc6f21mgzbtqrkg",
+          "name": "admin",
+          "folders": [],
+          "requests": [
+            {
+              "v": "17",
+              "name": "reject course",
+              "method": "POST",
+              "endpoint": "<<HOST>>/api/v1/admin/courses/<<courseId>>/reject",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [
+                {
+                  "key": "courseId",
+                  "value": "",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "approve course",
+              "method": "POST",
+              "endpoint": "<<HOST>>/api/v1/admin/courses/<<courseId>>/approve",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [
+                {
+                  "key": "courseId",
+                  "value": "",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "publish course (legacy, same meaning with approve course)",
+              "method": "POST",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>/publish",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "bearer",
+                "token": "<<access_token>>",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [
+                {
+                  "key": "id",
+                  "value": "731693cc-5585-4fb0-9036-6216917dd81d",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "update course status (legacy)",
+              "method": "PUT",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>/update-status",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "bearer",
+                "token": "<<access_token>>",
+                "authActive": true
+              },
+              "body": {
+                "contentType": "application/json",
+                "body": "{\n  \t\"status\": \"published\"\n}"
+              },
+              "requestVariables": [
+                {
+                  "key": "id",
+                  "value": "98416cd7-daeb-4fab-b124-b0825ec15a13",
+                  "active": true
+                }
+              ],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "view statistic",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/courses/admin/statistics",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            }
+          ],
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "headers": [],
+          "variables": [],
+          "description": null
+        },
+        {
+          "v": 11,
+          "id": "cmncxdej23b2ugy1moazfsd37",
+          "name": "enroll",
+          "folders": [],
+          "requests": [
+            {
+              "v": "17",
+              "name": "enroll directly",
+              "method": "POST",
+              "endpoint": "<<HOST>>/api/v1/courses/5abe4633-d7b2-4930-b24f-3e1915ea84c3/enroll",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            }
+          ],
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "headers": [],
+          "variables": [],
+          "description": null
+        }
+      ],
+      "requests": [
+        {
+          "v": "17",
+          "name": "get courses",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/courses",
+          "params": [
+            {
+              "key": "limit",
+              "value": "2",
+              "active": false,
+              "description": ""
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "active": false,
+              "description": ""
+            },
+            {
+              "key": "sortBy",
+              "value": "total_student",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortOrder",
+              "value": "desc",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "title",
+              "value": "go",
+              "active": false,
+              "description": ""
+            },
+            {
+              "key": "status",
+              "value": "draft",
+              "active": false,
+              "description": ""
+            },
+            {
+              "key": "category_id",
+              "value": "9801a392-039b-4833-8813-2c2c90358779",
+              "active": false,
+              "description": ""
+            }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "text/plain",
+            "body": ""
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "get course",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "text/plain",
+            "body": ""
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "c859df10-2232-4cce-9e34-353be841b225",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "get course by slug",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/courses/slug/<<slug>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "text/plain",
+            "body": ""
+          },
+          "requestVariables": [
+            {
+              "key": "slug",
+              "value": "go-backend-development",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "create course",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/courses",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "bearer",
+            "token": "<<access_token>>",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "multipart/form-data",
+            "body": [
+              {
+                "key": "data",
+                "active": true,
+                "isFile": false,
+                "value": "{    \"title\": \"Go Backend Development Masterclass\",    \"description\": \"Learn scalable backend with Golang\",    \"price\": 49.99,    \"category_id\": \"6833eca2-41ef-4cf4-94ff-346beada2a25\"}"
+              },
+              {
+                "key": "image",
+                "active": true,
+                "isFile": false,
+                "value": ""
+              }
+            ]
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "update course",
+          "method": "PUT",
+          "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "bearer",
+            "token": "<<access_token>>",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "multipart/form-data",
+            "body": [
+              {
+                "key": "data",
+                "active": true,
+                "isFile": false,
+                "value": "{\n    \"title\": \"Khóa học Golang promax updated\",\n    \"description\": \"Khóa học golang từ A-Z updated\",\n    \"price\": 40.66,\n    \"category_id\": \"9801a392-039b-4833-8813-2c2c90358779\"\n}"
+              },
+              {
+                "key": "image",
+                "active": true,
+                "isFile": false,
+                "value": ""
+              }
+            ]
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "adc3c45c-41d6-4cd7-abac-f1e9b1cece72",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "delete course",
+          "method": "DELETE",
+          "endpoint": "<<HOST>>/api/v1/courses/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "bearer",
+            "token": "<<access_token>>",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "c859df10-2232-4cce-9e34-353be841b225",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "submit course to admin",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/courses/<<courseId>>/submit",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "courseId",
+              "value": "",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "publish course",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/courses/<<id>>/publish",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "5b8a9fd6-ab2c-4d19-8c48-52eb246cc1af",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "enroll course",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/courses/<<id>>/enroll",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "5b8a9fd6-ab2c-4d19-8c48-52eb246cc1af",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmmvu0qk23ln6f21mbzhth4zc",
+      "name": "media",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "presign video url",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/upload/presign",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n    \"filename\": \"messi_4.mp4\",\n    \"filetype\": \"videos\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "upload video",
+          "method": "PUT",
+          "endpoint": "http://localhost:9002/elearning/videos/1773824725683951843_messi_4.mp4",
+          "params": [
+            {
+              "key": "X-Amz-Algorithm",
+              "value": "AWS4-HMAC-SHA256",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "X-Amz-Credential",
+              "value": "minioadmin%2F20260318%2Fus-east-1%2Fs3%2Faws4_request",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "X-Amz-Date",
+              "value": "20260318T090525Z",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "X-Amz-Expires",
+              "value": "900",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "X-Amz-SignedHeaders",
+              "value": "host",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "X-Amz-Signature",
+              "value": "25e157cc6ebcae7a77044b6e9dd902c953eb074e48d12fcfec74dba293a0603a",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "none",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmmvu0qmo3lnvf21mqrr6ekhu",
+      "name": "plan",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "get plans",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans",
+          "params": [
+            {
+              "key": "limit",
+              "value": "10",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortBy",
+              "value": "created_at",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortOrder",
+              "value": "asc",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "is_active",
+              "value": "true",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "text/plain",
+            "body": ""
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "get active plans",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/active",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "get plan by ID",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"access_features\": [\n    \"string\"\n  ],\n  \"description\": \"string\",\n  \"is_active\": true,\n  \"is_default\": true,\n  \"name\": \"string\",\n  \"price_monthly\": 0,\n  \"price_yearly\": 0\n}"
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "71ca2db3-752b-4e64-a1df-0baf0bbefb99",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "create plan",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"name\": \"Premium Yearly\",\n  \"description\": \"Premium Plan - Subscription hàng năm\",\n  \"billing_cycle\": \"yearly\",\n  \"price\": 100,\n  \"access_features\": [\n    \"Advanced analytics\",\n    \"Priority support\",\n    \"Custom integrations\",\n    \"Api access\"\n  ]\n}"
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "update plan",
+          "method": "PUT",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"name\": \"Premium Plan 7 updated\",\n  \"description\": \"Premium features 7 updated\",\n  \"access_features\": [\n    \"Advanced analytics 7 updated\",\n    \"Priority support 7 \",\n    \"Custom integrations 7\"\n  ],\n  \"billing_cycle\": \"yearly\",\n  \"price\": 250\n}"
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "6cb082ab-b5cc-4e42-bd2f-8e8067a2edef",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "activate plan",
+          "method": "PUT",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/<<id>>/activate",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "be46b63b-63e5-4ecb-9c9e-65ebe72112ed",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "deactivate plan",
+          "method": "PUT",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/<<id>>/deactivate",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "be46b63b-63e5-4ecb-9c9e-65ebe72112ed",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "delete plan",
+          "method": "DELETE",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "be46b63b-63e5-4ecb-9c9e-65ebe72112ed",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmmvu0qn63lnyf21mqxbmj49v",
+      "name": "blog",
+      "folders": [
+        {
+          "v": 11,
+          "id": "cmmvu0qou3lobf21m3fcrntpe",
+          "name": "read",
+          "folders": [],
+          "requests": [
+            {
+              "v": "17",
+              "name": "get reading history",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/users/me/blogs/read",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": "application/json",
+                "body": ""
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "update reading history",
+              "method": "POST",
+              "endpoint": "<<HOST>>/users/me/blogs/read",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": "application/json",
+                "body": "{\n    \"blog_id\": \"57fdbc21-ef49-4604-9cf9-fb57b05fe754\"\n}"
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            }
+          ],
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "headers": [],
+          "variables": [],
+          "description": null
+        }
+      ],
+      "requests": [
+        {
+          "v": "17",
+          "name": "get blogs",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/blogs?category_id=6c476863-d6a9-44a2-9e1b-0166b89d9156",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "get blog detail",
+          "method": "GET",
+          "endpoint": "https://echo.hoppscotch.io",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "create blog",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/blogs",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "bearer",
+            "token": "<<access_token>>",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n    \"title\": \"Deploying Golang Applications with Docker and CI/CD\",\n    \"content\": \"Learn how to containerize Golang applications, optimize Dockerfiles, build production images, and set up CI/CD pipelines for automated deployment.\",\n    \"image_url\": \"https://placehold.co/600x400?text=docker-ci-cd\",\n    \"category_id\": \"c77156fe-ac90-403e-afd8-ecbc4252a9cd\",\n    \"tags\": [\"docker\", \"ci-cd\", \"devops\", \"golang\"],\n    \"status\": \"published\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmmyb167w5mfof21m5vfy1guj",
+      "name": "follow",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "get followers",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/users/<<user_id>>/followers",
+          "params": [
+            {
+              "key": "limit",
+              "value": "5",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortBy",
+              "value": "created_at",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortOrder",
+              "value": "desc",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "get followings",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/users/<<user_id>>/followers",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "follow",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/users/<<user_id>>/follow",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "unfollow",
+          "method": "DELETE",
+          "endpoint": "<<HOST>>/api/v1/users/<<user_id>>/follow",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmn2p95yr01bhgy1m7xx87ivh",
+      "name": "application",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "get pending list",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/admin/instructor-applications",
+          "params": [
+            {
+              "key": "limit",
+              "value": "10",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortOrder",
+              "value": "desc",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortBy",
+              "value": "created_at",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "apply instructor",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/users/me/apply-instructor",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"bio\": \"string hung appling to instructor\",\n  \"certifications\": [\n    \"string\",\n    \"string\"\n  ],\n  \"cv_url\": \"https://hoppscotch.io/\",\n  \"education\": \"string\",\n  \"instagram_url\": \"https://hoppscotch.io/\",\n  \"linkedin_url\": \"https://hoppscotch.io/\",\n  \"portfolio_url\": \"https://hoppscotch.io/\",\n  \"years_of_experience\": 10,\n  \"youtube_url\": \"https://hoppscotch.io/\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "approve application",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/admin/instructor-applications/6426fab8-ad45-4aec-a9c0-38d00002995a/approve",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "reject application",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/admin/instructor-applications//reject",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmn2tu5mz08raf21mh4nz2sly",
+      "name": "coupon",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "get coupons",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/coupons",
+          "params": [
+            {
+              "key": "code",
+              "value": "ABC",
+              "active": false,
+              "description": ""
+            },
+            {
+              "key": "limit",
+              "value": "2",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortBy",
+              "value": "created_at",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortOrder",
+              "value": "asc",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "get coupon",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/coupons/<<id>>",
+          "params": [],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "create coupon",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/admin/coupons",
+          "params": [],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"code\": \"SUMMER2000\",\n  \"currency\": \"usd\",\n  \"discount_type\": \"percent\",\n  \"discount_value\": 2000,\n  \"max_redemptions\": 100,\n  \"expires_at\": \"2026-12-31T23:59:59Z\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "deactive coupon",
+          "method": "PUT",
+          "endpoint": "<<HOST>>/api/v1/coupons/<<coupon_id>>/deactivate",
+          "params": [],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "coupon_id",
+              "value": "a2b74601-f1c4-4df3-b3e7-5c4ff2aec809",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "delete coupon",
+          "method": "DELETE",
+          "endpoint": "<<HOST>>/api/v1/coupons/<<id>>",
+          "params": [
+            {
+              "key": "code",
+              "value": "ABC",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "limit",
+              "value": "5",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortBy",
+              "value": "created_at",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortOrder",
+              "value": "asc",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmn429co80us5f21mjhbc80e2",
+      "name": "cart",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "id": "cmn2vr9pv092tf21ml7hysfbr",
+          "name": "get my cart",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/carts",
+          "params": [],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "id": "cmn2tufh808tjf21mz7ftkuoh",
+          "name": "add course to cart",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/carts/courses/<<course_id>>",
+          "params": [],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "course_id",
+              "value": "4180112e-85ed-4bbd-a0ec-23a72fc8b36c",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "remove course from cart",
+          "method": "DELETE",
+          "endpoint": "<<HOST>>/api/v1/carts/courses/<<course_id>>",
+          "params": [],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "course_id",
+              "value": "a8d927a7-6416-4999-8367-f41b10062156",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "checkout session",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/carts/checkout-session",
+          "params": [],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n\t\"coupon_code\": \"ABC1\"\n}\n"
+          },
+          "requestVariables": [
+            {
+              "key": "course_id",
+              "value": "",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmn440bc700a1f21m7j5jkq1l",
+      "name": "purchase course",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "create purchase checkout session",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/courses/<<id>>/purchase-checkout-session",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \t\"coupon_code\": \"SAVE30\"\n}"
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "e9082f0c-8af7-4018-ba19-3f38dd4b9aa8",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "check payment status",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/course-purchase/<<session_id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "session_id",
+              "value": "cs_test_a1UVLm6YIkO1YWZeR1oY7iKe7vcKMhK0KBskXfOEYKzriRP3EKGXXLdL3H",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmn441sse00bnf21mk48xk0b1",
+      "name": "subscription",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "get subscription plans",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/subscription-plans",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "create checkout session",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/subscriptions/checkout-session",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n    \"plan_id\": \"fb9c360f-d1fa-4108-a7e0-f5c35c371491\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "my subscription",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/subscriptions/me",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "cancel subscription",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/subscriptions/cancel",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "resume subscription",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/subscriptions/resume",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "create billing portal",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/subscriptions/billing-portal",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmn4fhg1z0etzf21mh7tzp9gp",
+      "name": "upload file",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "get presigned url",
+          "method": "GET",
+          "endpoint": "https://echo.hoppscotch.io",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "upload with presigned url",
+          "method": "PUT",
+          "endpoint": "http://localhost:9002/elearning/images/1774345445396559130_hello.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20260324%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260324T094405Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host&X-Amz-Signature=06ea8ab6abe2f839a6bdb5887341a9d93bb9341bd9184178428e2b7a932f0acd",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/octet-stream",
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    },
+    {
+      "v": 11,
+      "id": "cmnhanh060n1zg21mvsl0w9bi",
+      "name": "admin",
+      "folders": [
+        {
+          "v": 11,
+          "id": "cmnhan3890d4hld1l8mfklb9j",
+          "name": "statistics",
+          "folders": [],
+          "requests": [
+            {
+              "v": "17",
+              "name": "get active students statisctics",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/users/statistics/active-students",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get total courses created in the last 30 days",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/courses/statistics/new",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get member retention",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/subscriptions/statistics/members/retention",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get teacher growth",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/statistics/teachers/growth",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            }
+          ],
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "headers": [],
+          "variables": [],
+          "description": null
+        },
+        {
+          "v": 11,
+          "id": "cmnia73t20ueald1lufajgnz1",
+          "name": "revenue",
+          "folders": [],
+          "requests": [
+            {
+              "v": "17",
+              "name": "get instructor revenue overview",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/users/me/revenue/overview",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get instructor revenue",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/users/me/revenue/statistics",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get instructor revenue by day",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/users/me/revenue/statistics/day",
+              "params": [
+                {
+                  "key": "date",
+                  "value": "2026-03-01",
+                  "active": true,
+                  "description": ""
+                }
+              ],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get instructor revenue by month",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/users/me/revenue/statistics/month",
+              "params": [
+                {
+                  "key": "month",
+                  "value": "3",
+                  "active": true,
+                  "description": ""
+                },
+                {
+                  "key": "year",
+                  "value": "2026",
+                  "active": true,
+                  "description": ""
+                }
+              ],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get instructor revenue by year",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/users/me/revenue/statistics/year",
+              "params": [
+                {
+                  "key": "year",
+                  "value": "2026",
+                  "active": true,
+                  "description": ""
+                }
+              ],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get admin revenue overview",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/revenue/overview",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get admin revenue",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/revenue/statistics",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get admin revenue by day",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/revenue/statistics/day",
+              "params": [
+                {
+                  "key": "date",
+                  "value": "2026-03-01",
+                  "active": true,
+                  "description": ""
+                }
+              ],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get admin revenue by month",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/revenue/statistics/month",
+              "params": [
+                {
+                  "key": "month",
+                  "value": "3",
+                  "active": true,
+                  "description": ""
+                },
+                {
+                  "key": "year",
+                  "value": "2026",
+                  "active": true,
+                  "description": ""
+                }
+              ],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get admin revenue by year",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/revenue/statistics/year",
+              "params": [
+                {
+                  "key": "year",
+                  "value": "2026",
+                  "active": true,
+                  "description": ""
+                }
+              ],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get admin sales segmentation",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/revenue/statistics/sales-segmentation",
+              "params": [],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get admin transactions",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/revenue/transactions",
+              "params": [
+                {
+                  "key": "limit",
+                  "value": "100",
+                  "active": true,
+                  "description": ""
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "active": true,
+                  "description": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": "created_at",
+                  "active": true,
+                  "description": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "asc",
+                  "active": true,
+                  "description": ""
+                }
+              ],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            }
+          ],
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "headers": [],
+          "variables": [],
+          "description": null
+        }
+      ],
+      "requests": [],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null
+    }
+  ],
+  "requests": [],
+  "auth": {
+    "authType": "bearer",
+    "token": "<<access_token>>",
+    "authActive": true
+  },
+  "headers": [],
+  "variables": [],
+  "description": null
+}
