@@ -63,8 +63,8 @@ ALTER TABLE plans
 ALTER TABLE subscriptions
   ADD COLUMN stripe_subscription_id VARCHAR(255),
   ADD COLUMN stripe_customer_id VARCHAR(255),
-  ADD COLUMN current_period_start TIMESTAMP,
-  ADD COLUMN current_period_end TIMESTAMP,
+  ADD COLUMN current_period_start TIMESTAMPTZ,
+  ADD COLUMN current_period_end TIMESTAMPTZ,
   ADD COLUMN cancel_at_period_end BOOLEAN DEFAULT false;
 
 -- convert billing_cycle -> enum
@@ -118,9 +118,9 @@ CREATE TABLE stripe_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id VARCHAR(255) UNIQUE NOT NULL,
   event_type VARCHAR(100) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMP
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_stripe_events_event_type 

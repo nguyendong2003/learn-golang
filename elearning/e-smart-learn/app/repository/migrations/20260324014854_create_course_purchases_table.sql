@@ -11,10 +11,10 @@ CREATE TABLE IF NOT EXISTS course_purchases (
   amount BIGINT NOT NULL DEFAULT 0,
   currency VARCHAR(10) NOT NULL DEFAULT 'usd',
   status course_purchase_status_enum NOT NULL DEFAULT 'pending',
-  purchased_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMP
+  purchased_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_course_purchases_user_id ON course_purchases(user_id);
@@ -29,9 +29,9 @@ CREATE TABLE IF NOT EXISTS course_purchase_details (
   course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   price BIGINT NOT NULL DEFAULT 0,
   currency VARCHAR(10) NOT NULL DEFAULT 'usd',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMP
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_course_purchase_details_course_purchase_id ON course_purchase_details(course_purchase_id);

@@ -3,9 +3,9 @@
 CREATE TABLE enrollments (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  completed_at TIMESTAMP,
-  deleted_at TIMESTAMP,
+  enrolled_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  completed_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
   PRIMARY KEY (user_id, course_id)
 );
 

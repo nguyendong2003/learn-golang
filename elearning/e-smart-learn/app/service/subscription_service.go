@@ -34,6 +34,7 @@ type SubscriptionService interface {
 	GetTransactionsHistory(ctx context.Context, userID uuid.UUID) (*dto.ListTransactionsHistoryResponse, error)
 	CreateSubscriptionCheckoutSession(ctx context.Context, userID uuid.UUID, request dto.CreateSubscriptionCheckoutSessionRequest) (*dto.CheckoutSessionResponse, error)
 	SyncPendingStripeSubscriptions(ctx context.Context) error
+	SyncActiveStripeSubscriptions(ctx context.Context) error
 	SyncPendingStripeCoursePurchases(ctx context.Context) error
 	GetSubscribers(ctx context.Context, limit int, offset int) ([]*dto.SubscriberResponse, int64, error)
 	CreateCourseCheckoutSession(ctx context.Context, userID, courseID uuid.UUID, request dto.CreateCoursePurchaseCheckoutSessionRequest) (*dto.CheckoutSessionResponse, error)
@@ -63,6 +64,7 @@ type subscriptionService struct {
 	coursePurchaseRevenueShareRepository repository.CoursePurchaseRevenueShareRepository
 	coursePurchaseRepository             repository.CoursePurchaseRepository
 	coursePurchaseDetailRepository       repository.CoursePurchaseDetailRepository
+	cartRepository                       repository.CartRepository
 	courseCouponRepository               repository.CouponRepository
 	stripeEventRepository                repository.StripeEventRepository
 	stripeConfig                         *config.StripeConfig
@@ -79,6 +81,7 @@ func NewSubscriptionService(
 	coursePurchaseRevenueShareRepository repository.CoursePurchaseRevenueShareRepository,
 	coursePurchaseRepository repository.CoursePurchaseRepository,
 	coursePurchaseDetailRepository repository.CoursePurchaseDetailRepository,
+	cartRepository repository.CartRepository,
 	courseCouponRepository repository.CouponRepository,
 	stripeEventRepository repository.StripeEventRepository,
 	stripeConfig *config.StripeConfig,
@@ -96,6 +99,7 @@ func NewSubscriptionService(
 		coursePurchaseRevenueShareRepository: coursePurchaseRevenueShareRepository,
 		coursePurchaseRepository:             coursePurchaseRepository,
 		coursePurchaseDetailRepository:       coursePurchaseDetailRepository,
+		cartRepository:                       cartRepository,
 		courseCouponRepository:               courseCouponRepository,
 		stripeEventRepository:                stripeEventRepository,
 		stripeConfig:                         stripeConfig,
@@ -367,7 +371,7 @@ func (s *subscriptionService) CreateCourseCheckoutSession(ctx context.Context, u
 		return nil, apperror.NewInternalServerError("Failed to create Stripe checkout session")
 	}
 
-	if err := s.createCoursePurchasePending(ctx, userID, appliedCouponID, []uuid.UUID{courseID}, session.ID, finalAmountCents, currency, map[uuid.UUID]int64{courseID: finalAmountCents}); err != nil {
+	if err := s.createCoursePurchasePending(ctx, userID, appliedCouponID, []uuid.UUID{courseID}, session.ID, finalAmountCents, currency, map[uuid.UUID]int64{courseID: amountCents}); err != nil {
 		return nil, err
 	}
 
@@ -647,6 +651,46 @@ func (s *subscriptionService) SyncPendingStripeSubscriptions(ctx context.Context
 	return nil
 }
 
+func (s *subscriptionService) SyncActiveStripeSubscriptions(ctx context.Context) error {
+	subscriptions, err := s.subscriptionRepository.ListStripeSyncCandidates(ctx, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to list sync candidates")
+	}
+
+	for _, sub := range subscriptions {
+		if sub == nil || strings.TrimSpace(sub.StripeSubscriptionID) == "" {
+			continue
+		}
+
+		stripeSub, err := stripesubscription.Get(sub.StripeSubscriptionID, nil)
+		if err != nil {
+			if isStripeResourceMissing(err) {
+				now := time.Now().UTC()
+				updates := map[string]any{
+					"status":               string(stripe.SubscriptionStatusCanceled),
+					"canceled_at":          &now,
+					"ended_at":             &now,
+					"cancel_at_period_end": false,
+				}
+				if _, updateErr := s.subscriptionRepository.Update(ctx, sub.ID, updates); updateErr != nil {
+					return apperror.NewInternalServerError("Failed to mark missing Stripe subscription as canceled")
+				}
+				if err := s.reconcileSubscriptionEnrollments(ctx, sub.UserID); err != nil {
+					return err
+				}
+				continue
+			}
+			return apperror.NewInternalServerError("Failed to fetch Stripe subscription")
+		}
+
+		if err := s.syncSubscription(ctx, "", stripeSub); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s *subscriptionService) SyncPendingStripeCoursePurchases(ctx context.Context) error {
 	purchases, err := s.coursePurchaseRepository.ListPendingByCheckoutSessionID(ctx, nil)
 	if err != nil {
@@ -810,6 +854,9 @@ func (s *subscriptionService) handleCoursePurchaseCheckoutCompleted(ctx context.
 	if purchase.Status == string(consts.CoursePurchaseStatusPaid) {
 		if err := s.enrollUserToPurchasedCourses(ctx, userID, purchase.ID); err != nil {
 			return err
+		}
+		if extractCheckoutPurchaseType(checkoutSession) == "cart_purchase" {
+			_ = s.cartRepository.ClearByUser(ctx, userID)
 		}
 	}
 
@@ -1873,6 +1920,13 @@ func extractUserIDFromCheckoutSession(checkoutSession *stripe.CheckoutSession) u
 		return uuid.Nil
 	}
 	return parsedUserID
+}
+
+func extractCheckoutPurchaseType(checkoutSession *stripe.CheckoutSession) string {
+	if checkoutSession == nil || checkoutSession.Metadata == nil {
+		return ""
+	}
+	return strings.TrimSpace(checkoutSession.Metadata["purchase_type"])
 }
 
 func extractCheckoutPaymentIntentID(checkoutSession *stripe.CheckoutSession) string {

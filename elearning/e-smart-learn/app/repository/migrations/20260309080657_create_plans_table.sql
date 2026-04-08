@@ -8,9 +8,9 @@ CREATE TABLE plans (
   yearly_price DECIMAL(10, 2) DEFAULT 0,
   is_default BOOLEAN DEFAULT false,
   is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMP
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_plans_created_at ON plans(created_at);

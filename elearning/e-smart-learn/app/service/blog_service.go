@@ -101,7 +101,7 @@ func (s *blogService) Create(
 		if data.ImageURL != "" {
 			isValid, err := s.uploadService.ValidateImageURL(ctx, data.ImageURL)
 			if !isValid {
-				return apperror.NewNotFoundError("Image URL is not valid")
+				return apperror.NewBadRequestError("Image URL is not valid")
 			}
 			if err != nil {
 				return apperror.NewInternalServerError("Failed to validate image URL")
@@ -310,7 +310,7 @@ func (s *blogService) UpdateBlogs(ctx context.Context, authorId, blogId uuid.UUI
 		if data.ImageURL != "" && blog.ImageURL != data.ImageURL {
 			isValid, err := s.uploadService.ValidateImageURL(ctx, data.ImageURL)
 			if !isValid {
-				return apperror.NewNotFoundError("Image URL is not valid")
+				return apperror.NewBadRequestError("Image URL is not valid")
 			}
 			if err != nil {
 				return apperror.NewInternalServerError("Failed to validate image URL")

@@ -12,10 +12,10 @@ CREATE TABLE IF NOT EXISTS coupons (
   currency VARCHAR(10) DEFAULT 'usd',
   max_redemptions BIGINT DEFAULT 0,
   is_active BOOLEAN DEFAULT true,
-  expires_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMP
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_coupons_deleted_at ON coupons(deleted_at);

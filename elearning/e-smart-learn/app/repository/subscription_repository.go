@@ -19,6 +19,7 @@ type SubscriptionRepository interface {
 	GetByCheckoutSessionID(ctx context.Context, checkoutSessionID string, preloads []Preload) (*model.Subscription, error)
 	GetByStripeSubscriptionID(ctx context.Context, stripeSubscriptionID string, preloads []Preload) (*model.Subscription, error)
 	GetActiveByUserID(ctx context.Context, userID uuid.UUID, preloads []Preload) (*model.Subscription, error)
+	ListStripeSyncCandidates(ctx context.Context, preloads []Preload) ([]*model.Subscription, error)
 	ListByUserID(ctx context.Context, userID uuid.UUID, preloads []Preload) ([]*model.Subscription, error)
 	ListPendingByCheckoutSessionID(ctx context.Context, preloads []Preload) ([]*model.Subscription, error)
 	CountByPlanID(ctx context.Context, planID uuid.UUID) (int64, error)
@@ -83,6 +84,30 @@ func (r *subscriptionRepository) GetActiveByUserID(ctx context.Context, userID u
 	}
 
 	return &sub, nil
+}
+
+func (r *subscriptionRepository) ListStripeSyncCandidates(ctx context.Context, preloads []Preload) ([]*model.Subscription, error) {
+	now := time.Now().UTC()
+	db := r.baseQuery(ctx).
+		Where("stripe_subscription_id IS NOT NULL AND stripe_subscription_id <> ''").
+		Where("status IN (?, ?, ?)",
+			consts.SubscriptionStatusActive,
+			consts.SubscriptionStatusTrialing,
+			consts.SubscriptionStatusPastDue,
+		).
+		Where("ended_at IS NULL OR ended_at > ?", now).
+		Order("started_at ASC, created_at ASC")
+
+	if len(preloads) > 0 {
+		db = applyPreloads(db, preloads)
+	}
+
+	var subs []*model.Subscription
+	if err := db.Find(&subs).Error; err != nil {
+		return nil, err
+	}
+
+	return subs, nil
 }
 
 func (r *subscriptionRepository) ListByUserID(ctx context.Context, userID uuid.UUID, preloads []Preload) ([]*model.Subscription, error) {

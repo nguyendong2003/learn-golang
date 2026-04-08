@@ -258,11 +258,19 @@ func (s *cartService) Checkout(ctx context.Context, userID uuid.UUID, request dt
 		return nil, apperror.NewInternalServerError("Failed to create Stripe checkout session")
 	}
 
+	finalAmount := totalAmount
+	if session != nil {
+		// Stripe returns the final payable amount in session totals, including discounts.
+		if session.AmountTotal > 0 || (request.CouponCode != "" && session.AmountTotal == 0) {
+			finalAmount = session.AmountTotal
+		}
+	}
+
 	purchase := &model.CoursePurchase{
 		UserID:                  userID,
 		CouponID:                appliedCouponID,
 		StripeCheckoutSessionID: session.ID,
-		Amount:                  totalAmount,
+		Amount:                  finalAmount,
 		Currency:                currency,
 		Status:                  string(consts.CoursePurchaseStatusPending),
 	}

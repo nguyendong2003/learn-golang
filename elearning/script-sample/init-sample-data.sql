@@ -2,6 +2,8 @@
 TRUNCATE TABLE 
     role_permissions,
     follows,
+    course_purchase_revenue_shares,
+    subscription_revenue_shares,
     instructor_profiles,
     lessons,
     chapters,

@@ -6,12 +6,12 @@ CREATE TABLE course_events (
   name VARCHAR(255) NOT NULL,
   description TEXT,
   meeting_url TEXT,
-  start_time TIMESTAMP NOT NULL,
-  end_time TIMESTAMP NOT NULL,
+  start_time TIMESTAMPTZ NOT NULL,
+  end_time TIMESTAMPTZ NOT NULL,
   notification_before_start INT DEFAULT 15,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMP
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_course_events_course_id ON course_events(course_id);

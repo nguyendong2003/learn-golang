@@ -3,7 +3,7 @@
 CREATE TABLE follows (
 	follower_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 	followee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (follower_id, followee_id),
 	CONSTRAINT chk_follows_not_self CHECK (follower_id <> followee_id)
 );

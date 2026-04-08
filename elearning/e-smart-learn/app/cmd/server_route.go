@@ -131,13 +131,10 @@ func (server *ApiServer) route() {
 		)
 		courseProtected.POST("",
 			server.RequirePermissionHandler("course_create"),
-			server.RequireInstructorProfileHandler(),
 			server.courseHandler.Create(),
 		)
 		courseProtected.PUT("/:id",
 			server.RequirePermissionHandler("course_update"),
-			server.LoadCourseHandler(),
-			server.RequireCourseOwnerHandler(),
 			server.courseHandler.Update(),
 		)
 		courseProtected.PUT("/:id/update-status",

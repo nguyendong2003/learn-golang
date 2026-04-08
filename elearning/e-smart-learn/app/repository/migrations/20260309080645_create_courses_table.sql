@@ -14,9 +14,9 @@ CREATE TABLE courses (
   average_rate DECIMAL(3, 2) DEFAULT 0,
   status VARCHAR(50) DEFAULT 'draft',
   total_student BIGINT DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMP
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_courses_teacher_id ON courses(teacher_id);

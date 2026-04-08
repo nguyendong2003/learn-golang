@@ -3615,9 +3615,9 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update a course by ID (instructor only) using multipart/form-data.\n- ` + "`" + `data` + "`" + `: required, JSON string (stringified object), not raw JSON body.\n- ` + "`" + `image` + "`" + `: optional image file.\n- Example ` + "`" + `data` + "`" + ` value: {\"title\":\"Khóa học Golang promax\",\"price\":35.562,\"category_id\":\"95772539-6507-457b-9fec-3df7cde288b7\"}",
+                "description": "Update a course by ID (instructor only) using JSON body.",
                 "consumes": [
-                    "multipart/form-data"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
@@ -3635,17 +3635,13 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "Update payload as JSON string (partial fields allowed)",
-                        "name": "data",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Course image file (jpg, jpeg, png, webp)",
-                        "name": "image",
-                        "in": "formData"
+                        "description": "Update payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateCourseRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -8079,6 +8075,28 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/dto.UpdateLessonInChapterRequest"
                     }
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 3
+                }
+            }
+        },
+        "dto.UpdateCourseRequest": {
+            "type": "object",
+            "properties": {
+                "category_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
                 },
                 "title": {
                     "type": "string",

@@ -6,12 +6,12 @@ CREATE TABLE subscriptions (
   plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
   billing_cycle VARCHAR(50) NOT NULL,
   status VARCHAR(50) DEFAULT 'active',
-  started_at TIMESTAMP NOT NULL,
-  ended_at TIMESTAMP,
-  canceled_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMP
+  started_at TIMESTAMPTZ NOT NULL,
+  ended_at TIMESTAMPTZ,
+  canceled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_subscriptions_user_id ON subscriptions(user_id);

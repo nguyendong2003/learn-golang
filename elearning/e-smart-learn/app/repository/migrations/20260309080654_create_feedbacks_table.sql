@@ -6,9 +6,9 @@ CREATE TABLE feedbacks (
   course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   rate INT DEFAULT 5,
   content TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMP
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_feedbacks_user_id ON feedbacks(user_id);

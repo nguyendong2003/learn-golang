@@ -86,7 +86,6 @@ func (h *courseHandler) Create() gin.HandlerFunc {
 			_ = c.Error(err)
 			return
 		}
-
 		var request dto.CreateCourseRequest
 		if err := util.BindAndValidateJSON(c, &request); err != nil {
 			_ = c.Error(err)
@@ -109,16 +108,12 @@ func (h *courseHandler) Create() gin.HandlerFunc {
 
 // Update godoc
 // @Summary Update an existing course
-// @Description Update a course by ID (instructor only) using multipart/form-data.
-// @Description - `data`: required, JSON string (stringified object), not raw JSON body.
-// @Description - `image`: optional image file.
-// @Description - Example `data` value: {"title":"Khóa học Golang promax","price":35.562,"category_id":"95772539-6507-457b-9fec-3df7cde288b7"}
+// @Description Update a course by ID (instructor only) using JSON body.
 // @Tags courses
-// @Accept multipart/form-data
+// @Accept json
 // @Produce json
 // @Param id path string true "Course ID (UUID format)"
-// @Param data formData string true "Update payload as JSON string (partial fields allowed)"
-// @Param image formData file false "Course image file (jpg, jpeg, png, webp)"
+// @Param payload body dto.UpdateCourseRequest true "Update payload"
 // @Success 200 {object} dto.ApiResponse{data=dto.CourseResponse}
 // @Failure 400 {object} dto.ApiResponse "Invalid UUID or payload"
 // @Failure 401 {object} dto.ApiResponse "Unauthorized"
@@ -128,102 +123,29 @@ func (h *courseHandler) Create() gin.HandlerFunc {
 // @Security BearerAuth
 func (h *courseHandler) Update() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var courseIDRequest dto.UUIDRequest
-
-		if err := c.ShouldBindUri(&courseIDRequest); err != nil {
-			_ = c.Error(apperror.NewBadRequestError("Invalid UUID in URI"))
-			return
-		}
-
-		id, err := uuid.Parse(courseIDRequest.ID)
+		id, err := uuid.Parse(c.Param("id"))
 		if err != nil {
 			_ = c.Error(apperror.NewBadRequestError("Invalid UUID format"))
 			return
 		}
-
-		// Get course from context
-		var existingCourse *dto.CourseResponse
-
-		if v, ok := c.Get(consts.ContextCourse); ok {
-			if course, ok := v.(*dto.CourseResponse); ok {
-				existingCourse = course
-			}
-		}
-
-		if existingCourse == nil {
-			_ = c.Error(apperror.NewNotFoundError("Course not found"))
-			return
-		}
-
-		oldImage := existingCourse.Image
-
-		form, err := c.MultipartForm()
+		userID, err := util.GetRequestUserID(c)
 		if err != nil {
-			_ = c.Error(apperror.NewBadRequestError("Invalid form data"))
+			_ = c.Error(err)
 			return
 		}
-
 		var request dto.UpdateCourseRequest
-		dataStr := c.PostForm("data")
-		if dataStr == "" {
-			_ = c.Error(apperror.NewBadRequestError("Missing data field"))
-			return
-		}
-
-		if err := util.BindAndValidateJSONFromString(dataStr, &request); err != nil {
+		if err := util.BindAndValidateJSON(c, &request); err != nil {
 			_ = c.Error(err)
 			return
 		}
-
-		var image *string
-		// Handle image upload
-		files := form.File["image"]
-		var newImageURL string
-		if len(files) > 0 {
-			file := files[0]
-			imageURL, err := h.uploadService.UploadImage(c.Request.Context(), file)
-			if err != nil {
-				_ = c.Error(err)
-				return
-			}
-			// request.Image = &imageURL
-			image = &imageURL
-			newImageURL = imageURL
-		}
-
-		// Call service
-		updatedCourse, err := h.courseService.Update(c.Request.Context(), id, request, image)
+		updatedCourse, err := h.courseService.Update(c.Request.Context(), userID, id, request)
 		if err != nil {
 			_ = c.Error(err)
 			return
 		}
-
-		if existingCourse.Status == consts.CoursePublished {
-			updatedCourse, err = h.subscriptionService.SyncPublishedCourseCatalog(c.Request.Context(), id)
-			if err != nil {
-				_ = c.Error(err)
-				return
-			}
-		}
-
-		// Remove old image from storage (only when a new image was uploaded)
-		if newImageURL != "" && oldImage != "" && oldImage != newImageURL {
-			if err := h.uploadService.DeleteImage(c.Request.Context(), oldImage); err != nil {
-				_ = c.Error(err)
-				return
-			}
-		}
-
-		data, err := h.courseService.GetByID(c.Request.Context(), uuid.MustParse(updatedCourse.ID))
-		if err != nil {
-			_ = c.Error(err)
-			return
-		}
-
 		res := dto.NewApiResponse(c)
 		res.Request = dto.GetRequestClient(c)
-		res.Data = data
-
+		res.Data = updatedCourse
 		c.JSON(http.StatusOK, res)
 	}
 }

@@ -5,7 +5,7 @@ ALTER TABLE courses
   ADD COLUMN IF NOT EXISTS stripe_price_id VARCHAR(255),
   ADD COLUMN IF NOT EXISTS stripe_currency VARCHAR(10) DEFAULT 'usd',
   ADD COLUMN IF NOT EXISTS stripe_amount BIGINT DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS stripe_synced_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS stripe_synced_at TIMESTAMPTZ,
   DROP COLUMN IF EXISTS old_price;
 
 CREATE INDEX IF NOT EXISTS idx_courses_stripe_product_id ON courses(stripe_product_id);

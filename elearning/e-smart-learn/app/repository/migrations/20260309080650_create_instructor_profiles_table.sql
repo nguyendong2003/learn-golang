@@ -12,9 +12,9 @@ CREATE TABLE instructor_profiles (
   linkedin_url VARCHAR(255),
   youtube_url VARCHAR(255),
   instagram_url VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMP
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_instructor_profiles_user_id ON instructor_profiles(user_id);

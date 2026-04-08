@@ -17,6 +17,8 @@ type CoursePurchaseRevenueShare struct {
 	PurchaseAmount         int64     `gorm:"not null;default:0"`
 	PurchaseStripeFee      int64     `gorm:"not null;default:0"`
 	DetailAmount           int64     `gorm:"not null;default:0"`
+	DetailCouponDiscount   int64     `gorm:"not null;default:0"`
+	DetailNetAmount        int64     `gorm:"not null;default:0"`
 	AllocatedStripeFee     int64     `gorm:"not null;default:0"`
 	InstructorGross        int64     `gorm:"not null;default:0"`
 	PlatformGross          int64     `gorm:"not null;default:0"`

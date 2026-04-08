@@ -21,31 +21,31 @@ type ApiServer struct {
 
 	dbRepository repository.DbRepository
 
-	userRepository                 repository.UserRepository
-	blogRepository                 repository.BlogRepository
-	roleRepository                 repository.RoleRepository
-	planRepository                 repository.PlanRepository
-	refreshTokenRepository         repository.RefreshTokenRepository
-	categoryRepository             repository.CategoryRepository
-	enrollmentRepository           repository.EnrollmentRepository
-	courseRepository               repository.CourseRepository
-	instructorProfileRepository    repository.InstructorProfileRepository
-	feedbackRepository             repository.FeedbackRepository
-	courseEventRepository          repository.CourseEventRepository
-	chapterRepository              repository.ChapterRepository
-	lessonRepository               repository.LessonRepository
-	followRepository               repository.FollowRepository
-	subscriptionRepository         repository.SubscriptionRepository
-	paymentRepository              repository.PaymentRepository
-	subscriptionRevenueShareRepository repository.SubscriptionRevenueShareRepository
-	stripeEventRepository          repository.StripeEventRepository
-	coursePurchaseRepository       repository.CoursePurchaseRepository
-	coursePurchaseDetailRepository repository.CoursePurchaseDetailRepository
+	userRepository                       repository.UserRepository
+	blogRepository                       repository.BlogRepository
+	roleRepository                       repository.RoleRepository
+	planRepository                       repository.PlanRepository
+	refreshTokenRepository               repository.RefreshTokenRepository
+	categoryRepository                   repository.CategoryRepository
+	enrollmentRepository                 repository.EnrollmentRepository
+	courseRepository                     repository.CourseRepository
+	instructorProfileRepository          repository.InstructorProfileRepository
+	feedbackRepository                   repository.FeedbackRepository
+	courseEventRepository                repository.CourseEventRepository
+	chapterRepository                    repository.ChapterRepository
+	lessonRepository                     repository.LessonRepository
+	followRepository                     repository.FollowRepository
+	subscriptionRepository               repository.SubscriptionRepository
+	paymentRepository                    repository.PaymentRepository
+	subscriptionRevenueShareRepository   repository.SubscriptionRevenueShareRepository
+	stripeEventRepository                repository.StripeEventRepository
+	coursePurchaseRepository             repository.CoursePurchaseRepository
+	coursePurchaseDetailRepository       repository.CoursePurchaseDetailRepository
 	coursePurchaseRevenueShareRepository repository.CoursePurchaseRevenueShareRepository
-	revenueRepository              repository.RevenueRepository
-	couponRepository               repository.CouponRepository
-	cartRepository                    repository.CartRepository
-	presignUploadTrackingRepository   repository.PresignedUploadTrackingRepository
+	revenueRepository                    repository.RevenueRepository
+	couponRepository                     repository.CouponRepository
+	cartRepository                       repository.CartRepository
+	presignUploadTrackingRepository      repository.PresignedUploadTrackingRepository
 
 	userService              service.UserService
 	authService              service.AuthService

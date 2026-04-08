@@ -130,11 +130,13 @@ func (s *ApiServer) initServices(config *config.Config) {
 	s.courseService = service.NewCourseService(
 		s.courseRepository,
 		s.coursePurchaseRepository,
-		s.categoryService,
+		s.categoryRepository,
 		s.instructorProfileService,
 		s.courseEventRepository,
 		s.enrollmentRepository,
 		s.userRepository,
+		s.dbRepository,
+		s.uploadService,
 		s.asynqClient,
 		s.enrollmentService,
 	)
@@ -156,6 +158,7 @@ func (s *ApiServer) initServices(config *config.Config) {
 		s.coursePurchaseRevenueShareRepository,
 		s.coursePurchaseRepository,
 		s.coursePurchaseDetailRepository,
+		s.cartRepository,
 		s.couponRepository,
 		s.stripeEventRepository,
 		&config.Stripe,
@@ -236,15 +239,18 @@ func (s *ApiServer) initBackgroundJob() {
 
 func (s *ApiServer) startStripeSubscriptionSyncCron() {
 	logger := util.WithLayer(util.LayerWorker)
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 
-	logger.Info("started stripe subscription sync cron", "interval", (30 * time.Second).String())
+	logger.Info("started stripe subscription sync cron", "interval", (55 * time.Second).String())
 
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		if err := s.subscriptionService.SyncPendingStripeSubscriptions(ctx); err != nil {
 			logger.Error("stripe subscription sync failed", "error", err)
+		}
+		if err := s.subscriptionService.SyncActiveStripeSubscriptions(ctx); err != nil {
+			logger.Error("stripe subscription reconcile failed", "error", err)
 		}
 		cancel()
 
@@ -254,10 +260,10 @@ func (s *ApiServer) startStripeSubscriptionSyncCron() {
 
 func (s *ApiServer) startStripeCoursePurchaseSyncCron() {
 	logger := util.WithLayer(util.LayerWorker)
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 
-	logger.Info("started stripe course purchase sync cron", "interval", (30 * time.Second).String())
+	logger.Info("started stripe course purchase sync cron", "interval", (55 * time.Second).String())
 
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)

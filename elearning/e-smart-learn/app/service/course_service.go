@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"log"
 	"strings"
 	"time"
 
@@ -20,7 +19,7 @@ import (
 
 type CourseService interface {
 	Create(ctx context.Context, userID uuid.UUID, request dto.CreateCourseRequest) (*dto.CourseResponse, error)
-	Update(ctx context.Context, id uuid.UUID, request dto.UpdateCourseRequest, image *string) (*dto.CourseResponse, error)
+	Update(ctx context.Context, userID, courseID uuid.UUID, request dto.UpdateCourseRequest) (*dto.CourseResponse, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status consts.CourseStatus) (*dto.CourseResponse, error)
 	SubmitForReview(ctx context.Context, userID uuid.UUID, courseID uuid.UUID) (*dto.CourseResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -44,11 +43,13 @@ type CourseService interface {
 type courseService struct {
 	courseRepository         repository.CourseRepository
 	coursePurchaseRepository repository.CoursePurchaseRepository
-	categoryService          CategoryService
+	categoryRepository       repository.CategoryRepository
 	instructorProfileService InstructorProfileService
 	courseEventRepository    repository.CourseEventRepository
 	enrollmentRepository     repository.EnrollmentRepository
 	userRepository           repository.UserRepository
+	db                       repository.DbRepository
+	uploadService            UploadService
 	asynqClient              *asynq.Client
 	enrollmentService        EnrollmentService
 }
@@ -56,31 +57,38 @@ type courseService struct {
 func NewCourseService(
 	courseRepository repository.CourseRepository,
 	coursePurchaseRepository repository.CoursePurchaseRepository,
-	categoryService CategoryService,
+	categoryRepository repository.CategoryRepository,
 	instructorProfileService InstructorProfileService,
 	courseEventRepository repository.CourseEventRepository,
 	enrollmentRepository repository.EnrollmentRepository,
 	userRepository repository.UserRepository,
+	db repository.DbRepository,
+	uploadService UploadService,
 	asynqClient *asynq.Client,
 	enrollmentService EnrollmentService,
 ) CourseService {
 	return &courseService{
 		courseRepository:         courseRepository,
 		coursePurchaseRepository: coursePurchaseRepository,
-		categoryService:          categoryService,
+		categoryRepository:       categoryRepository,
 		instructorProfileService: instructorProfileService,
 		courseEventRepository:    courseEventRepository,
 		enrollmentRepository:     enrollmentRepository,
 		userRepository:           userRepository,
+		db:                       db,
+		uploadService:            uploadService,
 		asynqClient:              asynqClient,
 		enrollmentService:        enrollmentService,
 	}
 }
 
 func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dto.CreateCourseRequest) (*dto.CourseResponse, error) {
-	_, err := s.categoryService.GetByID(ctx, request.CategoryID)
+	category, err := s.categoryRepository.FindByID(ctx, request.CategoryID, nil)
 	if err != nil {
 		return nil, err
+	}
+	if category == nil {
+		return nil, apperror.NewNotFoundError("Category not found")
 	}
 	user, err := s.userRepository.FindByID(ctx, userID, nil)
 	if err != nil {
@@ -90,62 +98,93 @@ func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dt
 		return nil, apperror.NewNotFoundError("User not found")
 	}
 
-	newCourse := &model.Course{
-		Title:       request.Title,
-		Description: request.Description,
-		Image:       request.ImageURL,
-		Slug:        util.GenerateSlug(request.Title),
-		Price:       request.Price,
-		Status:      consts.CourseDraft,
-		CategoryID:  request.CategoryID,
-		UserID:      userID,
-	}
+	var createdCourse *model.Course
+	err = s.db.Transaction(ctx, func(txDb repository.DbRepository) error {
+		txCourseRepository := repository.NewCourseRepository(txDb)
 
-	createdCourse, err := s.courseRepository.Create(ctx, newCourse)
+		if err := s.validateAndConfirmCourseImageURL(ctx, txDb, request.ImageURL); err != nil {
+			return err
+		}
+
+		newCourse := &model.Course{
+			Title:       request.Title,
+			Description: request.Description,
+			Image:       request.ImageURL,
+			Slug:        util.GenerateSlug(request.Title),
+			Price:       request.Price,
+			Status:      consts.CourseDraft,
+			CategoryID:  request.CategoryID,
+			UserID:      userID,
+		}
+
+		var err error
+		createdCourse, err = txCourseRepository.Create(ctx, newCourse)
+		if err != nil {
+			return apperror.NewInternalServerError("Failed to create course")
+		}
+
+		return nil
+	})
 	if err != nil {
-		return nil, apperror.NewInternalServerError("Failed to create course")
+		return nil, err
 	}
 
 	return dto.NewCourseDetailResponse(createdCourse), nil
 }
 
-func (s *courseService) Update(ctx context.Context, id uuid.UUID, request dto.UpdateCourseRequest, image *string) (*dto.CourseResponse, error) {
-	course, err := s.courseRepository.FindByID(ctx, id, nil)
+func (s *courseService) Update(ctx context.Context, userID, courseID uuid.UUID, request dto.UpdateCourseRequest) (*dto.CourseResponse, error) {
+	course, err := s.courseRepository.FindByID(ctx, courseID, nil)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to retrieve course")
 	}
-
 	if course == nil {
 		return nil, apperror.NewNotFoundError("Course not found")
 	}
-
-	if request.Title != nil {
-		course.Title = *request.Title
+	if course.UserID != userID {
+		return nil, apperror.NewForbiddenError("You do not have permission to update this course")
 	}
 
-	if request.Description != nil {
-		course.Description = *request.Description
-	}
+	var updatedCourse *model.Course
+	err = s.db.Transaction(ctx, func(txDb repository.DbRepository) error {
+		txCourseRepository := repository.NewCourseRepository(txDb)
 
-	if image != nil {
-		course.Image = *image
-	}
-
-	if request.Price != nil {
-		course.Price = *request.Price
-	}
-
-	if request.CategoryID != nil {
-		categoryID, err := uuid.Parse(*request.CategoryID)
-		if err != nil {
-			return nil, apperror.NewValidationError(map[string]string{"category_id": "Invalid UUID"})
+		if request.Title != nil {
+			course.Title = *request.Title
 		}
-		course.CategoryID = categoryID
-	}
 
-	updatedCourse, err := s.courseRepository.Updates(ctx, course)
+		if request.Description != nil {
+			course.Description = *request.Description
+		}
+
+		if request.ImageURL != nil && *request.ImageURL != "" && course.Image != *request.ImageURL {
+			if err := s.validateAndConfirmCourseImageURL(ctx, txDb, *request.ImageURL); err != nil {
+				return err
+			}
+			course.Image = *request.ImageURL
+		}
+
+		if request.Price != nil {
+			course.Price = *request.Price
+		}
+
+		if request.CategoryID != nil {
+			categoryID, err := uuid.Parse(*request.CategoryID)
+			if err != nil {
+				return apperror.NewValidationError(map[string]string{"category_id": "Invalid UUID"})
+			}
+			course.CategoryID = categoryID
+		}
+
+		var err error
+		updatedCourse, err = txCourseRepository.Updates(ctx, course)
+		if err != nil {
+			return apperror.NewInternalServerError("Failed to update course")
+		}
+
+		return nil
+	})
 	if err != nil {
-		return nil, apperror.NewInternalServerError("Failed to update course")
+		return nil, err
 	}
 
 	return dto.NewCourseDetailResponse(updatedCourse), nil
@@ -241,7 +280,6 @@ func (s *courseService) GetBySlug(ctx context.Context, slug string, userID uuid.
 	}
 
 	result := dto.NewCourseDetailResponse(course)
-	log.Default().Println("ROLE found:", userRole)
 	if userRole == string(consts.RoleStudent) {
 		enrollment, err := s.enrollmentService.FindEnrollment(
 			ctx,
@@ -251,7 +289,6 @@ func (s *courseService) GetBySlug(ctx context.Context, slug string, userID uuid.
 		if err != nil {
 			return result, nil
 		}
-		log.Default().Println("Enrollment found:", enrollment != nil)
 		result.IsPurchased = enrollment != nil && enrollment.CanceledAt == nil
 	}
 
@@ -592,4 +629,34 @@ func buildCourseQuery(request dto.ListCourseRequest) (string, []any) {
 
 	query := strings.Join(conditions, " AND ")
 	return query, args
+}
+
+func (s *courseService) validateAndConfirmCourseImageURL(ctx context.Context, txDb repository.DbRepository, imageURL string) error {
+	if imageURL == "" {
+		return nil
+	}
+	isValid, err := s.uploadService.ValidateImageURL(ctx, imageURL)
+	if !isValid {
+		return apperror.NewBadRequestError("Image URL is not valid")
+	}
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to validate image URL")
+	}
+
+	trackingRepo := repository.NewPresignedUploadTrackingRepository(txDb)
+	presignURL, err := trackingRepo.Find(ctx, "object_url = ?", nil, imageURL)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to retrieve presigned URL")
+	}
+	if presignURL == nil {
+		return apperror.NewNotFoundError("Presigned URL not found")
+	}
+	if presignURL.Status == consts.PresignedUploadStatusConfirmed {
+		return apperror.NewBadRequestError("Image URL already used")
+	}
+	if err := trackingRepo.ConfirmByObjectURL(ctx, imageURL); err != nil {
+		return apperror.NewInternalServerError("Failed to confirm image URL")
+	}
+
+	return nil
 }

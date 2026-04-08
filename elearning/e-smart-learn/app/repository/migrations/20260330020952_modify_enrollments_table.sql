@@ -10,13 +10,13 @@ ALTER TABLE enrollments
 	ADD CONSTRAINT enrollments_pkey PRIMARY KEY (id);
 
 ALTER TABLE enrollments
-	ADD COLUMN canceled_at TIMESTAMP;
+	ADD COLUMN canceled_at TIMESTAMPTZ;
 
 ALTER TABLE enrollments
-    ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+    ADD COLUMN created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
     
 ALTER TABLE enrollments
-    ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+    ADD COLUMN updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
 
 CREATE TYPE enrollment_type_enum AS ENUM ('course_purchase', 'subscription');
 
