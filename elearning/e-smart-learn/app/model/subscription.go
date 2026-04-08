@@ -75,6 +75,8 @@ type Payment struct {
 	StripeFee           int64     `gorm:"default:0"`
 	FailureReason       string    `gorm:"type:text"`
 	AttemptCount        int64     `gorm:"default:0"`
+	BillingPeriodStart  *time.Time
+	BillingPeriodEnd    *time.Time
 	PaidAt              *time.Time
 
 	// Relations

@@ -323,6 +323,15 @@ func (s *cartService) ensureCourseStripeProductCatalog(ctx context.Context, cour
 	}
 
 	productID := strings.TrimSpace(course.StripeProductID)
+	if productID != "" {
+		if _, err := product.Get(productID, nil); err != nil {
+			if isStripeResourceMissingError(err) {
+				productID = ""
+			} else {
+				return apperror.NewInternalServerError("Failed to load Stripe product")
+			}
+		}
+	}
 	if productID == "" {
 		createdProduct, err := product.New(&stripe.ProductParams{
 			Name:        stripe.String(course.Title),
@@ -347,9 +356,19 @@ func (s *cartService) ensureCourseStripeProductCatalog(ctx context.Context, cour
 		})
 	}
 
-	needNewPrice := strings.TrimSpace(course.StripePriceID) == "" || course.StripeAmount != amountCents || strings.ToLower(course.StripeCurrency) != currency
+	currentPriceID := strings.TrimSpace(course.StripePriceID)
+	needNewPrice := currentPriceID == "" || course.StripeAmount != amountCents || strings.ToLower(course.StripeCurrency) != currency
+	if !needNewPrice {
+		if _, err := price.Get(currentPriceID, nil); err != nil {
+			if isStripeResourceMissingError(err) {
+				needNewPrice = true
+			} else {
+				return apperror.NewInternalServerError("Failed to load Stripe price")
+			}
+		}
+	}
 	if needNewPrice {
-		oldPriceID := strings.TrimSpace(course.StripePriceID)
+		oldPriceID := currentPriceID
 		if oldPriceID != "" {
 			_, _ = price.Update(oldPriceID, &stripe.PriceParams{Active: stripe.Bool(false)})
 		}
@@ -380,4 +399,12 @@ func (s *cartService) ensureCourseStripeProductCatalog(ctx context.Context, cour
 	}
 
 	return nil
+}
+
+func isStripeResourceMissingError(err error) bool {
+	stripeErr, ok := err.(*stripe.Error)
+	if !ok || stripeErr == nil {
+		return false
+	}
+	return stripeErr.Code == stripe.ErrorCodeResourceMissing
 }

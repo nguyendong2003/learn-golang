@@ -21,7 +21,6 @@ import (
 	billingportalsession "github.com/stripe/stripe-go/v83/billingportal/session"
 	checkoutsession "github.com/stripe/stripe-go/v83/checkout/session"
 	"github.com/stripe/stripe-go/v83/customer"
-	stripeinvoice "github.com/stripe/stripe-go/v83/invoice"
 	"github.com/stripe/stripe-go/v83/paymentintent"
 	"github.com/stripe/stripe-go/v83/price"
 	"github.com/stripe/stripe-go/v83/product"
@@ -54,17 +53,19 @@ type SubscriptionService interface {
 }
 
 type subscriptionService struct {
-	userRepository                 repository.UserRepository
-	planRepository                 repository.PlanRepository
-	courseRepository               repository.CourseRepository
-	enrollmentRepository           repository.EnrollmentRepository
-	subscriptionRepository         repository.SubscriptionRepository
-	paymentRepository              repository.PaymentRepository
-	coursePurchaseRepository       repository.CoursePurchaseRepository
-	coursePurchaseDetailRepository repository.CoursePurchaseDetailRepository
-	courseCouponRepository         repository.CouponRepository
-	stripeEventRepository          repository.StripeEventRepository
-	stripeConfig                   *config.StripeConfig
+	userRepository                       repository.UserRepository
+	planRepository                       repository.PlanRepository
+	courseRepository                     repository.CourseRepository
+	enrollmentRepository                 repository.EnrollmentRepository
+	subscriptionRepository               repository.SubscriptionRepository
+	paymentRepository                    repository.PaymentRepository
+	subscriptionRevenueShareRepository   repository.SubscriptionRevenueShareRepository
+	coursePurchaseRevenueShareRepository repository.CoursePurchaseRevenueShareRepository
+	coursePurchaseRepository             repository.CoursePurchaseRepository
+	coursePurchaseDetailRepository       repository.CoursePurchaseDetailRepository
+	courseCouponRepository               repository.CouponRepository
+	stripeEventRepository                repository.StripeEventRepository
+	stripeConfig                         *config.StripeConfig
 }
 
 func NewSubscriptionService(
@@ -74,6 +75,8 @@ func NewSubscriptionService(
 	enrollmentRepository repository.EnrollmentRepository,
 	subscriptionRepository repository.SubscriptionRepository,
 	paymentRepository repository.PaymentRepository,
+	subscriptionRevenueShareRepository repository.SubscriptionRevenueShareRepository,
+	coursePurchaseRevenueShareRepository repository.CoursePurchaseRevenueShareRepository,
 	coursePurchaseRepository repository.CoursePurchaseRepository,
 	coursePurchaseDetailRepository repository.CoursePurchaseDetailRepository,
 	courseCouponRepository repository.CouponRepository,
@@ -83,17 +86,19 @@ func NewSubscriptionService(
 	stripe.Key = stripeConfig.SecretKey
 
 	return &subscriptionService{
-		userRepository:                 userRepository,
-		planRepository:                 planRepository,
-		courseRepository:               courseRepository,
-		enrollmentRepository:           enrollmentRepository,
-		subscriptionRepository:         subscriptionRepository,
-		paymentRepository:              paymentRepository,
-		coursePurchaseRepository:       coursePurchaseRepository,
-		coursePurchaseDetailRepository: coursePurchaseDetailRepository,
-		courseCouponRepository:         courseCouponRepository,
-		stripeEventRepository:          stripeEventRepository,
-		stripeConfig:                   stripeConfig,
+		userRepository:                       userRepository,
+		planRepository:                       planRepository,
+		courseRepository:                     courseRepository,
+		enrollmentRepository:                 enrollmentRepository,
+		subscriptionRepository:               subscriptionRepository,
+		paymentRepository:                    paymentRepository,
+		subscriptionRevenueShareRepository:   subscriptionRevenueShareRepository,
+		coursePurchaseRevenueShareRepository: coursePurchaseRevenueShareRepository,
+		coursePurchaseRepository:             coursePurchaseRepository,
+		coursePurchaseDetailRepository:       coursePurchaseDetailRepository,
+		courseCouponRepository:               courseCouponRepository,
+		stripeEventRepository:                stripeEventRepository,
+		stripeConfig:                         stripeConfig,
 	}
 }
 
@@ -175,7 +180,7 @@ func (s *subscriptionService) CreateSubscriptionCheckoutSession(ctx context.Cont
 		return nil, apperror.NewNotFoundError("Plan not found")
 	}
 
-	priceID, billingCycle, err := s.resolvePlanPriceID(plan)
+	priceID, billingCycle, err := s.resolvePlanPriceID(ctx, plan)
 	if err != nil {
 		return nil, err
 	}
@@ -325,6 +330,7 @@ func (s *subscriptionService) CreateCourseCheckoutSession(ctx context.Context, u
 	}
 
 	var appliedCouponID *uuid.UUID
+	finalAmountCents := amountCents
 
 	if request.CouponCode != "" {
 		courseCoupon, err := s.courseCouponRepository.GetByCode(ctx, strings.TrimSpace(request.CouponCode), nil)
@@ -353,6 +359,7 @@ func (s *subscriptionService) CreateCourseCheckoutSession(ctx context.Context, u
 			{PromotionCode: stripe.String(courseCoupon.StripePromotionCodeID)},
 		}
 		appliedCouponID = &courseCoupon.ID
+		finalAmountCents = applyCouponDiscountAmount(amountCents, courseCoupon)
 	}
 
 	session, err := checkoutsession.New(params)
@@ -360,7 +367,7 @@ func (s *subscriptionService) CreateCourseCheckoutSession(ctx context.Context, u
 		return nil, apperror.NewInternalServerError("Failed to create Stripe checkout session")
 	}
 
-	if err := s.createCoursePurchasePending(ctx, userID, appliedCouponID, []uuid.UUID{courseID}, session.ID, amountCents, currency, map[uuid.UUID]int64{courseID: amountCents}); err != nil {
+	if err := s.createCoursePurchasePending(ctx, userID, appliedCouponID, []uuid.UUID{courseID}, session.ID, finalAmountCents, currency, map[uuid.UUID]int64{courseID: finalAmountCents}); err != nil {
 		return nil, err
 	}
 
@@ -441,48 +448,63 @@ func (s *subscriptionService) HandleStripeWebhook(ctx context.Context, payload [
 
 	switch event.Type {
 	case "checkout.session.completed":
-		var checkoutSession stripe.CheckoutSession
-		if err := json.Unmarshal(event.Data.Raw, &checkoutSession); err != nil {
-			return apperror.NewBadRequestError("Invalid checkout session payload")
+		checkoutSession, err := decodeCheckoutSession(event.Data.Raw)
+		if err != nil {
+			return err
 		}
-		return s.handleCheckoutSessionCompleted(ctx, &checkoutSession)
+		if checkoutSession.Mode == stripe.CheckoutSessionModePayment {
+			return s.handleCoursePurchaseCheckoutCompleted(ctx, &checkoutSession)
+		}
+		if checkoutSession.Mode == stripe.CheckoutSessionModeSubscription {
+			return s.handleCheckoutSessionCompleted(ctx, &checkoutSession)
+		}
+		return nil
 	case "checkout.session.expired":
-		var checkoutSession stripe.CheckoutSession
-		if err := json.Unmarshal(event.Data.Raw, &checkoutSession); err != nil {
-			return apperror.NewBadRequestError("Invalid checkout session payload")
+		checkoutSession, err := decodeCheckoutSession(event.Data.Raw)
+		if err != nil {
+			return err
 		}
 		if checkoutSession.Mode == stripe.CheckoutSessionModePayment {
 			return s.handleCoursePurchaseCheckoutFailed(ctx, &checkoutSession)
 		}
-		return s.handleSubscriptionCheckoutExpired(ctx, checkoutSession.ID)
+		if checkoutSession.Mode == stripe.CheckoutSessionModeSubscription {
+			return s.handleSubscriptionCheckoutExpired(ctx, checkoutSession.ID)
+		}
+		return nil
 	case "checkout.session.async_payment_succeeded":
-		var checkoutSession stripe.CheckoutSession
-		if err := json.Unmarshal(event.Data.Raw, &checkoutSession); err != nil {
-			return apperror.NewBadRequestError("Invalid checkout session payload")
+		checkoutSession, err := decodeCheckoutSession(event.Data.Raw)
+		if err != nil {
+			return err
 		}
-		return s.handleCoursePurchaseCheckoutCompleted(ctx, &checkoutSession)
+		if checkoutSession.Mode == stripe.CheckoutSessionModePayment {
+			return s.handleCoursePurchaseCheckoutCompleted(ctx, &checkoutSession)
+		}
+		return nil
 	case "checkout.session.async_payment_failed":
-		var checkoutSession stripe.CheckoutSession
-		if err := json.Unmarshal(event.Data.Raw, &checkoutSession); err != nil {
-			return apperror.NewBadRequestError("Invalid checkout session payload")
+		checkoutSession, err := decodeCheckoutSession(event.Data.Raw)
+		if err != nil {
+			return err
 		}
-		return s.handleCoursePurchaseCheckoutFailed(ctx, &checkoutSession)
+		if checkoutSession.Mode == stripe.CheckoutSessionModePayment {
+			return s.handleCoursePurchaseCheckoutFailed(ctx, &checkoutSession)
+		}
+		return nil
 	case "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted":
-		var sub stripe.Subscription
-		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
-			return apperror.NewBadRequestError("Invalid subscription payload")
+		sub, err := decodeStripeSubscription(event.Data.Raw)
+		if err != nil {
+			return err
 		}
 		return s.syncSubscription(ctx, "", &sub)
 	case "invoice.paid":
-		var inv stripe.Invoice
-		if err := json.Unmarshal(event.Data.Raw, &inv); err != nil {
-			return apperror.NewBadRequestError("Invalid invoice payload")
+		inv, err := decodeStripeInvoice(event.Data.Raw)
+		if err != nil {
+			return err
 		}
 		return s.syncPayment(ctx, &inv, string(consts.PaymentStatusSucceeded))
 	case "invoice.payment_failed":
-		var inv stripe.Invoice
-		if err := json.Unmarshal(event.Data.Raw, &inv); err != nil {
-			return apperror.NewBadRequestError("Invalid invoice payload")
+		inv, err := decodeStripeInvoice(event.Data.Raw)
+		if err != nil {
+			return err
 		}
 		return s.syncPayment(ctx, &inv, string(consts.PaymentStatusFailed))
 	default:
@@ -732,12 +754,7 @@ func (s *subscriptionService) handleCoursePurchaseCheckoutCompleted(ctx context.
 		return nil
 	}
 
-	userID := uuid.Nil
-	if checkoutSession.Metadata != nil {
-		if parsedUserID, err := uuid.Parse(checkoutSession.Metadata["user_id"]); err == nil {
-			userID = parsedUserID
-		}
-	}
+	userID := extractUserIDFromCheckoutSession(checkoutSession)
 
 	purchase, err := s.coursePurchaseRepository.GetByCheckoutSessionID(ctx, checkoutSession.ID, nil)
 	if err != nil {
@@ -757,28 +774,22 @@ func (s *subscriptionService) handleCoursePurchaseCheckoutCompleted(ctx context.
 	if userID == uuid.Nil {
 		userID = purchase.UserID
 	}
+
+	// If the purchase is already paid, we don't need to update it
 	wasPaid := purchase.Status == string(consts.CoursePurchaseStatusPaid)
 
-	paymentIntentID := ""
-	if checkoutSession.PaymentIntent != nil {
-		paymentIntentID = checkoutSession.PaymentIntent.ID
+	purchase.StripePaymentIntentID = extractCheckoutPaymentIntentID(checkoutSession)
+	if purchase.Amount <= 0 {
+		purchase.Amount = checkoutSession.AmountTotal
+	}
+	if strings.TrimSpace(purchase.Currency) == "" {
+		purchase.Currency = normalizeCurrency(string(checkoutSession.Currency), s.stripeConfig.DefaultCurrency)
+	}
+	if purchase.StripeFee <= 0 && purchase.Amount > 0 {
+		purchase.StripeFee = calculateStripeFeeFromAmount(purchase.Amount)
 	}
 
-	purchase.StripePaymentIntentID = paymentIntentID
-	purchase.Amount = checkoutSession.AmountTotal
-	purchase.Currency = strings.ToLower(string(checkoutSession.Currency))
-	if purchase.Currency == "" {
-		purchase.Currency = strings.ToLower(s.stripeConfig.DefaultCurrency)
-	}
-	purchase.StripeFee = calculateStripeFeeFromAmount(purchase.Amount)
-
-	if checkoutSession.PaymentStatus == stripe.CheckoutSessionPaymentStatusPaid {
-		now := time.Now().UTC()
-		purchase.Status = string(consts.CoursePurchaseStatusPaid)
-		purchase.PurchasedAt = &now
-	} else {
-		purchase.Status = string(consts.CoursePurchaseStatusPending)
-	}
+	updatePurchaseStatusFromCheckoutPayment(purchase, checkoutSession)
 
 	if purchase.ID == uuid.Nil {
 		if _, err := s.coursePurchaseRepository.Create(ctx, purchase); err != nil {
@@ -797,36 +808,16 @@ func (s *subscriptionService) handleCoursePurchaseCheckoutCompleted(ctx context.
 	}
 
 	if purchase.Status == string(consts.CoursePurchaseStatusPaid) {
-		details, err := s.coursePurchaseDetailRepository.ListByPurchaseID(ctx, purchase.ID, nil)
-		if err != nil {
-			return apperror.NewInternalServerError("Failed to load purchase details")
-		}
-
-		for _, detail := range details {
-			if detail == nil {
-				continue
-			}
-			isEnrolled, err := s.enrollmentRepository.CheckEnrollment(ctx, userID, detail.CourseID)
-			if err != nil {
-				return apperror.NewInternalServerError("Failed to check enrollment")
-			}
-			if isEnrolled {
-				continue
-			}
-
-			if _, err := s.enrollmentRepository.EnrollIfNotExists(ctx, userID, detail.CourseID); err != nil {
-				return apperror.NewInternalServerError("Failed to enroll purchased course")
-			}
-			if _, err := s.courseRepository.Update(ctx, detail.CourseID, map[string]any{
-				"total_student": gorm.Expr("total_student + ?", 1),
-			}); err != nil {
-				return apperror.NewInternalServerError("Failed to update course total students")
-			}
+		if err := s.enrollUserToPurchasedCourses(ctx, userID, purchase.ID); err != nil {
+			return err
 		}
 	}
 
 	if purchase.Status == string(consts.CoursePurchaseStatusPaid) && !wasPaid {
 		s.cancelOtherPendingCoursePurchases(ctx, userID, purchase.ID)
+		if err := s.coursePurchaseRevenueShareRepository.RebuildByCoursePurchaseID(ctx, purchase.ID); err != nil {
+			return apperror.NewInternalServerError("Failed to persist course purchase revenue shares")
+		}
 	}
 
 	return nil
@@ -871,18 +862,19 @@ func (s *subscriptionService) handleCoursePurchaseCheckoutFailed(ctx context.Con
 		return nil
 	}
 
-	if checkoutSession.PaymentIntent != nil {
-		purchase.StripePaymentIntentID = checkoutSession.PaymentIntent.ID
-	}
+	purchase.StripePaymentIntentID = extractCheckoutPaymentIntentID(checkoutSession)
 
 	purchase.Status = string(consts.CoursePurchaseStatusFailed)
 	purchase.PurchasedAt = nil
-	purchase.Amount = checkoutSession.AmountTotal
-	purchase.Currency = strings.ToLower(string(checkoutSession.Currency))
-	if purchase.Currency == "" {
-		purchase.Currency = strings.ToLower(s.stripeConfig.DefaultCurrency)
+	if purchase.Amount <= 0 {
+		purchase.Amount = checkoutSession.AmountTotal
 	}
-	purchase.StripeFee = calculateStripeFeeFromAmount(purchase.Amount)
+	if strings.TrimSpace(purchase.Currency) == "" {
+		purchase.Currency = normalizeCurrency(string(checkoutSession.Currency), s.stripeConfig.DefaultCurrency)
+	}
+	if purchase.StripeFee <= 0 && purchase.Amount > 0 {
+		purchase.StripeFee = calculateStripeFeeFromAmount(purchase.Amount)
+	}
 
 	if _, err := s.coursePurchaseRepository.Updates(ctx, purchase); err != nil {
 		return apperror.NewInternalServerError("Failed to update purchase")
@@ -957,22 +949,6 @@ func (s *subscriptionService) syncCoursePurchaseCheckoutSession(ctx context.Cont
 	return nil
 }
 
-func (s *subscriptionService) syncLatestInvoice(ctx context.Context, stripeSub *stripe.Subscription) error {
-	if stripeSub == nil || stripeSub.LatestInvoice == nil || stripeSub.LatestInvoice.ID == "" {
-		return nil
-	}
-
-	latestInvoice, err := stripeinvoice.Get(stripeSub.LatestInvoice.ID, nil)
-	if err != nil {
-		return apperror.NewInternalServerError("Failed to fetch Stripe invoice")
-	}
-	if latestInvoice == nil || string(latestInvoice.Status) != "paid" {
-		return nil
-	}
-
-	return s.syncPayment(ctx, latestInvoice, string(consts.PaymentStatusSucceeded))
-}
-
 func (s *subscriptionService) syncSubscription(ctx context.Context, checkoutSessionID string, stripeSub *stripe.Subscription) error {
 	if stripeSub == nil {
 		return nil
@@ -996,34 +972,9 @@ func (s *subscriptionService) syncSubscription(ctx context.Context, checkoutSess
 	}
 
 	if existing == nil && userID != uuid.Nil {
-		// Stripe can send customer.subscription.* before checkout.session.completed.
-		// Reuse the latest local pending row instead of creating a duplicate subscription.
-		userSubs, listErr := s.subscriptionRepository.ListByUserID(ctx, userID, nil)
-		if listErr != nil {
-			return apperror.NewInternalServerError("Failed to list user subscriptions")
-		}
-		for _, cand := range userSubs {
-			if cand == nil {
-				continue
-			}
-			if strings.TrimSpace(cand.StripeSubscriptionID) != "" {
-				continue
-			}
-			if strings.TrimSpace(cand.Status) != string(stripe.SubscriptionStatusIncomplete) {
-				continue
-			}
-			if planID != uuid.Nil && cand.PlanID != planID {
-				continue
-			}
-			if billingCycle != "" && cand.BillingCycle != billingCycle {
-				continue
-			}
-			if customerID != "" && strings.TrimSpace(cand.StripeCustomerID) != "" && cand.StripeCustomerID != customerID {
-				continue
-			}
-
-			existing = cand
-			break
+		existing, err = s.findReusablePendingSubscription(ctx, userID, planID, billingCycle, customerID)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -1050,29 +1001,14 @@ func (s *subscriptionService) syncSubscription(ctx context.Context, checkoutSess
 	}
 
 	planName, planDescription, planPrice, planCurrency, planStripePriceID := s.resolveSubscriptionPlanSnapshot(ctx, stripeSub, planID)
-	if existing != nil {
-		if planName == "" {
-			planName = existing.PlanName
-		}
-		if planDescription == "" {
-			planDescription = existing.PlanDescription
-		}
-		if planPrice <= 0 {
-			planPrice = existing.PlanPrice
-		}
-		if planCurrency == "" {
-			planCurrency = existing.PlanCurrency
-		}
-		if planStripePriceID == "" {
-			planStripePriceID = existing.PlanStripePriceID
-		}
-	}
-	if planCurrency == "" {
-		planCurrency = strings.ToLower(s.stripeConfig.DefaultCurrency)
-		if planCurrency == "" {
-			planCurrency = "usd"
-		}
-	}
+	planName, planDescription, planPrice, planCurrency, planStripePriceID = s.mergeSubscriptionPlanSnapshotFallback(
+		existing,
+		planName,
+		planDescription,
+		planPrice,
+		planCurrency,
+		planStripePriceID,
+	)
 
 	var currentPeriodStart *time.Time
 	var currentPeriodEnd *time.Time
@@ -1082,77 +1018,48 @@ func (s *subscriptionService) syncSubscription(ctx context.Context, checkoutSess
 	}
 
 	if existing == nil {
-		newSub := &model.Subscription{
-			UserID:                  userID,
-			PlanID:                  planID,
-			PlanName:                planName,
-			PlanDescription:         planDescription,
-			PlanPrice:               planPrice,
-			PlanCurrency:            planCurrency,
-			PlanStripePriceID:       planStripePriceID,
-			StripeCheckoutSessionID: checkoutSessionID,
-			StripeSubscriptionID:    stripeSub.ID,
-			StripeCustomerID:        customerID,
-			BillingCycle:            billingCycle,
-			Status:                  status,
-			CurrentPeriodStart:      currentPeriodStart,
-			CurrentPeriodEnd:        currentPeriodEnd,
-			CancelAtPeriodEnd:       stripeSub.CancelAtPeriodEnd,
-			StartedAt:               *startedAt,
-		}
-		if status == string(stripe.SubscriptionStatusCanceled) && stripeSub.CanceledAt > 0 {
-			canceledAt := *stripeTimestamp(stripeSub.CanceledAt)
-			newSub.CanceledAt = &canceledAt
-			newSub.EndedAt = currentPeriodEnd
-		}
-
-		_, err := s.subscriptionRepository.Create(ctx, newSub)
-		if err != nil {
-			return apperror.NewInternalServerError("Failed to create subscription")
-		}
-		if status == string(stripe.SubscriptionStatusActive) || status == string(stripe.SubscriptionStatusTrialing) {
-			s.cancelOtherPendingSubscriptions(ctx, userID, newSub.ID)
-		}
-		return nil
+		return s.createSubscriptionFromStripe(
+			ctx,
+			userID,
+			planID,
+			checkoutSessionID,
+			customerID,
+			billingCycle,
+			status,
+			startedAt,
+			currentPeriodStart,
+			currentPeriodEnd,
+			stripeSub,
+			planName,
+			planDescription,
+			planPrice,
+			planCurrency,
+			planStripePriceID,
+		)
 	}
 
-	updates := map[string]any{
-		"status":                 status,
-		"current_period_start":   currentPeriodStart,
-		"current_period_end":     currentPeriodEnd,
-		"cancel_at_period_end":   stripeSub.CancelAtPeriodEnd,
-		"stripe_customer_id":     customerID,
-		"stripe_subscription_id": stripeSub.ID,
+	var stripeCanceledAt *time.Time
+	if stripeSub.CanceledAt > 0 {
+		stripeCanceledAt = stripeTimestamp(stripeSub.CanceledAt)
 	}
-	if strings.TrimSpace(checkoutSessionID) != "" {
-		updates["stripe_checkout_session_id"] = checkoutSessionID
-	}
-	if billingCycle != "" {
-		updates["billing_cycle"] = billingCycle
-	}
-	if planID != uuid.Nil {
-		updates["plan_id"] = planID
-	}
-	if planName != "" {
-		updates["plan_name"] = planName
-	}
-	if planDescription != "" {
-		updates["plan_description"] = planDescription
-	}
-	if planPrice > 0 {
-		updates["plan_price"] = planPrice
-	}
-	if planCurrency != "" {
-		updates["plan_currency"] = planCurrency
-	}
-	if planStripePriceID != "" {
-		updates["plan_stripe_price_id"] = planStripePriceID
-	}
-	if status == string(stripe.SubscriptionStatusCanceled) {
-		now := time.Now().UTC()
-		updates["canceled_at"] = &now
-		updates["ended_at"] = currentPeriodEnd
-	}
+
+	updates := buildSubscriptionUpdates(
+		checkoutSessionID,
+		planID,
+		billingCycle,
+		status,
+		customerID,
+		stripeSub.ID,
+		currentPeriodStart,
+		currentPeriodEnd,
+		stripeSub.CancelAtPeriodEnd,
+		planName,
+		planDescription,
+		planPrice,
+		planCurrency,
+		planStripePriceID,
+		stripeCanceledAt,
+	)
 
 	if _, err := s.subscriptionRepository.Update(ctx, existing.ID, updates); err != nil {
 		return apperror.NewInternalServerError("Failed to update subscription")
@@ -1162,7 +1069,11 @@ func (s *subscriptionService) syncSubscription(ctx context.Context, checkoutSess
 		s.cancelOtherPendingSubscriptions(ctx, userID, existing.ID)
 	}
 
-	if err := s.syncLatestInvoice(ctx, stripeSub); err != nil {
+	// Payment rows are created from invoice.paid / invoice.payment_failed only.
+	// Do not call syncLatestInvoice here: checkout.session.completed and invoice.paid
+	// both run syncSubscription + syncPayment and would insert duplicate payments for the same invoice.
+
+	if err := s.reconcileSubscriptionEnrollments(ctx, userID); err != nil {
 		return err
 	}
 
@@ -1193,8 +1104,25 @@ func (s *subscriptionService) syncPayment(ctx context.Context, inv *stripe.Invoi
 	if err != nil {
 		return apperror.NewInternalServerError("Failed to load payment")
 	}
+	var persistedPayment *model.Payment
+
+	periodStart, periodEnd := subscriptionBillingPeriodFromStripeAPI(stripeSubscriptionID)
+	if periodStart == nil || periodEnd == nil {
+		ps, pe := billingPeriodFromInvoiceLineItems(inv)
+		if ps != nil && pe != nil {
+			periodStart, periodEnd = ps, pe
+		}
+	}
+	if periodStart == nil || periodEnd == nil {
+		ps, pe := invoiceLevelBillingPeriodFallback(inv)
+		if ps != nil && pe != nil {
+			periodStart, periodEnd = ps, pe
+		}
+	}
 
 	paidAt := stripeTimestamp(inv.StatusTransitions.PaidAt)
+	billingPeriodStart := periodStart
+	billingPeriodEnd := periodEnd
 	paymentIntentID := extractInvoicePaymentIntentID(inv)
 	failureReason := s.resolveInvoiceFailureReason(inv, paymentIntentID)
 	amount := inv.AmountPaid
@@ -1214,13 +1142,28 @@ func (s *subscriptionService) syncPayment(ctx context.Context, inv *stripe.Invoi
 			StripeFee:           stripeFee,
 			FailureReason:       failureReason,
 			AttemptCount:        int64(inv.AttemptCount),
+			BillingPeriodStart:  billingPeriodStart,
+			BillingPeriodEnd:    billingPeriodEnd,
 			PaidAt:              paidAt,
 		}
 		_, err := s.paymentRepository.Create(ctx, newPayment)
 		if err != nil {
-			return apperror.NewInternalServerError("Failed to create payment")
+			if isDuplicateKeyError(err) {
+				payment, err = s.paymentRepository.GetByStripeInvoiceID(ctx, inv.ID, nil)
+				if err != nil {
+					return apperror.NewInternalServerError("Failed to load payment")
+				}
+				if payment == nil {
+					return apperror.NewInternalServerError("Failed to create payment")
+				}
+			} else {
+				return apperror.NewInternalServerError("Failed to create payment")
+			}
+		} else {
+			persistedPayment = newPayment
 		}
-	} else {
+	}
+	if payment != nil && persistedPayment == nil {
 		payment.Status = status
 		payment.StripePaymentIntent = paymentIntentID
 		payment.Amount = amount
@@ -1228,17 +1171,25 @@ func (s *subscriptionService) syncPayment(ctx context.Context, inv *stripe.Invoi
 		payment.StripeFee = stripeFee
 		payment.FailureReason = failureReason
 		payment.AttemptCount = int64(inv.AttemptCount)
+		payment.BillingPeriodStart = billingPeriodStart
+		payment.BillingPeriodEnd = billingPeriodEnd
 		payment.PaidAt = paidAt
 		if _, err := s.paymentRepository.Updates(ctx, payment); err != nil {
 			return apperror.NewInternalServerError("Failed to update payment")
 		}
+		persistedPayment = payment
 	}
 
 	switch status {
 	case string(consts.PaymentStatusSucceeded):
 		sub.Status = string(stripe.SubscriptionStatusActive)
-		sub.CurrentPeriodStart = stripeTimestamp(inv.PeriodStart)
-		sub.CurrentPeriodEnd = stripeTimestamp(inv.PeriodEnd)
+		if periodStart != nil && periodEnd != nil {
+			sub.CurrentPeriodStart = periodStart
+			sub.CurrentPeriodEnd = periodEnd
+		}
+		// Recovery from past_due / prior terminal markers — subscription is active again for this period.
+		sub.CanceledAt = nil
+		sub.EndedAt = nil
 		s.cancelOtherPendingSubscriptions(ctx, sub.UserID, sub.ID)
 	case string(consts.PaymentStatusFailed):
 		sub.Status = string(stripe.SubscriptionStatusPastDue)
@@ -1246,6 +1197,14 @@ func (s *subscriptionService) syncPayment(ctx context.Context, inv *stripe.Invoi
 
 	if _, err := s.subscriptionRepository.Updates(ctx, sub); err != nil {
 		return apperror.NewInternalServerError("Failed to update subscription state")
+	}
+	if status == string(consts.PaymentStatusSucceeded) && persistedPayment != nil {
+		if err := s.subscriptionRevenueShareRepository.RebuildByPaymentID(ctx, persistedPayment.ID); err != nil {
+			return apperror.NewInternalServerError("Failed to persist subscription revenue shares")
+		}
+	}
+	if err := s.reconcileSubscriptionEnrollments(ctx, sub.UserID); err != nil {
+		return err
 	}
 
 	return nil
@@ -1431,20 +1390,116 @@ func (s *subscriptionService) extractSubscriptionMetadata(ctx context.Context, s
 	return userID, planID, billingCycle
 }
 
-func (s *subscriptionService) resolvePlanPriceID(plan *model.Plan) (string, string, error) {
+func (s *subscriptionService) resolvePlanPriceID(ctx context.Context, plan *model.Plan) (string, string, error) {
 	if plan == nil {
 		return "", "", apperror.NewBadRequestError("Invalid plan")
 	}
 
-	priceID := strings.TrimSpace(plan.StripePriceID)
 	billingCycle := strings.TrimSpace(strings.ToLower(string(plan.BillingCycle)))
-
-	if priceID == "" {
-		return "", "", apperror.NewBadRequestError("Selected plan has no Stripe price ID")
-	}
-
 	if billingCycle != string(consts.BillingCycleMonthly) && billingCycle != string(consts.BillingCycleYearly) {
 		return "", "", apperror.NewBadRequestError("Selected plan has invalid billing cycle")
+	}
+
+	interval := "month"
+	if billingCycle == string(consts.BillingCycleYearly) {
+		interval = "year"
+	}
+
+	currency := strings.ToLower(strings.TrimSpace(plan.Currency))
+	if currency == "" {
+		currency = strings.ToLower(strings.TrimSpace(s.stripeConfig.DefaultCurrency))
+	}
+	if currency == "" {
+		currency = "usd"
+	}
+
+	amountCents := int64(math.Round(plan.Price * 100))
+	if amountCents <= 0 {
+		return "", "", apperror.NewBadRequestError("Selected plan has invalid price")
+	}
+
+	productID := strings.TrimSpace(plan.StripeProductID)
+	if productID != "" {
+		if _, err := product.Get(productID, nil); err != nil {
+			if isStripeResourceMissing(err) {
+				productID = ""
+			} else {
+				return "", "", apperror.NewInternalServerError("Failed to load Stripe plan product")
+			}
+		}
+	}
+	if productID == "" {
+		createdProduct, err := product.New(&stripe.ProductParams{
+			Name:        stripe.String(plan.Name),
+			Description: stripe.String(plan.Description),
+			Metadata: map[string]string{
+				"plan_id":       plan.ID.String(),
+				"billing_cycle": billingCycle,
+				"catalog_type":  "subscription_plan",
+			},
+		})
+		if err != nil {
+			return "", "", apperror.NewInternalServerError("Failed to create Stripe plan product")
+		}
+		productID = createdProduct.ID
+	}
+
+	priceID := strings.TrimSpace(plan.StripePriceID)
+	needNewPrice := priceID == ""
+	if !needNewPrice {
+		stripePriceObj, err := price.Get(priceID, nil)
+		if err != nil {
+			if isStripeResourceMissing(err) {
+				needNewPrice = true
+			} else {
+				return "", "", apperror.NewInternalServerError("Failed to load Stripe plan price")
+			}
+		} else if stripePriceObj == nil || stripePriceObj.Recurring == nil ||
+			stripePriceObj.Recurring.Interval != stripe.PriceRecurringInterval(interval) ||
+			strings.ToLower(string(stripePriceObj.Currency)) != currency ||
+			stripePriceObj.UnitAmount != amountCents {
+			needNewPrice = true
+		}
+	}
+
+	if needNewPrice {
+		oldPriceID := priceID
+		newPrice, err := price.New(&stripe.PriceParams{
+			Currency:   stripe.String(currency),
+			UnitAmount: stripe.Int64(amountCents),
+			Product:    stripe.String(productID),
+			Recurring: &stripe.PriceRecurringParams{
+				Interval: stripe.String(interval),
+			},
+			Metadata: map[string]string{
+				"plan_id":      plan.ID.String(),
+				"catalog_type": "subscription_plan",
+			},
+			Active: stripe.Bool(plan.IsActive),
+		})
+		if err != nil {
+			return "", "", apperror.NewInternalServerError("Failed to create Stripe plan price")
+		}
+		priceID = newPrice.ID
+		if oldPriceID != "" {
+			_, _ = price.Update(oldPriceID, &stripe.PriceParams{Active: stripe.Bool(false)})
+		}
+	}
+
+	if plan.StripeProductID != productID || plan.StripePriceID != priceID || strings.ToLower(plan.Currency) != currency {
+		updatedPlan, err := s.planRepository.Update(ctx, plan.ID, map[string]any{
+			"stripe_product_id": productID,
+			"stripe_price_id":   priceID,
+			"currency":          currency,
+		})
+		if err != nil {
+			return "", "", apperror.NewInternalServerError("Failed to persist Stripe plan catalog")
+		}
+		if updatedPlan != nil {
+			plan.StripeProductID = updatedPlan.StripeProductID
+			plan.StripePriceID = updatedPlan.StripePriceID
+			plan.Currency = updatedPlan.Currency
+		}
 	}
 
 	return priceID, billingCycle, nil
@@ -1504,6 +1559,7 @@ func (s *subscriptionService) createCoursePurchasePending(
 		StripeCheckoutSessionID: checkoutSessionID,
 		Amount:                  amount,
 		Currency:                currency,
+		StripeFee:               calculateStripeFeeFromAmount(amount),
 		Status:                  string(consts.CoursePurchaseStatusPending),
 	})
 	if err != nil {
@@ -1547,6 +1603,15 @@ func (s *subscriptionService) ensureCourseStripeProductCatalog(ctx context.Conte
 	}
 
 	productID := strings.TrimSpace(course.StripeProductID)
+	if productID != "" {
+		if _, err := product.Get(productID, nil); err != nil {
+			if isStripeResourceMissing(err) {
+				productID = ""
+			} else {
+				return apperror.NewInternalServerError("Failed to load Stripe product")
+			}
+		}
+	}
 	if productID == "" {
 		createdProduct, err := product.New(&stripe.ProductParams{
 			Name:        stripe.String(course.Title),
@@ -1571,9 +1636,19 @@ func (s *subscriptionService) ensureCourseStripeProductCatalog(ctx context.Conte
 		})
 	}
 
-	needNewPrice := strings.TrimSpace(course.StripePriceID) == "" || course.StripeAmount != amountCents || strings.ToLower(course.StripeCurrency) != currency
+	currentPriceID := strings.TrimSpace(course.StripePriceID)
+	needNewPrice := currentPriceID == "" || course.StripeAmount != amountCents || strings.ToLower(course.StripeCurrency) != currency
+	if !needNewPrice {
+		if _, err := price.Get(currentPriceID, nil); err != nil {
+			if isStripeResourceMissing(err) {
+				needNewPrice = true
+			} else {
+				return apperror.NewInternalServerError("Failed to load Stripe price")
+			}
+		}
+	}
 	if needNewPrice {
-		oldPriceID := strings.TrimSpace(course.StripePriceID)
+		oldPriceID := currentPriceID
 		if oldPriceID != "" {
 			_, _ = price.Update(oldPriceID, &stripe.PriceParams{Active: stripe.Bool(false)})
 		}
@@ -1648,6 +1723,80 @@ func stripeTimestamp(v int64) *time.Time {
 	return &t
 }
 
+// subscriptionBillingPeriodFromStripeAPI returns the subscription's current billing window from
+// SubscriptionItem.current_period_* — the canonical source. Do not use Invoice.period_start/end
+// for this: Stripe documents those as the invoice "usage" window and they are often equal.
+func subscriptionBillingPeriodFromStripeAPI(subscriptionID string) (start, end *time.Time) {
+	id := strings.TrimSpace(subscriptionID)
+	if id == "" {
+		return nil, nil
+	}
+	stripeSub, err := stripesubscription.Get(id, nil)
+	if err != nil || stripeSub == nil || stripeSub.Items == nil || len(stripeSub.Items.Data) == 0 {
+		return nil, nil
+	}
+	item := stripeSub.Items.Data[0]
+	if item == nil {
+		return nil, nil
+	}
+	start = stripeTimestamp(item.CurrentPeriodStart)
+	end = stripeTimestamp(item.CurrentPeriodEnd)
+	if start == nil || end == nil || !end.After(*start) {
+		return nil, nil
+	}
+	return start, end
+}
+
+// billingPeriodFromInvoiceLineItems uses each line's period (service interval for that price).
+// Stripe recommends this over invoice-level period for subscription invoices.
+func billingPeriodFromInvoiceLineItems(inv *stripe.Invoice) (start, end *time.Time) {
+	if inv == nil || inv.Lines == nil {
+		return nil, nil
+	}
+	var best *stripe.Period
+	for _, line := range inv.Lines.Data {
+		if line == nil || line.Period == nil {
+			continue
+		}
+		p := line.Period
+		if p.End <= p.Start {
+			continue
+		}
+		if best == nil || (p.End-p.Start) > (best.End-best.Start) {
+			best = p
+		}
+	}
+	if best == nil {
+		return nil, nil
+	}
+	return stripeTimestamp(best.Start), stripeTimestamp(best.End)
+}
+
+func invoiceLevelBillingPeriodFallback(inv *stripe.Invoice) (start, end *time.Time) {
+	if inv == nil || inv.PeriodEnd <= inv.PeriodStart {
+		return nil, nil
+	}
+	return stripeTimestamp(inv.PeriodStart), stripeTimestamp(inv.PeriodEnd)
+}
+
+func isStripeResourceMissing(err error) bool {
+	stripeErr, ok := err.(*stripe.Error)
+	if !ok || stripeErr == nil {
+		return false
+	}
+	return stripeErr.Code == stripe.ErrorCodeResourceMissing
+}
+
+func isDuplicateKeyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate key") ||
+		strings.Contains(msg, "unique constraint") ||
+		strings.Contains(msg, "idx_payments_stripe_invoice_id_unique")
+}
+
 // calculateStripeFeeFromAmount estimates Stripe processing fee in the smallest currency unit.
 // Formula: round(amount * 2.9%) + 30 cents.
 func calculateStripeFeeFromAmount(amount int64) int64 {
@@ -1661,4 +1810,348 @@ func calculateStripeFeeFromAmount(amount int64) int64 {
 	}
 
 	return fee
+}
+
+func applyCouponDiscountAmount(amount int64, coupon *model.Coupon) int64 {
+	if amount <= 0 || coupon == nil {
+		return amount
+	}
+
+	switch strings.ToLower(strings.TrimSpace(coupon.DiscountType)) {
+	case "percent":
+		discount := int64(math.Round(float64(amount) * (float64(coupon.DiscountValue) / 100)))
+		if discount <= 0 {
+			return amount
+		}
+		if discount >= amount {
+			return 0
+		}
+		return amount - discount
+	case "amount":
+		if coupon.DiscountValue <= 0 {
+			return amount
+		}
+		if coupon.DiscountValue >= amount {
+			return 0
+		}
+		return amount - coupon.DiscountValue
+	default:
+		return amount
+	}
+}
+
+func decodeCheckoutSession(raw json.RawMessage) (stripe.CheckoutSession, error) {
+	var checkoutSession stripe.CheckoutSession
+	if err := json.Unmarshal(raw, &checkoutSession); err != nil {
+		return stripe.CheckoutSession{}, apperror.NewBadRequestError("Invalid checkout session payload")
+	}
+	return checkoutSession, nil
+}
+
+func decodeStripeSubscription(raw json.RawMessage) (stripe.Subscription, error) {
+	var sub stripe.Subscription
+	if err := json.Unmarshal(raw, &sub); err != nil {
+		return stripe.Subscription{}, apperror.NewBadRequestError("Invalid subscription payload")
+	}
+	return sub, nil
+}
+
+func decodeStripeInvoice(raw json.RawMessage) (stripe.Invoice, error) {
+	var inv stripe.Invoice
+	if err := json.Unmarshal(raw, &inv); err != nil {
+		return stripe.Invoice{}, apperror.NewBadRequestError("Invalid invoice payload")
+	}
+	return inv, nil
+}
+
+func extractUserIDFromCheckoutSession(checkoutSession *stripe.CheckoutSession) uuid.UUID {
+	if checkoutSession == nil || checkoutSession.Metadata == nil {
+		return uuid.Nil
+	}
+	parsedUserID, err := uuid.Parse(checkoutSession.Metadata["user_id"])
+	if err != nil {
+		return uuid.Nil
+	}
+	return parsedUserID
+}
+
+func extractCheckoutPaymentIntentID(checkoutSession *stripe.CheckoutSession) string {
+	if checkoutSession == nil || checkoutSession.PaymentIntent == nil {
+		return ""
+	}
+	return checkoutSession.PaymentIntent.ID
+}
+
+func updatePurchaseStatusFromCheckoutPayment(purchase *model.CoursePurchase, checkoutSession *stripe.CheckoutSession) {
+	if purchase == nil || checkoutSession == nil {
+		return
+	}
+
+	if checkoutSession.PaymentStatus == stripe.CheckoutSessionPaymentStatusPaid {
+		now := time.Now().UTC()
+		purchase.Status = string(consts.CoursePurchaseStatusPaid)
+		purchase.PurchasedAt = &now
+		return
+	}
+
+	purchase.Status = string(consts.CoursePurchaseStatusPending)
+}
+
+func (s *subscriptionService) enrollUserToPurchasedCourses(ctx context.Context, userID, purchaseID uuid.UUID) error {
+	details, err := s.coursePurchaseDetailRepository.ListByPurchaseID(ctx, purchaseID, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to load purchase details")
+	}
+
+	for _, detail := range details {
+		if detail == nil {
+			continue
+		}
+		isEnrolled, err := s.enrollmentRepository.CheckEnrollment(ctx, userID, detail.CourseID)
+		if err != nil {
+			return apperror.NewInternalServerError("Failed to check enrollment")
+		}
+		if isEnrolled {
+			continue
+		}
+
+		if _, err := s.enrollmentRepository.EnrollIfNotExists(ctx, userID, detail.CourseID, consts.EnrollmentTypeCoursePurchase); err != nil {
+			return apperror.NewInternalServerError("Failed to enroll purchased course")
+		}
+		if _, err := s.courseRepository.Update(ctx, detail.CourseID, map[string]any{
+			"total_student": gorm.Expr("total_student + ?", 1),
+		}); err != nil {
+			return apperror.NewInternalServerError("Failed to update course total students")
+		}
+	}
+
+	return nil
+}
+
+func normalizeCurrency(currency string, defaultCurrency string) string {
+	normalized := strings.ToLower(strings.TrimSpace(currency))
+	if normalized != "" {
+		return normalized
+	}
+
+	normalizedDefault := strings.ToLower(strings.TrimSpace(defaultCurrency))
+	if normalizedDefault != "" {
+		return normalizedDefault
+	}
+
+	return "usd"
+}
+
+func (s *subscriptionService) findReusablePendingSubscription(
+	ctx context.Context,
+	userID uuid.UUID,
+	planID uuid.UUID,
+	billingCycle string,
+	customerID string,
+) (*model.Subscription, error) {
+	// Stripe can send customer.subscription.* before checkout.session.completed.
+	// Reuse the latest local pending row instead of creating a duplicate subscription.
+	userSubs, err := s.subscriptionRepository.ListByUserID(ctx, userID, nil)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to list user subscriptions")
+	}
+
+	for _, cand := range userSubs {
+		if cand == nil {
+			continue
+		}
+		if strings.TrimSpace(cand.StripeSubscriptionID) != "" {
+			continue
+		}
+		if strings.TrimSpace(cand.Status) != string(stripe.SubscriptionStatusIncomplete) {
+			continue
+		}
+		if planID != uuid.Nil && cand.PlanID != planID {
+			continue
+		}
+		if billingCycle != "" && cand.BillingCycle != billingCycle {
+			continue
+		}
+		if customerID != "" && strings.TrimSpace(cand.StripeCustomerID) != "" && cand.StripeCustomerID != customerID {
+			continue
+		}
+		return cand, nil
+	}
+
+	return nil, nil
+}
+
+func (s *subscriptionService) mergeSubscriptionPlanSnapshotFallback(
+	existing *model.Subscription,
+	planName string,
+	planDescription string,
+	planPrice float64,
+	planCurrency string,
+	planStripePriceID string,
+) (string, string, float64, string, string) {
+	if existing != nil {
+		if planName == "" {
+			planName = existing.PlanName
+		}
+		if planDescription == "" {
+			planDescription = existing.PlanDescription
+		}
+		if planPrice <= 0 {
+			planPrice = existing.PlanPrice
+		}
+		if planCurrency == "" {
+			planCurrency = existing.PlanCurrency
+		}
+		if planStripePriceID == "" {
+			planStripePriceID = existing.PlanStripePriceID
+		}
+	}
+
+	planCurrency = normalizeCurrency(planCurrency, s.stripeConfig.DefaultCurrency)
+	return planName, planDescription, planPrice, planCurrency, planStripePriceID
+}
+
+func (s *subscriptionService) createSubscriptionFromStripe(
+	ctx context.Context,
+	userID uuid.UUID,
+	planID uuid.UUID,
+	checkoutSessionID string,
+	customerID string,
+	billingCycle string,
+	status string,
+	startedAt *time.Time,
+	currentPeriodStart *time.Time,
+	currentPeriodEnd *time.Time,
+	stripeSub *stripe.Subscription,
+	planName string,
+	planDescription string,
+	planPrice float64,
+	planCurrency string,
+	planStripePriceID string,
+) error {
+	newSub := &model.Subscription{
+		UserID:                  userID,
+		PlanID:                  planID,
+		PlanName:                planName,
+		PlanDescription:         planDescription,
+		PlanPrice:               planPrice,
+		PlanCurrency:            planCurrency,
+		PlanStripePriceID:       planStripePriceID,
+		StripeCheckoutSessionID: checkoutSessionID,
+		StripeSubscriptionID:    stripeSub.ID,
+		StripeCustomerID:        customerID,
+		BillingCycle:            billingCycle,
+		Status:                  status,
+		CurrentPeriodStart:      currentPeriodStart,
+		CurrentPeriodEnd:        currentPeriodEnd,
+		CancelAtPeriodEnd:       stripeSub.CancelAtPeriodEnd,
+		StartedAt:               *startedAt,
+	}
+
+	if status == string(stripe.SubscriptionStatusCanceled) && stripeSub.CanceledAt > 0 {
+		canceledAt := *stripeTimestamp(stripeSub.CanceledAt)
+		newSub.CanceledAt = &canceledAt
+		newSub.EndedAt = currentPeriodEnd
+	}
+
+	_, err := s.subscriptionRepository.Create(ctx, newSub)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to create subscription")
+	}
+	if status == string(stripe.SubscriptionStatusActive) || status == string(stripe.SubscriptionStatusTrialing) {
+		s.cancelOtherPendingSubscriptions(ctx, userID, newSub.ID)
+	}
+	if err := s.reconcileSubscriptionEnrollments(ctx, userID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *subscriptionService) reconcileSubscriptionEnrollments(ctx context.Context, userID uuid.UUID) error {
+	if userID == uuid.Nil {
+		return nil
+	}
+
+	activeSub, err := s.subscriptionRepository.GetActiveByUserID(ctx, userID, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to check active subscription")
+	}
+	if activeSub != nil {
+		return nil
+	}
+
+	if err := s.enrollmentRepository.CancelActiveSubscriptionEnrollmentsByUser(ctx, userID); err != nil {
+		return apperror.NewInternalServerError("Failed to cancel subscription enrollments")
+	}
+	return nil
+}
+
+func buildSubscriptionUpdates(
+	checkoutSessionID string,
+	planID uuid.UUID,
+	billingCycle string,
+	status string,
+	customerID string,
+	stripeSubscriptionID string,
+	currentPeriodStart *time.Time,
+	currentPeriodEnd *time.Time,
+	cancelAtPeriodEnd bool,
+	planName string,
+	planDescription string,
+	planPrice float64,
+	planCurrency string,
+	planStripePriceID string,
+	stripeCanceledAt *time.Time,
+) map[string]any {
+	updates := map[string]any{
+		"status":                 status,
+		"current_period_start":   currentPeriodStart,
+		"current_period_end":     currentPeriodEnd,
+		"cancel_at_period_end":   cancelAtPeriodEnd,
+		"stripe_customer_id":     customerID,
+		"stripe_subscription_id": stripeSubscriptionID,
+	}
+	if strings.TrimSpace(checkoutSessionID) != "" {
+		updates["stripe_checkout_session_id"] = checkoutSessionID
+	}
+	if billingCycle != "" {
+		updates["billing_cycle"] = billingCycle
+	}
+	if planID != uuid.Nil {
+		updates["plan_id"] = planID
+	}
+	if planName != "" {
+		updates["plan_name"] = planName
+	}
+	if planDescription != "" {
+		updates["plan_description"] = planDescription
+	}
+	if planPrice > 0 {
+		updates["plan_price"] = planPrice
+	}
+	if planCurrency != "" {
+		updates["plan_currency"] = planCurrency
+	}
+	if planStripePriceID != "" {
+		updates["plan_stripe_price_id"] = planStripePriceID
+	}
+
+	// Active / trialing: subscription is entitled; clear end markers if Stripe moved state back.
+	if status == string(stripe.SubscriptionStatusActive) || status == string(stripe.SubscriptionStatusTrialing) {
+		updates["ended_at"] = nil
+		updates["canceled_at"] = nil
+	}
+
+	if status == string(stripe.SubscriptionStatusCanceled) {
+		if stripeCanceledAt != nil {
+			updates["canceled_at"] = stripeCanceledAt
+		} else {
+			now := time.Now().UTC()
+			updates["canceled_at"] = &now
+		}
+		// Access ends at period end (Stripe) when subscription is fully canceled.
+		updates["ended_at"] = currentPeriodEnd
+	}
+	return updates
 }

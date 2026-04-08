@@ -3,10 +3,11 @@ package service
 import (
 	"context"
 	"elearning-api/apperror"
+	"elearning-api/consts"
 	"elearning-api/dto"
-	"elearning-api/model"
 	"elearning-api/repository"
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -19,14 +20,23 @@ type EnrollmentService interface {
 }
 
 type enrollmentService struct {
-	enrollmentRepository repository.EnrollmentRepository
-	paymentRepository    repository.PaymentRepository
+	enrollmentRepository               repository.EnrollmentRepository
+	subscriptionRepository             repository.SubscriptionRepository
+	paymentRepository                  repository.PaymentRepository
+	subscriptionRevenueShareRepository repository.SubscriptionRevenueShareRepository
 }
 
-func NewEnrollmentService(enrollmentRepo repository.EnrollmentRepository, paymentRepo repository.PaymentRepository) EnrollmentService {
+func NewEnrollmentService(
+	enrollmentRepo repository.EnrollmentRepository,
+	subscriptionRepo repository.SubscriptionRepository,
+	paymentRepo repository.PaymentRepository,
+	subscriptionRevenueShareRepo repository.SubscriptionRevenueShareRepository,
+) EnrollmentService {
 	return &enrollmentService{
-		enrollmentRepository: enrollmentRepo,
-		paymentRepository:    paymentRepo,
+		enrollmentRepository:               enrollmentRepo,
+		subscriptionRepository:             subscriptionRepo,
+		paymentRepository:                  paymentRepo,
+		subscriptionRevenueShareRepository: subscriptionRevenueShareRepo,
 	}
 }
 
@@ -137,21 +147,36 @@ func (s *enrollmentService) GetMyCourses(ctx context.Context, userID uuid.UUID, 
 }
 
 func (s *enrollmentService) EnrollInCourse(ctx context.Context, userID uuid.UUID, courseID uuid.UUID) (*dto.EnrollmentResponse, error) {
-	enrollment, err := s.enrollmentRepository.Find(ctx, "user_id=? AND course_id=?", nil, userID, courseID)
+	enrollment, err := s.enrollmentRepository.EnrollIfNotExists(ctx, userID, courseID, consts.EnrollmentTypeSubscription)
 	if err != nil {
-		return nil, apperror.NewInternalServerError("Failed to find enrollment")
-	}
-	if enrollment != nil {
-		return nil, apperror.NewBadRequestError("User is already enrolled in the course")
-	}
-
-	newEnrollment := &model.Enrollment{
-		UserID:   userID,
-		CourseID: courseID,
-	}
-
-	if enrollment, err = s.enrollmentRepository.Create(ctx, newEnrollment); err != nil {
 		return nil, apperror.NewInternalServerError("Failed to create enrollment")
 	}
+	if err := s.rebuildCurrentSubscriptionRevenueShares(ctx, userID); err != nil {
+		return nil, err
+	}
 	return dto.NewEnrollmentResponse(enrollment), nil
+}
+
+func (s *enrollmentService) rebuildCurrentSubscriptionRevenueShares(ctx context.Context, userID uuid.UUID) error {
+	activeSub, err := s.subscriptionRepository.GetActiveByUserID(ctx, userID, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to get active subscription")
+	}
+	if activeSub == nil {
+		return nil
+	}
+
+	currentPayment, err := s.paymentRepository.GetSucceededPaymentBySubscriptionAndTime(ctx, activeSub.ID, time.Now().UTC(), nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to get current subscription payment")
+	}
+	if currentPayment == nil {
+		return nil
+	}
+
+	if err := s.subscriptionRevenueShareRepository.RebuildByPaymentID(ctx, currentPayment.ID); err != nil {
+		return apperror.NewInternalServerError("Failed to refresh subscription revenue shares")
+	}
+
+	return nil
 }

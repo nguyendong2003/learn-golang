@@ -16,7 +16,8 @@ type EnrollmentRepository interface {
 	CheckEnrollment(ctx context.Context, userId, courseId uuid.UUID) (bool, error)
 	ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*model.Enrollment, int64, error)
 	GetCourseCompletionTotals(ctx context.Context) (int64, int64, error)
-	EnrollIfNotExists(ctx context.Context, userID, courseID uuid.UUID) (*model.Enrollment, error)
+	EnrollIfNotExists(ctx context.Context, userID, courseID uuid.UUID, enrollmentType consts.EnrollmentType) (*model.Enrollment, error)
+	CancelActiveSubscriptionEnrollmentsByUser(ctx context.Context, userID uuid.UUID) error
 	MarkCourseCompleted(ctx context.Context, userID, courseID uuid.UUID) error
 	GetCourseEnrollmentCount(ctx context.Context, userID uuid.UUID) (int64, int64, error)
 }
@@ -46,7 +47,7 @@ func (r *enrollmentRepository) AddLearnCourse(ctx context.Context, userID uuid.U
 func (r *enrollmentRepository) CheckEnrollment(ctx context.Context, userId, courseId uuid.UUID) (bool, error) {
 	var count int64
 	if err := r.baseQuery(ctx).
-		Where("user_id = ? AND course_id = ?", userId, courseId).
+		Where("user_id = ? AND course_id = ? AND canceled_at IS NULL", userId, courseId).
 		Count(&count).Error; err != nil {
 		return false, err
 	}
@@ -58,7 +59,7 @@ func (r *enrollmentRepository) ListByUser(ctx context.Context, userID uuid.UUID,
 		Course,
 		PreloadPath(Course, Chapters, Lessons),
 	}
-	return r.List(ctx, limit, offset, "enrolled_at desc", "user_id = ?", preloads, userID)
+	return r.List(ctx, limit, offset, "enrolled_at desc", "user_id = ? AND canceled_at IS NULL", preloads, userID)
 }
 
 func (r *enrollmentRepository) GetCourseCompletionTotals(ctx context.Context) (int64, int64, error) {
@@ -116,8 +117,8 @@ func (r *enrollmentRepository) GetCourseEnrollmentCount(ctx context.Context, use
 	return count.TotalEnrollments, count.TotalCompletions, nil
 }
 
-func (r *enrollmentRepository) EnrollIfNotExists(ctx context.Context, userID, courseID uuid.UUID) (*model.Enrollment, error) {
-	enrollment, err := r.Find(ctx, "user_id = ? AND course_id = ?", nil, userID, courseID)
+func (r *enrollmentRepository) EnrollIfNotExists(ctx context.Context, userID, courseID uuid.UUID, enrollmentType consts.EnrollmentType) (*model.Enrollment, error) {
+	enrollment, err := r.Find(ctx, "user_id = ? AND course_id = ? AND canceled_at IS NULL", nil, userID, courseID)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +130,7 @@ func (r *enrollmentRepository) EnrollIfNotExists(ctx context.Context, userID, co
 		UserID:     userID,
 		CourseID:   courseID,
 		EnrolledAt: time.Now().UTC(),
-		Type:       string(consts.EnrollmentTypeCoursePurchase),
+		Type:       string(enrollmentType),
 	}
 
 	if err := r.db.GetDB().WithContext(ctx).Create(enrollment).Error; err != nil {
@@ -137,6 +138,14 @@ func (r *enrollmentRepository) EnrollIfNotExists(ctx context.Context, userID, co
 	}
 
 	return enrollment, nil
+}
+
+func (r *enrollmentRepository) CancelActiveSubscriptionEnrollmentsByUser(ctx context.Context, userID uuid.UUID) error {
+	now := time.Now().UTC()
+	return r.db.GetDB().WithContext(ctx).
+		Model(&model.Enrollment{}).
+		Where("user_id = ? AND type = ? AND canceled_at IS NULL", userID, consts.EnrollmentTypeSubscription).
+		Update("canceled_at", &now).Error
 }
 
 func (r *enrollmentRepository) MarkCourseCompleted(ctx context.Context, userID, courseID uuid.UUID) error {

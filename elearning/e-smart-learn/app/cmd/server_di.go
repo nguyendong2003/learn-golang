@@ -55,9 +55,11 @@ func (s *ApiServer) initDatabase(config *config.Config) {
 	s.followRepository = repository.NewFollowRepository(db)
 	s.subscriptionRepository = repository.NewSubscriptionRepository(db)
 	s.paymentRepository = repository.NewPaymentRepository(db)
+	s.subscriptionRevenueShareRepository = repository.NewSubscriptionRevenueShareRepository(db)
 	s.stripeEventRepository = repository.NewStripeEventRepository(db)
 	s.coursePurchaseRepository = repository.NewCoursePurchaseRepository(db)
 	s.coursePurchaseDetailRepository = repository.NewCoursePurchaseDetailRepository(db)
+	s.coursePurchaseRevenueShareRepository = repository.NewCoursePurchaseRevenueShareRepository(db)
 	s.revenueRepository = repository.NewRevenueRepository(db)
 	s.couponRepository = repository.NewCouponRepository(db)
 	s.cartRepository = repository.NewCartRepository(db)
@@ -118,7 +120,12 @@ func (s *ApiServer) initServices(config *config.Config) {
 	)
 	s.categoryService = service.NewCategoryService(s.categoryRepository)
 	s.planService = service.NewPlanService(s.planRepository, s.subscriptionRepository, &config.Stripe)
-	s.enrollmentService = service.NewEnrollmentService(s.enrollmentRepository, s.paymentRepository)
+	s.enrollmentService = service.NewEnrollmentService(
+		s.enrollmentRepository,
+		s.subscriptionRepository,
+		s.paymentRepository,
+		s.subscriptionRevenueShareRepository,
+	)
 	s.instructorProfileService = service.NewInstructorProfileService(s.instructorProfileRepository)
 	s.courseService = service.NewCourseService(
 		s.courseRepository,
@@ -145,6 +152,8 @@ func (s *ApiServer) initServices(config *config.Config) {
 		s.enrollmentRepository,
 		s.subscriptionRepository,
 		s.paymentRepository,
+		s.subscriptionRevenueShareRepository,
+		s.coursePurchaseRevenueShareRepository,
 		s.coursePurchaseRepository,
 		s.coursePurchaseDetailRepository,
 		s.couponRepository,

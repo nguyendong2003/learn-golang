@@ -37,9 +37,11 @@ type ApiServer struct {
 	followRepository               repository.FollowRepository
 	subscriptionRepository         repository.SubscriptionRepository
 	paymentRepository              repository.PaymentRepository
+	subscriptionRevenueShareRepository repository.SubscriptionRevenueShareRepository
 	stripeEventRepository          repository.StripeEventRepository
 	coursePurchaseRepository       repository.CoursePurchaseRepository
 	coursePurchaseDetailRepository repository.CoursePurchaseDetailRepository
+	coursePurchaseRevenueShareRepository repository.CoursePurchaseRevenueShareRepository
 	revenueRepository              repository.RevenueRepository
 	couponRepository               repository.CouponRepository
 	cartRepository                    repository.CartRepository
