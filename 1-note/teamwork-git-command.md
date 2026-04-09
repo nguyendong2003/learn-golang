@@ -184,3 +184,64 @@ https://www.figma.com/design/YOvNhQqxHQODgkI95ev2Op/E-Learning-Site--Community--
 ```
 https://ai-first.anhhh.workers.dev/skill_proposal/presales-skill-guideline
 
+###
+* hiện tại tôi đang làm dự án elearning giống udemy, tôi đã viết api tạo khóa học (product) trên stripe, ngoài ra tôi có phần chỉ instructor mới có thể tạo coupon trên stripe. Ngoài ra ở phần coupon có thể gán nó cho nhiều khóa học. Khi gán nó cho khóa học thì sẽ giảm giá tạm thời cho khóa học đó theo thuộc tính của coupon (ví dụ coupon đó có expires là ngày mấy đó và giảm giá 20% trong khoảng thời gian đó với số lượng sử dụng max_redemptions. Dự án tôi viết bằng golang, gorm, gin, postgres. Như vậy mỗi lần gán coupon cho khóa học thì sẽ tạo 1 giá mới cho course trên stripe hay sao
+
+* Tôi muốn là ví dụ khi instructor áp dụng coupon cho khóa học thì ví dụ khóa học đó có giá gốc là 10 đô sẽ giảm xuống 8 đô, phần giao diện course detail sẽ thấy 10 đô (bị gạch) và giá hiện tại là 8 đô. Sau khi người dùng bấm buy now thì chuyển qua trang checkout và người dùng có thể nhập coupon do instructor public cho người dùng nhập (ví dụ coupon điền vào giảm 40%) thì giá sau giảm sẽ là 8 - 8 * 40%. Vậy tôi phải làm như thế nào
+
+- Backend xử lý:
+
+original_price = 10
+course_discount = 20% → 8
+user_coupon = 40% → 8 - 40% = 4.8
+
+```go 
+params := &stripe.CheckoutSessionParams{
+  LineItems: []*stripe.CheckoutSessionLineItemParams{
+    {
+      PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+        Currency: stripe.String("usd"),
+        UnitAmount: stripe.Int64(480), // giá sau khi discount ✅ FINAL PRICE
+        Product: stripe.String(productID), // ✅ dùng product có sẵn
+      },
+      Quantity: stripe.Int64(1),
+    },
+  },
+}
+```
+
+```sql
+CREATE TABLE coupons (
+    id BIGSERIAL PRIMARY KEY,
+
+    code VARCHAR(50) UNIQUE,           -- mã coupon (NULL nếu auto discount)
+
+    type VARCHAR(20) NOT NULL,         -- COURSE | GLOBAL | FLASH
+
+    value_type VARCHAR(10) NOT NULL,   -- PERCENT | FIXED
+    value NUMERIC(10,2) NOT NULL,      -- 20 (%) hoặc 5 ($)
+
+    max_redemptions INT,               -- số lần dùng tối đa
+    used_count INT DEFAULT 0,          -- đã dùng bao nhiêu lần
+
+    per_user_limit INT DEFAULT 1,      -- mỗi user dùng tối đa bao nhiêu lần
+
+    start_at TIMESTAMP,
+    end_at TIMESTAMP,
+
+    is_active BOOLEAN DEFAULT TRUE,
+
+    created_by BIGINT,                 -- instructor_id hoặc admin_id
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+```sql
+ALTER TABLE courses ADD COLUMN allow_global_discount BOOLEAN DEFAULT TRUE;
+
+if course.AllowGlobalDiscount {
+    applyFlashSale()
+}
+```
