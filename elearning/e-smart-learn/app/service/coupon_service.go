@@ -4,6 +4,7 @@ import (
 	"context"
 	"elearning-api/apperror"
 	"elearning-api/config"
+	"elearning-api/consts"
 	"elearning-api/dto"
 	"elearning-api/model"
 	"elearning-api/repository"
@@ -18,44 +19,58 @@ import (
 )
 
 type CouponService interface {
-	Create(ctx context.Context, request dto.CreateCouponRequest) (*dto.CouponResponse, error)
-	GetByID(ctx context.Context, couponID uuid.UUID) (*dto.CouponResponse, error)
-	Deactivate(ctx context.Context, couponID uuid.UUID) error
-	GetList(ctx context.Context, request dto.ListCouponRequest) ([]*dto.CouponResponse, int64, error)
-	GetAvailableCoupons(ctx context.Context, request dto.ListCouponRequest) ([]*dto.CouponResponse, int64, error)
+	Create(ctx context.Context, userID uuid.UUID, request dto.CreateCouponRequest) (*dto.CouponResponse, error)
+	GetByID(ctx context.Context, userID, couponID uuid.UUID) (*dto.CouponResponse, error)
+	Deactivate(ctx context.Context, userID, couponID uuid.UUID) error
+	GetList(ctx context.Context, userID uuid.UUID, request dto.ListCouponRequest) ([]*dto.CouponResponse, int64, error)
+	GetAssignableList(ctx context.Context, userID uuid.UUID, request dto.ListCouponRequest) ([]*dto.CouponResponse, int64, error)
+	GetAssignableListForCourse(ctx context.Context, userID, courseID uuid.UUID, request dto.ListCouponRequest) ([]*dto.CouponResponseForCourse, int64, error)
 }
 
 type couponService struct {
-	couponRepository repository.CouponRepository
-	stripeConfig     *config.StripeConfig
+	couponRepository       repository.CouponRepository
+	courseRepository       repository.CourseRepository
+	courseCouponRepository repository.CourseCouponRepository
+	stripeConfig           *config.StripeConfig
 }
 
-func NewCouponService(couponRepository repository.CouponRepository, stripeConfig *config.StripeConfig) CouponService {
+func NewCouponService(
+	couponRepository repository.CouponRepository,
+	courseRepository repository.CourseRepository,
+	courseCouponRepository repository.CourseCouponRepository,
+	stripeConfig *config.StripeConfig,
+) CouponService {
 	stripe.Key = stripeConfig.SecretKey
 
 	return &couponService{
-		couponRepository: couponRepository,
-		stripeConfig:     stripeConfig,
+		couponRepository:       couponRepository,
+		courseRepository:       courseRepository,
+		courseCouponRepository: courseCouponRepository,
+		stripeConfig:           stripeConfig,
 	}
 }
 
-func (s *couponService) Create(ctx context.Context, request dto.CreateCouponRequest) (*dto.CouponResponse, error) {
+func (s *couponService) Create(ctx context.Context, userID uuid.UUID, request dto.CreateCouponRequest) (*dto.CouponResponse, error) {
+	if userID == uuid.Nil {
+		return nil, apperror.NewUnauthorizedError("User not found")
+	}
+
 	discountType := strings.ToLower(strings.TrimSpace(request.DiscountType))
-	if discountType != "percent" && discountType != "amount" {
-		return nil, apperror.NewBadRequestError("discount_type must be either percent or amount")
+	if discountType != string(consts.DiscountTypePercent) && discountType != string(consts.DiscountTypeAmount) {
+		return nil, apperror.NewBadRequestError("discount type must be either percent or amount")
 	}
 	if request.DiscountValue <= 0 {
-		return nil, apperror.NewBadRequestError("discount_value must be greater than zero")
+		return nil, apperror.NewBadRequestError("discount value must be greater than zero")
 	}
-	if discountType == "percent" && request.DiscountValue > 100 {
-		return nil, apperror.NewBadRequestError("discount_value for percent must be between 1 and 100")
+	if discountType == string(consts.DiscountTypePercent) && request.DiscountValue > 100 {
+		return nil, apperror.NewBadRequestError("discount value for percent must be between 1 and 100")
 	}
 
 	if request.ExpiresAt != nil && request.ExpiresAt.Before(time.Now().UTC()) {
-		return nil, apperror.NewBadRequestError("expires_at must be in the future")
+		return nil, apperror.NewBadRequestError("expires at must be in the future")
 	}
 
-	code := strings.ToUpper(strings.TrimSpace(request.Code))
+	code := strings.TrimSpace(request.Code)
 	existingCoupon, err := s.couponRepository.GetByCode(ctx, code, nil)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to validate coupon code")
@@ -74,12 +89,12 @@ func (s *couponService) Create(ctx context.Context, request dto.CreateCouponRequ
 		currency = "usd"
 	}
 
-	if discountType == "percent" {
+	if discountType == string(consts.DiscountTypePercent) {
 		couponParams.PercentOff = stripe.Float64(float64(discountValue))
 	} else {
 		couponParams.AmountOff = stripe.Int64(discountValue)
-		if request.Currency != "" {
-			currency = strings.ToLower(strings.TrimSpace(request.Currency))
+		if request.Currency != nil {
+			currency = strings.ToLower(strings.TrimSpace(*request.Currency))
 		}
 		couponParams.Currency = stripe.String(currency)
 	}
@@ -129,19 +144,15 @@ func (s *couponService) Create(ctx context.Context, request dto.CreateCouponRequ
 		return nil, apperror.NewInternalServerError("Failed to create Stripe promotion code")
 	}
 
-	maxRedemptions := int64(0)
-	if request.MaxRedemptions != nil {
-		maxRedemptions = *request.MaxRedemptions
-	}
-
 	newCoupon := &model.Coupon{
+		UserID:                &userID,
 		Code:                  code,
 		StripeCouponID:        stripeCoupon.ID,
 		StripePromotionCodeID: stripePromotionCode.ID,
 		DiscountType:          discountType,
 		DiscountValue:         discountValue,
 		Currency:              currency,
-		MaxRedemptions:        maxRedemptions,
+		MaxRedemptions:        request.MaxRedemptions,
 		CurrentRedemptions:    int64(stripePromotionCode.TimesRedeemed),
 		IsActive:              stripePromotionCode.Active,
 		ExpiresAt:             request.ExpiresAt,
@@ -155,8 +166,12 @@ func (s *couponService) Create(ctx context.Context, request dto.CreateCouponRequ
 	return dto.NewCouponResponse(created), nil
 }
 
-func (s *couponService) GetByID(ctx context.Context, couponID uuid.UUID) (*dto.CouponResponse, error) {
-	couponData, err := s.couponRepository.FindByID(ctx, couponID, nil)
+func (s *couponService) GetByID(ctx context.Context, userID, couponID uuid.UUID) (*dto.CouponResponse, error) {
+	if userID == uuid.Nil {
+		return nil, apperror.NewUnauthorizedError("User not found")
+	}
+
+	couponData, err := s.couponRepository.Find(ctx, "id = ? AND user_id = ?", nil, couponID, userID)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to get coupon")
 	}
@@ -167,8 +182,12 @@ func (s *couponService) GetByID(ctx context.Context, couponID uuid.UUID) (*dto.C
 	return dto.NewCouponResponse(couponData), nil
 }
 
-func (s *couponService) Deactivate(ctx context.Context, couponID uuid.UUID) error {
-	couponData, err := s.couponRepository.FindByID(ctx, couponID, nil)
+func (s *couponService) Deactivate(ctx context.Context, userID, couponID uuid.UUID) error {
+	if userID == uuid.Nil {
+		return apperror.NewUnauthorizedError("User not found")
+	}
+
+	couponData, err := s.couponRepository.Find(ctx, "id = ? AND user_id = ?", nil, couponID, userID)
 	if err != nil {
 		return apperror.NewInternalServerError("Failed to get coupon")
 	}
@@ -194,12 +213,16 @@ func (s *couponService) Deactivate(ctx context.Context, couponID uuid.UUID) erro
 	return nil
 }
 
-func (s *couponService) GetList(ctx context.Context, request dto.ListCouponRequest) ([]*dto.CouponResponse, int64, error) {
+func (s *couponService) GetList(ctx context.Context, userID uuid.UUID, request dto.ListCouponRequest) ([]*dto.CouponResponse, int64, error) {
+	if userID == uuid.Nil {
+		return nil, 0, apperror.NewUnauthorizedError("User not found")
+	}
+
 	// Build sort query
 	orderQuery := buildCouponSortQuery(request.SortBy, request.SortOrder)
 
 	// Build filter query
-	query, args := buildCouponQuery(request)
+	query, args := buildCouponQuery(userID, request)
 
 	categories, total, err := s.couponRepository.List(
 		ctx,
@@ -216,6 +239,162 @@ func (s *couponService) GetList(ctx context.Context, request dto.ListCouponReque
 	}
 
 	return dto.NewListCouponResponse(categories), total, nil
+}
+
+func (s *couponService) GetAssignableList(ctx context.Context, userID uuid.UUID, request dto.ListCouponRequest) ([]*dto.CouponResponse, int64, error) {
+	if userID == uuid.Nil {
+		return nil, 0, apperror.NewUnauthorizedError("User not found")
+	}
+
+	orderQuery := buildCouponSortQuery(request.SortBy, request.SortOrder)
+	query, args := buildAssignableCouponQuery(userID, request)
+
+	coupons, total, err := s.couponRepository.List(
+		ctx,
+		request.Limit,
+		request.Offset,
+		orderQuery,
+		query,
+		nil,
+		args...,
+	)
+	if err != nil {
+		return nil, 0, apperror.NewInternalServerError("Failed to retrieve assignable coupons")
+	}
+
+	return dto.NewListCouponResponse(coupons), total, nil
+}
+
+func (s *couponService) GetAssignableListForCourse(ctx context.Context, userID, courseID uuid.UUID, request dto.ListCouponRequest) ([]*dto.CouponResponseForCourse, int64, error) {
+	if userID == uuid.Nil {
+		return nil, 0, apperror.NewUnauthorizedError("User not found")
+	}
+
+	if courseID == uuid.Nil {
+		return nil, 0, apperror.NewBadRequestError("Course ID is required")
+	}
+
+	courseData, err := s.courseRepository.Find(ctx, "id = ? AND user_id = ?", nil, courseID, userID)
+	if err != nil {
+		return nil, 0, apperror.NewInternalServerError("Failed to validate course")
+	}
+	if courseData == nil {
+		return nil, 0, apperror.NewNotFoundError("Course not found or you do not have permission to access this course")
+	}
+
+	courseCoupons, err := s.courseCouponRepository.ListByCourseID(ctx, courseID, nil)
+	if err != nil {
+		return nil, 0, apperror.NewInternalServerError("Failed to retrieve course coupons")
+	}
+
+	assignedMap := make(map[uuid.UUID]bool, len(courseCoupons))
+	defaultMap := make(map[uuid.UUID]bool, len(courseCoupons))
+	assignedIDs := make([]uuid.UUID, 0, len(courseCoupons))
+	for _, cc := range courseCoupons {
+		if !assignedMap[cc.CouponID] {
+			assignedIDs = append(assignedIDs, cc.CouponID)
+		}
+		assignedMap[cc.CouponID] = true
+		if cc.IsDefault {
+			defaultMap[cc.CouponID] = true
+		}
+	}
+
+	baseQuery, baseArgs := buildAssignableCouponQuery(userID, request)
+	orderQuery := buildCouponSortQuery(request.SortBy, request.SortOrder)
+
+	assignedQuery := baseQuery + " AND 1 = 0"
+	assignedArgs := append([]any{}, baseArgs...)
+	if len(assignedIDs) > 0 {
+		assignedQuery = baseQuery + " AND id IN ?"
+		assignedArgs = append(assignedArgs, assignedIDs)
+	}
+
+	unassignedQuery := baseQuery
+	unassignedArgs := append([]any{}, baseArgs...)
+	if len(assignedIDs) > 0 {
+		unassignedQuery = baseQuery + " AND id NOT IN ?"
+		unassignedArgs = append(unassignedArgs, assignedIDs)
+	}
+
+	assignedTotal, err := s.couponRepository.Count(ctx, assignedQuery, assignedArgs...)
+	if err != nil {
+		return nil, 0, apperror.NewInternalServerError("Failed to count assigned coupons")
+	}
+
+	unassignedTotal, err := s.couponRepository.Count(ctx, unassignedQuery, unassignedArgs...)
+	if err != nil {
+		return nil, 0, apperror.NewInternalServerError("Failed to count unassigned coupons")
+	}
+
+	total := assignedTotal + unassignedTotal
+	if total == 0 {
+		return []*dto.CouponResponseForCourse{}, 0, nil
+	}
+
+	offset := request.Offset
+	remaining := request.Limit
+	resultCoupons := make([]*model.Coupon, 0, request.Limit)
+
+	if remaining > 0 && offset < int(assignedTotal) {
+		assignedOffset := offset
+		assignedLimit := remaining
+		availableAssigned := int(assignedTotal) - assignedOffset
+		if assignedLimit > availableAssigned {
+			assignedLimit = availableAssigned
+		}
+
+		assignedCoupons, _, err := s.couponRepository.List(
+			ctx,
+			assignedLimit,
+			assignedOffset,
+			orderQuery,
+			assignedQuery,
+			nil,
+			assignedArgs...,
+		)
+		if err != nil {
+			return nil, 0, apperror.NewInternalServerError("Failed to retrieve assigned coupons")
+		}
+
+		resultCoupons = append(resultCoupons, assignedCoupons...)
+		remaining -= len(assignedCoupons)
+		offset = 0
+	} else {
+		offset -= int(assignedTotal)
+		if offset < 0 {
+			offset = 0
+		}
+	}
+
+	if remaining > 0 {
+		unassignedCoupons, _, err := s.couponRepository.List(
+			ctx,
+			remaining,
+			offset,
+			orderQuery,
+			unassignedQuery,
+			nil,
+			unassignedArgs...,
+		)
+		if err != nil {
+			return nil, 0, apperror.NewInternalServerError("Failed to retrieve unassigned coupons")
+		}
+
+		resultCoupons = append(resultCoupons, unassignedCoupons...)
+	}
+
+	res := make([]*dto.CouponResponseForCourse, 0, len(resultCoupons))
+	for _, cp := range resultCoupons {
+		isAssigned := assignedMap[cp.ID]
+		res = append(res, &dto.CouponResponseForCourse{
+			CouponResponse: dto.NewCouponResponse(cp),
+			IsAssigned:     isAssigned,
+			IsDefault:      isAssigned && defaultMap[cp.ID],
+		})
+	}
+
+	return res, total, nil
 }
 
 func buildCouponSortQuery(sortBy string, sortOrder string) string {
@@ -242,9 +421,9 @@ func buildCouponSortQuery(sortBy string, sortOrder string) string {
 	return sortBy + " " + strings.ToUpper(sortOrder)
 }
 
-func buildCouponQuery(request dto.ListCouponRequest) (string, []any) {
-	var conditions []string
-	var args []any
+func buildCouponQuery(userID uuid.UUID, request dto.ListCouponRequest) (string, []any) {
+	conditions := []string{"user_id = ?"}
+	args := []any{userID}
 
 	filters := map[string]*string{
 		"code": request.Code,
@@ -259,25 +438,37 @@ func buildCouponQuery(request dto.ListCouponRequest) (string, []any) {
 	return query, args
 }
 
-func (s *couponService) GetAvailableCoupons(ctx context.Context, request dto.ListCouponRequest) ([]*dto.CouponResponse, int64, error) {
-	orderQuery := buildCouponSortQuery(request.SortBy, request.SortOrder)
-
-	coupons, total, err := s.couponRepository.List(
-		ctx,
-		request.Limit,
-		request.Offset,
-		orderQuery,
+func buildAssignableCouponQuery(userID uuid.UUID, request dto.ListCouponRequest) (string, []any) {
+	conditions := []string{
+		"user_id = ?",
 		"is_active = ?",
-		nil,
-		true)
-	if err != nil {
-		return nil, 0, apperror.NewInternalServerError("Failed to retrieve available coupons")
+		"(expires_at IS NULL OR expires_at >= ?)",
+		"(max_redemptions IS NULL OR current_redemptions < max_redemptions)",
+	}
+	args := []any{userID, true, time.Now().UTC()}
+
+	util.AddILIKECondition(&conditions, &args, "code", request.Code)
+
+	query := strings.Join(conditions, " AND ")
+
+	return query, args
+}
+
+func validateCouponAvailability(coupon *model.Coupon) error {
+	if coupon == nil {
+		return apperror.NewBadRequestError("Coupon not found")
+	}
+	if !coupon.IsActive {
+		return apperror.NewBadRequestError("Coupon is inactive")
 	}
 
-	var response []*dto.CouponResponse
-	for _, c := range coupons {
-		response = append(response, dto.NewCouponResponse(c))
+	now := time.Now().UTC()
+	if coupon.ExpiresAt != nil && coupon.ExpiresAt.Before(now) {
+		return apperror.NewBadRequestError("Coupon has expired")
+	}
+	if coupon.MaxRedemptions != nil && *coupon.MaxRedemptions > 0 && coupon.CurrentRedemptions >= *coupon.MaxRedemptions {
+		return apperror.NewBadRequestError("Coupon has reached redemption limit")
 	}
 
-	return response, total, nil
+	return nil
 }

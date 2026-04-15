@@ -16,6 +16,8 @@ const (
 	InstructorProfile Preload = "InstructorProfile"
 	Course            Preload = "Course"
 	Courses           Preload = "Courses"
+	Coupon            Preload = "Coupon"
+	CourseCoupons     Preload = "CourseCoupons"
 	Category          Preload = "Category"
 	Plan              Preload = "Plan"
 	Subscriptions     Preload = "Subscriptions"

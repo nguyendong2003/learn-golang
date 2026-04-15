@@ -1,14 +1,51 @@
 package dto
 
-import "elearning-api/model"
+import (
+	"elearning-api/consts"
+	"elearning-api/model"
+	"strings"
+)
 
 type CartCheckoutRequest struct {
 	CouponCode string `json:"coupon_code" binding:"omitempty,max=100"`
 }
 
-// type CartItemResponse struct {
-// 	Course *CourseResponse `json:"course"`
-// }
+type CartCheckoutCouponResponse struct {
+	ID            string  `json:"id"`
+	Code          string  `json:"code"`
+	DiscountType  string  `json:"discount_type"`
+	DiscountValue float64 `json:"discount_value"`
+}
+
+func NewCartCheckoutCouponResponse(coupon *model.Coupon) *CartCheckoutCouponResponse {
+	if coupon == nil {
+		return nil
+	}
+
+	discountType := strings.TrimSpace(coupon.DiscountType)
+	discountValue := float64(coupon.DiscountValue)
+	if strings.EqualFold(discountType, consts.DiscountTypeAmount) {
+		discountValue = discountValue / 100
+	}
+
+	return &CartCheckoutCouponResponse{
+		ID:            coupon.ID.String(),
+		Code:          strings.TrimSpace(coupon.Code),
+		DiscountType:  discountType,
+		DiscountValue: discountValue,
+	}
+}
+
+type CartCheckoutPreviewItemResponse struct {
+	Course *CourseResponse             `json:"course"`
+	Coupon *CartCheckoutCouponResponse `json:"coupon,omitempty"`
+}
+
+type CartCheckoutPreviewResponse struct {
+	Items       []*CartCheckoutPreviewItemResponse `json:"items"`
+	TotalAmount float64                            `json:"total_amount"`
+	Currency    string                             `json:"currency"`
+}
 
 type CartResponse struct {
 	Items       []*CourseResponse `json:"items"`

@@ -152,6 +152,17 @@ definitions:
       view_count:
         type: integer
     type: object
+  dto.CartCheckoutCouponResponse:
+    properties:
+      code:
+        type: string
+      discount_type:
+        type: string
+      discount_value:
+        type: number
+      id:
+        type: string
+    type: object
   dto.CartCheckoutRequest:
     properties:
       coupon_code:
@@ -170,6 +181,20 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  dto.ChangePasswordRequest:
+    properties:
+      confirm_password:
+        type: string
+      new_password:
+        minLength: 6
+        type: string
+      old_password:
+        type: string
+    required:
+    - confirm_password
+    - new_password
+    - old_password
     type: object
   dto.ChapterResponse:
     properties:
@@ -247,6 +272,19 @@ definitions:
       updated_at:
         type: string
     type: object
+  dto.CoursePurchaseCheckoutPreviewResponse:
+    properties:
+      coupon:
+        $ref: '#/definitions/dto.CartCheckoutCouponResponse'
+      course:
+        $ref: '#/definitions/dto.CourseResponse'
+      currency:
+        type: string
+      price_final:
+        type: number
+      price_original:
+        type: number
+    type: object
   dto.CourseResponse:
     properties:
       average_rate:
@@ -267,8 +305,6 @@ definitions:
         $ref: '#/definitions/dto.InstructorProfileResponse'
       is_purchased:
         type: boolean
-      old_price:
-        type: number
       price:
         type: number
       slug:
@@ -360,6 +396,15 @@ definitions:
     - discount_type
     - discount_value
     type: object
+  dto.CreateCourseCouponRequest:
+    properties:
+      coupon_id:
+        type: string
+      is_default:
+        type: boolean
+    required:
+    - coupon_id
+    type: object
   dto.CreateCoursePurchaseCheckoutSessionRequest:
     properties:
       coupon_code:
@@ -370,6 +415,10 @@ definitions:
     properties:
       category_id:
         type: string
+      coupons:
+        items:
+          $ref: '#/definitions/dto.CreateCourseCouponRequest'
+        type: array
       description:
         type: string
       image_url:
@@ -963,10 +1012,31 @@ definitions:
     - lessons
     - title
     type: object
+  dto.UpdateCourseCouponRequest:
+    properties:
+      coupon_id:
+        type: string
+      is_default:
+        type: boolean
+    required:
+    - coupon_id
+    type: object
   dto.UpdateCourseRequest:
     properties:
       category_id:
         type: string
+      coupons_add:
+        items:
+          $ref: '#/definitions/dto.CreateCourseCouponRequest'
+        type: array
+      coupons_delete:
+        items:
+          type: string
+        type: array
+      coupons_update:
+        items:
+          $ref: '#/definitions/dto.UpdateCourseCouponRequest'
+        type: array
       description:
         type: string
       image_url:
@@ -1253,156 +1323,6 @@ paths:
       summary: Get blog dashboard statistics (admin)
       tags:
       - blogs
-  /api/v1/admin/coupons:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve paginated list of coupons
-      parameters:
-      - default: 10
-        description: Items per page
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: Offset
-        in: query
-        name: offset
-        type: integer
-      - default: created_at
-        description: Sort field
-        in: query
-        name: sortBy
-        type: string
-      - default: desc
-        description: Sort order
-        enum:
-        - asc
-        - desc
-        in: query
-        name: sortOrder
-        type: string
-      - description: Filter by coupon code
-        in: query
-        name: code
-        type: string
-      - description: Filter by active state
-        in: query
-        name: is_active
-        type: boolean
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-      summary: List coupons
-      tags:
-      - coupons
-    post:
-      consumes:
-      - application/json
-      description: Create a coupon and sync to Stripe promotion code
-      parameters:
-      - description: Create coupon payload
-        in: body
-        name: payload
-        required: true
-        schema:
-          $ref: '#/definitions/dto.CreateCouponRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-      security:
-      - BearerAuth: []
-      summary: Create coupon
-      tags:
-      - coupons
-  /api/v1/admin/coupons/{id}:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve coupon detail by UUID
-      parameters:
-      - description: Coupon ID (UUID format)
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-      summary: Get coupon by ID
-      tags:
-      - coupons
-  /api/v1/admin/coupons/{id}/deactivate:
-    put:
-      consumes:
-      - application/json
-      description: Deactivate coupon on Stripe and local database
-      parameters:
-      - description: Coupon ID (UUID format)
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-      security:
-      - BearerAuth: []
-      summary: Deactivate coupon
-      tags:
-      - coupons
   /api/v1/admin/courses/{id}/approve:
     post:
       consumes:
@@ -1484,6 +1404,33 @@ paths:
       security:
       - BearerAuth: []
       summary: Reject course (admin)
+      tags:
+      - courses
+  /api/v1/admin/courses/statistics:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve aggregated statistics for courses, such as total courses,
+        published courses, and total revenue.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CourseStatisticsResponse'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get course statistics
       tags:
       - courses
   /api/v1/admin/courses/statistics/new:
@@ -2469,7 +2416,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/dto.ResetPasswordRequest'
+          $ref: '#/definitions/dto.ChangePasswordRequest'
       produces:
       - application/json
       responses:
@@ -2784,6 +2731,42 @@ paths:
       security:
       - BearerAuth: []
       summary: Get my cart
+      tags:
+      - carts
+  /api/v1/carts/checkout-preview:
+    post:
+      consumes:
+      - application/json
+      description: Preview cart pricing with entered coupon and default coupon fallback
+        per course
+      parameters:
+      - description: Cart checkout preview request
+        in: body
+        name: payload
+        schema:
+          $ref: '#/definitions/dto.CartCheckoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview cart checkout
       tags:
       - carts
   /api/v1/carts/checkout-session:
@@ -3135,55 +3118,6 @@ paths:
       summary: Get all categories
       tags:
       - categories
-  /api/v1/coupons:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve list of active coupons that the user can apply
-      parameters:
-      - default: 10
-        description: Items per page
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: Offset
-        in: query
-        name: offset
-        type: integer
-      - default: created_at
-        description: Sort field
-        in: query
-        name: sortBy
-        type: string
-      - default: desc
-        description: Sort order
-        enum:
-        - asc
-        - desc
-        in: query
-        name: sortOrder
-        type: string
-      - description: Filter by coupon code
-        in: query
-        name: code
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-      security:
-      - BearerAuth: []
-      summary: Get available coupons for user
-      tags:
-      - coupons
   /api/v1/course-purchase/{session_id}:
     get:
       consumes:
@@ -3938,6 +3872,52 @@ paths:
       summary: Publish course
       tags:
       - courses
+  /api/v1/courses/{id}/purchase-checkout-preview:
+    post:
+      consumes:
+      - application/json
+      description: Preview the Stripe checkout amount for purchasing course lifetime
+        access, including an applied coupon if available
+      parameters:
+      - description: Course ID (UUID format)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Checkout preview request payload
+        in: body
+        name: payload
+        schema:
+          $ref: '#/definitions/dto.CreateCoursePurchaseCheckoutSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CoursePurchaseCheckoutPreviewResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview checkout for one-time course purchase
+      tags:
+      - courses
   /api/v1/courses/{id}/purchase-checkout-session:
     post:
       consumes:
@@ -4068,33 +4048,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Update course status
-      tags:
-      - courses
-  /api/v1/courses/admin/statistics:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve aggregated statistics for courses, such as total courses,
-        published courses, and total revenue.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.ApiResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.CourseStatisticsResponse'
-              type: object
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/dto.ApiResponse'
-      security:
-      - BearerAuth: []
-      summary: Get course statistics
       tags:
       - courses
   /api/v1/courses/slug/{slug}:
@@ -4432,6 +4385,268 @@ paths:
       summary: Update an existing instructorProfile
       tags:
       - instructor-profiles
+  /api/v1/instructor/coupons:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve paginated list of coupons
+      parameters:
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      - default: created_at
+        description: Sort field
+        in: query
+        name: sortBy
+        type: string
+      - default: desc
+        description: Sort order
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sortOrder
+        type: string
+      - description: Filter by coupon code
+        in: query
+        name: code
+        type: string
+      - description: Filter by active state
+        in: query
+        name: is_active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: List coupons
+      tags:
+      - coupons
+    post:
+      consumes:
+      - application/json
+      description: Create a coupon and sync to Stripe promotion code
+      parameters:
+      - description: Create coupon payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCouponRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Create coupon
+      tags:
+      - coupons
+  /api/v1/instructor/coupons/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve coupon detail by UUID
+      parameters:
+      - description: Coupon ID (UUID format)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Get coupon by ID
+      tags:
+      - coupons
+  /api/v1/instructor/coupons/{id}/deactivate:
+    put:
+      consumes:
+      - application/json
+      description: Deactivate coupon on Stripe and local database
+      parameters:
+      - description: Coupon ID (UUID format)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Deactivate coupon
+      tags:
+      - coupons
+  /api/v1/instructor/coupons/assignable:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve paginated list of assignable coupons for course creation
+      parameters:
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      - default: created_at
+        description: Sort field
+        in: query
+        name: sortBy
+        type: string
+      - default: desc
+        description: Sort order
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sortOrder
+        type: string
+      - description: Search by coupon code
+        in: query
+        name: code
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: List assignable coupons
+      tags:
+      - coupons
+  /api/v1/instructor/coupons/assignable-for-course:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve paginated list of assignable coupons with pre-selected
+        coupons prioritized
+      parameters:
+      - description: Course ID (UUID format)
+        in: query
+        name: course_id
+        required: true
+        type: string
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      - default: created_at
+        description: Sort field
+        in: query
+        name: sortBy
+        type: string
+      - default: desc
+        description: Sort order
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sortOrder
+        type: string
+      - description: Search by coupon code
+        in: query
+        name: code
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: List assignable coupons for course
+      tags:
+      - coupons
   /api/v1/oauth/google/callback:
     get:
       consumes:

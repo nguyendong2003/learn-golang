@@ -16,6 +16,7 @@ type CartHandler interface {
 	AddCourse() gin.HandlerFunc
 	RemoveCourse() gin.HandlerFunc
 	GetMyCart() gin.HandlerFunc
+	PreviewCheckout() gin.HandlerFunc
 	Checkout() gin.HandlerFunc
 }
 
@@ -126,6 +127,46 @@ func (h *cartHandler) GetMyCart() gin.HandlerFunc {
 		}
 
 		result, err := h.cartService.GetMyCart(c.Request.Context(), userID)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		res := dto.NewApiResponse(c)
+		res.Request = dto.GetRequestClient(c)
+		res.Data = result
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// PreviewCheckout godoc
+// @Summary Preview cart checkout
+// @Description Preview cart pricing with entered coupon and default coupon fallback per course
+// @Tags carts
+// @Accept json
+// @Produce json
+// @Param payload body dto.CartCheckoutRequest false "Cart checkout preview request"
+// @Success 200 {object} dto.ApiResponse
+// @Failure 400 {object} dto.ApiResponse
+// @Failure 401 {object} dto.ApiResponse
+// @Failure 404 {object} dto.ApiResponse
+// @Router /api/v1/carts/checkout-preview [post]
+// @Security BearerAuth
+func (h *cartHandler) PreviewCheckout() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var request dto.CartCheckoutRequest
+		if err := util.BindAndValidateJSON(c, &request); err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		result, err := h.cartService.PreviewCheckout(c.Request.Context(), userID, request)
 		if err != nil {
 			_ = c.Error(err)
 			return

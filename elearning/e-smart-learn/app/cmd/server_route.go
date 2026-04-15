@@ -122,6 +122,7 @@ func (server *ApiServer) route() {
 		courseBuyer := courseGroup.Group("")
 		courseBuyer.Use(server.AuthHandler())
 		courseBuyer.POST("/:id/purchase-checkout-session", server.courseHandler.CreatePurchaseCheckoutSession())
+		courseBuyer.POST("/:id/purchase-checkout-preview", server.courseHandler.PreviewPurchaseCheckout())
 
 		courseProtected := courseGroup.Group("")
 		courseProtected.Use(server.AuthHandler(), server.LoadRolePermissionHandler())
@@ -202,9 +203,19 @@ func (server *ApiServer) route() {
 
 	// Coupon route
 	{
-		couponGroup := server.router.Group("/api/v1/coupons")
-		couponGroup.GET("", server.couponHandler.GetAvailableCoupons())
-		couponGroup.GET("/:id", server.couponHandler.GetByID())
+		instructorCouponGroup := server.router.Group("/api/v1/instructor/coupons")
+		instructorCouponGroup.Use(
+			server.AuthHandler(),
+			server.LoadRolePermissionHandler(),
+			server.RequireRoleHandler(string(consts.RoleInstructor)),
+			server.RequireInstructorProfileHandler(),
+		)
+		instructorCouponGroup.GET("", server.couponHandler.GetList())
+		instructorCouponGroup.GET("/assignable", server.couponHandler.GetAssignableList())
+		instructorCouponGroup.GET("/assignable-for-course", server.couponHandler.GetAssignableListForCourse())
+		instructorCouponGroup.GET("/:id", server.couponHandler.GetByID())
+		instructorCouponGroup.POST("", server.couponHandler.Create())
+		instructorCouponGroup.PUT("/:id/deactivate", server.couponHandler.Deactivate())
 	}
 
 	// Cart route
@@ -214,6 +225,7 @@ func (server *ApiServer) route() {
 		cartGroup.GET("", server.cartHandler.GetMyCart())
 		cartGroup.POST("/courses/:course_id", server.cartHandler.AddCourse())
 		cartGroup.DELETE("/courses/:course_id", server.cartHandler.RemoveCourse())
+		cartGroup.POST("/checkout-preview", server.cartHandler.PreviewCheckout())
 		cartGroup.POST("/checkout-session", server.cartHandler.Checkout())
 	}
 
@@ -264,33 +276,6 @@ func (server *ApiServer) route() {
 		planGroup := server.router.Group("/api/v1/subscription-plans")
 		planGroup.GET("/active", server.planHandler.GetActivePlans())
 		planGroup.GET("/:id", server.planHandler.GetByID())
-
-		planProtected := planGroup.Group("")
-		planProtected.Use(server.AuthHandler(), server.LoadRolePermissionHandler())
-		planProtected.GET("",
-			server.RequirePermissionHandler("plan_read"),
-			server.planHandler.GetList(),
-		)
-		planProtected.POST("",
-			server.RequirePermissionHandler("plan_create"),
-			server.planHandler.Create(),
-		)
-		planProtected.PUT("/:id",
-			server.RequirePermissionHandler("plan_update"),
-			server.planHandler.Update(),
-		)
-		planProtected.PUT("/:id/activate",
-			server.RequirePermissionHandler("plan_update"),
-			server.planHandler.Activate(),
-		)
-		planProtected.PUT("/:id/deactivate",
-			server.RequirePermissionHandler("plan_update"),
-			server.planHandler.Deactivate(),
-		)
-		planProtected.DELETE("/:id",
-			server.RequirePermissionHandler("plan_delete"),
-			server.planHandler.Delete(),
-		)
 	}
 
 	// Subscription route
@@ -360,43 +345,27 @@ func (server *ApiServer) route() {
 			adminBlogs.GET("/:id",
 				server.blogHandler.GetByID())
 
-			// Coupon administration
-			adminCoupons := adminGroup.Group("/coupons")
-			adminCoupons.GET("", server.couponHandler.GetList())
-			adminCoupons.GET("/:id", server.couponHandler.GetByID())
-			adminCoupons.Use(server.AuthHandler(), server.LoadRolePermissionHandler())
-			// adminCoupons.POST("", server.RequirePermissionHandler("coupon_create"), server.couponHandler.Create())
-			adminCoupons.POST("", server.couponHandler.Create())
-			// adminCoupons.PUT("/:id/deactivate", server.RequirePermissionHandler("coupon_update"), server.couponHandler.Deactivate())
-			adminCoupons.PUT("/:id/deactivate", server.couponHandler.Deactivate())
-
 			subAdmin := adminGroup.Group("/subscriptions")
 			subAdmin.GET("/subscribers", server.subscriptionHandler.GetSubscribers())
 
 			adminPlans := adminGroup.Group("/subscription-plans")
 			adminPlans.Use(server.AuthHandler(), server.LoadRolePermissionHandler())
 			adminPlans.GET("",
-				// server.RequirePermissionHandler("plan_read"),
 				server.planHandler.GetList(),
 			)
 			adminPlans.POST("",
-				// server.RequirePermissionHandler("plan_create"),
 				server.planHandler.Create(),
 			)
 			adminPlans.PUT("/:id",
-				// server.RequirePermissionHandler("plan_update"),
 				server.planHandler.Update(),
 			)
 			adminPlans.PUT("/:id/activate",
-				// server.RequirePermissionHandler("plan_update"),
 				server.planHandler.Activate(),
 			)
 			adminPlans.PUT("/:id/deactivate",
-				// server.RequirePermissionHandler("plan_update"),
 				server.planHandler.Deactivate(),
 			)
 			adminPlans.DELETE("/:id",
-				// server.RequirePermissionHandler("plan_delete"),
 				server.planHandler.Delete(),
 			)
 
@@ -423,7 +392,7 @@ func (server *ApiServer) route() {
 			adminRevenue.GET("/statistics/sales-segmentation", server.revenueHandler.GetAdminSalesSegmentation())
 
 			adminRevenue.GET("/transactions", server.revenueHandler.GetAdminTransactions())
-			
+
 			adminRevenue.GET("/statistics/teachers/revenue", server.revenueHandler.GetAllTeachersRevenue())
 		}
 	}

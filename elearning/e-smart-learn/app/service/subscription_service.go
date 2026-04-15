@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"math"
 	"sort"
 	"strconv"
@@ -24,7 +25,6 @@ import (
 	"github.com/stripe/stripe-go/v83/paymentintent"
 	"github.com/stripe/stripe-go/v83/price"
 	"github.com/stripe/stripe-go/v83/product"
-	"github.com/stripe/stripe-go/v83/promotioncode"
 	stripesubscription "github.com/stripe/stripe-go/v83/subscription"
 	"github.com/stripe/stripe-go/v83/webhook"
 	"gorm.io/gorm"
@@ -37,7 +37,9 @@ type SubscriptionService interface {
 	SyncActiveStripeSubscriptions(ctx context.Context) error
 	SyncPendingStripeCoursePurchases(ctx context.Context) error
 	GetSubscribers(ctx context.Context, limit int, offset int) ([]*dto.SubscriberResponse, int64, error)
+
 	CreateCourseCheckoutSession(ctx context.Context, userID, courseID uuid.UUID, request dto.CreateCoursePurchaseCheckoutSessionRequest) (*dto.CheckoutSessionResponse, error)
+	PreviewCourseCheckout(ctx context.Context, userID, courseID uuid.UUID, request dto.CreateCoursePurchaseCheckoutSessionRequest) (*dto.CoursePurchaseCheckoutPreviewResponse, error)
 
 	PublishCourseAndCreateProductCatalog(ctx context.Context, courseID uuid.UUID) (*dto.CourseResponse, error)
 	SyncPublishedCourseCatalog(ctx context.Context, courseID uuid.UUID) (*dto.CourseResponse, error)
@@ -65,7 +67,8 @@ type subscriptionService struct {
 	coursePurchaseRepository             repository.CoursePurchaseRepository
 	coursePurchaseDetailRepository       repository.CoursePurchaseDetailRepository
 	cartRepository                       repository.CartRepository
-	courseCouponRepository               repository.CouponRepository
+	couponRepository                     repository.CouponRepository
+	courseCouponRepository               repository.CourseCouponRepository
 	stripeEventRepository                repository.StripeEventRepository
 	stripeConfig                         *config.StripeConfig
 }
@@ -82,7 +85,8 @@ func NewSubscriptionService(
 	coursePurchaseRepository repository.CoursePurchaseRepository,
 	coursePurchaseDetailRepository repository.CoursePurchaseDetailRepository,
 	cartRepository repository.CartRepository,
-	courseCouponRepository repository.CouponRepository,
+	couponRepository repository.CouponRepository,
+	courseCouponRepository repository.CourseCouponRepository,
 	stripeEventRepository repository.StripeEventRepository,
 	stripeConfig *config.StripeConfig,
 ) SubscriptionService {
@@ -100,6 +104,7 @@ func NewSubscriptionService(
 		coursePurchaseRepository:             coursePurchaseRepository,
 		coursePurchaseDetailRepository:       coursePurchaseDetailRepository,
 		cartRepository:                       cartRepository,
+		couponRepository:                     couponRepository,
 		courseCouponRepository:               courseCouponRepository,
 		stripeEventRepository:                stripeEventRepository,
 		stripeConfig:                         stripeConfig,
@@ -123,7 +128,7 @@ func (s *subscriptionService) GetTransactionsHistory(ctx context.Context, userID
 			if name == "" {
 				name = "Course Purchase"
 			}
-			amount := float64(detail.Price) / 100
+			amount := float64(detail.PriceFinal) / 100
 			transactions = append(transactions, &dto.TransactionHistoryResponse{
 				ID:        purchase.ID.String(),
 				Type:      "course_purchase",
@@ -333,49 +338,141 @@ func (s *subscriptionService) CreateCourseCheckoutSession(ctx context.Context, u
 		},
 	}
 
-	var appliedCouponID *uuid.UUID
-	finalAmountCents := amountCents
-
-	if request.CouponCode != "" {
-		courseCoupon, err := s.courseCouponRepository.GetByCode(ctx, strings.TrimSpace(request.CouponCode), nil)
+	var enteredCoupon *model.Coupon
+	enteredCouponCode := strings.TrimSpace(request.CouponCode)
+	if enteredCouponCode != "" {
+		couponData, err := s.couponRepository.GetByCode(ctx, enteredCouponCode, nil)
 		if err != nil {
 			return nil, apperror.NewInternalServerError("Failed to validate coupon")
 		}
-		if courseCoupon == nil || !courseCoupon.IsActive {
-			return nil, apperror.NewBadRequestError("Coupon code is invalid or inactive")
+		if err := validateCouponAvailability(couponData); err != nil {
+			return nil, err
 		}
 
-		promotion, err := promotioncode.Get(courseCoupon.StripePromotionCodeID, nil)
+		courseCoupon, err := s.courseCouponRepository.GetByCourseAndCouponID(ctx, courseID, couponData.ID, nil)
 		if err != nil {
-			return nil, apperror.NewInternalServerError("Failed to verify coupon on Stripe")
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, apperror.NewBadRequestError("Coupon is not applicable to this course")
+			}
+			return nil, apperror.NewInternalServerError("Failed to validate course coupon")
 		}
-		if promotion == nil || !promotion.Active {
-			return nil, apperror.NewBadRequestError("Coupon code is inactive")
-		}
-		if promotion.ExpiresAt > 0 && promotion.ExpiresAt < time.Now().UTC().Unix() {
-			return nil, apperror.NewBadRequestError("Coupon code has expired")
-		}
-		if promotion.MaxRedemptions > 0 && promotion.TimesRedeemed >= promotion.MaxRedemptions {
-			return nil, apperror.NewBadRequestError("Coupon code has reached redemption limit")
+		if courseCoupon == nil {
+			return nil, apperror.NewBadRequestError("Coupon is not applicable to this course")
 		}
 
+		enteredCoupon = couponData
+	}
+
+	appliedCoupon, err := s.resolveApplicableCouponForCourse(ctx, courseID, enteredCoupon)
+	if err != nil {
+		return nil, err
+	}
+
+	var appliedCouponID *uuid.UUID
+	if appliedCoupon != nil {
+		appliedCouponID = &appliedCoupon.ID
+	}
+	finalAmountCents := applyCouponDiscountAmount(amountCents, appliedCoupon)
+	if appliedCoupon != nil && strings.TrimSpace(appliedCoupon.StripePromotionCodeID) != "" {
 		params.Discounts = []*stripe.CheckoutSessionDiscountParams{
-			{PromotionCode: stripe.String(courseCoupon.StripePromotionCodeID)},
+			{PromotionCode: stripe.String(appliedCoupon.StripePromotionCodeID)},
 		}
-		appliedCouponID = &courseCoupon.ID
-		finalAmountCents = applyCouponDiscountAmount(amountCents, courseCoupon)
 	}
 
 	session, err := checkoutsession.New(params)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to create Stripe checkout session")
 	}
+	if session != nil && session.AmountTotal > 0 {
+		finalAmountCents = session.AmountTotal
+	}
 
-	if err := s.createCoursePurchasePending(ctx, userID, appliedCouponID, []uuid.UUID{courseID}, session.ID, finalAmountCents, currency, map[uuid.UUID]int64{courseID: amountCents}); err != nil {
+	if err := s.createCoursePurchasePending(ctx, userID, []uuid.UUID{courseID}, session.ID, finalAmountCents, currency, map[uuid.UUID]int64{courseID: amountCents}, map[uuid.UUID]int64{courseID: finalAmountCents}, map[uuid.UUID]*uuid.UUID{courseID: appliedCouponID}); err != nil {
 		return nil, err
 	}
 
 	return &dto.CheckoutSessionResponse{SessionID: session.ID, URL: session.URL}, nil
+}
+
+func (s *subscriptionService) PreviewCourseCheckout(ctx context.Context, userID, courseID uuid.UUID, request dto.CreateCoursePurchaseCheckoutSessionRequest) (*dto.CoursePurchaseCheckoutPreviewResponse, error) {
+	course, err := s.courseRepository.FindByID(ctx, courseID, nil)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to get course")
+	}
+	if course == nil {
+		return nil, apperror.NewNotFoundError("Course not found")
+	}
+	if course.Status != consts.CoursePublished {
+		return nil, apperror.NewBadRequestError("Course is not available for purchase")
+	}
+	if course.UserID == userID {
+		return nil, apperror.NewBadRequestError("Cannot purchase your own course")
+	}
+	if course.Price <= 0 {
+		return nil, apperror.NewBadRequestError("Course is free, no purchase is required")
+	}
+
+	if err := s.ensureCourseStripeProductCatalog(ctx, course); err != nil {
+		return nil, err
+	}
+
+	isPaid, err := s.coursePurchaseRepository.ExistsPaidByUserAndCourse(ctx, userID, courseID)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to verify previous purchase")
+	}
+	if isPaid {
+		return nil, apperror.NewBadRequestError("Course already purchased")
+	}
+
+	amountCents := course.StripeAmount
+	if amountCents <= 0 {
+		amountCents = int64(math.Round(course.Price * 100))
+	}
+	if amountCents <= 0 {
+		return nil, apperror.NewBadRequestError("Invalid course price")
+	}
+
+	currency := strings.ToLower(course.StripeCurrency)
+	if currency == "" {
+		currency = strings.ToLower(s.stripeConfig.DefaultCurrency)
+	}
+	if currency == "" {
+		currency = "usd"
+	}
+
+	var enteredCoupon *model.Coupon
+	enteredCouponCode := strings.TrimSpace(request.CouponCode)
+	if enteredCouponCode != "" {
+		couponData, err := s.couponRepository.GetByCode(ctx, enteredCouponCode, nil)
+		if err != nil {
+			return nil, apperror.NewInternalServerError("Failed to validate coupon")
+		}
+		if err := validateCouponAvailability(couponData); err != nil {
+			return nil, err
+		}
+
+		courseCoupon, err := s.courseCouponRepository.GetByCourseAndCouponID(ctx, courseID, couponData.ID, nil)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, apperror.NewBadRequestError("Coupon is not applicable to this course")
+			}
+			return nil, apperror.NewInternalServerError("Failed to validate course coupon")
+		}
+		if courseCoupon == nil {
+			return nil, apperror.NewBadRequestError("Coupon is not applicable to this course")
+		}
+
+		enteredCoupon = couponData
+	}
+
+	appliedCoupon, err := s.resolveApplicableCouponForCourse(ctx, courseID, enteredCoupon)
+	if err != nil {
+		return nil, err
+	}
+
+	finalAmountCents := applyCouponDiscountAmount(amountCents, appliedCoupon)
+
+	return dto.NewCoursePurchaseCheckoutPreviewResponse(course, appliedCoupon, float64(amountCents)/100, float64(finalAmountCents)/100, currency), nil
 }
 
 func (s *subscriptionService) PublishCourseAndCreateProductCatalog(ctx context.Context, courseID uuid.UUID) (*dto.CourseResponse, error) {
@@ -823,14 +920,14 @@ func (s *subscriptionService) handleCoursePurchaseCheckoutCompleted(ctx context.
 	wasPaid := purchase.Status == string(consts.CoursePurchaseStatusPaid)
 
 	purchase.StripePaymentIntentID = extractCheckoutPaymentIntentID(checkoutSession)
-	if purchase.Amount <= 0 {
-		purchase.Amount = checkoutSession.AmountTotal
+	if purchase.TotalAmount <= 0 {
+		purchase.TotalAmount = checkoutSession.AmountTotal
 	}
 	if strings.TrimSpace(purchase.Currency) == "" {
 		purchase.Currency = normalizeCurrency(string(checkoutSession.Currency), s.stripeConfig.DefaultCurrency)
 	}
-	if purchase.StripeFee <= 0 && purchase.Amount > 0 {
-		purchase.StripeFee = calculateStripeFeeFromAmount(purchase.Amount)
+	if purchase.StripeFee <= 0 && purchase.TotalAmount > 0 {
+		purchase.StripeFee = calculateStripeFeeFromAmount(purchase.TotalAmount)
 	}
 
 	updatePurchaseStatusFromCheckoutPayment(purchase, checkoutSession)
@@ -845,8 +942,8 @@ func (s *subscriptionService) handleCoursePurchaseCheckoutCompleted(ctx context.
 		}
 	}
 
-	if purchase.Status == string(consts.CoursePurchaseStatusPaid) && !wasPaid && purchase.CouponID != nil {
-		if err := s.syncCouponCurrentRedemptions(ctx, *purchase.CouponID); err != nil {
+	if purchase.Status == string(consts.CoursePurchaseStatusPaid) && !wasPaid {
+		if err := s.syncCouponCurrentRedemptionsByPurchaseID(ctx, purchase.ID); err != nil {
 			return err
 		}
 	}
@@ -871,26 +968,72 @@ func (s *subscriptionService) handleCoursePurchaseCheckoutCompleted(ctx context.
 }
 
 func (s *subscriptionService) syncCouponCurrentRedemptions(ctx context.Context, couponID uuid.UUID) error {
-	couponData, err := s.courseCouponRepository.FindByID(ctx, couponID, nil)
+	currentRedemptions, err := s.couponRepository.CountPaidRedemptions(ctx, couponID)
 	if err != nil {
-		return apperror.NewInternalServerError("Failed to load coupon")
-	}
-	if couponData == nil || strings.TrimSpace(couponData.StripePromotionCodeID) == "" {
-		return nil
-	}
-
-	promo, err := promotioncode.Get(couponData.StripePromotionCodeID, nil)
-	if err != nil {
-		return apperror.NewInternalServerError("Failed to sync coupon redemptions from Stripe")
+		return apperror.NewInternalServerError("Failed to count coupon redemptions")
 	}
 
 	updates := map[string]any{
-		"current_redemptions": int64(promo.TimesRedeemed),
-		"is_active":           promo.Active,
+		"current_redemptions": currentRedemptions,
 	}
 
-	if _, err := s.courseCouponRepository.Update(ctx, couponID, updates); err != nil {
+	if _, err := s.couponRepository.Update(ctx, couponID, updates); err != nil {
 		return apperror.NewInternalServerError("Failed to update coupon redemptions")
+	}
+
+	return nil
+}
+
+func (s *subscriptionService) resolveApplicableCouponForCourse(ctx context.Context, courseID uuid.UUID, enteredCoupon *model.Coupon) (*model.Coupon, error) {
+	if enteredCoupon != nil {
+		courseCoupon, err := s.courseCouponRepository.GetByCourseAndCouponCode(ctx, courseID, enteredCoupon.Code, []repository.Preload{repository.Coupon})
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperror.NewInternalServerError("Failed to validate course coupon")
+		}
+		if err == nil && courseCoupon != nil && courseCoupon.Coupon != nil {
+			if err := validateCouponAvailability(courseCoupon.Coupon); err == nil {
+				return courseCoupon.Coupon, nil
+			}
+		}
+	}
+
+	defaultCoupon, err := s.courseCouponRepository.GetDefaultByCourseID(ctx, courseID, []repository.Preload{repository.Coupon})
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to load default coupon")
+	}
+	if defaultCoupon == nil || defaultCoupon.Coupon == nil {
+		return nil, nil
+	}
+
+	if err := validateCouponAvailability(defaultCoupon.Coupon); err != nil {
+		return nil, nil
+	}
+
+	return defaultCoupon.Coupon, nil
+}
+
+func (s *subscriptionService) syncCouponCurrentRedemptionsByPurchaseID(ctx context.Context, purchaseID uuid.UUID) error {
+	if purchaseID == uuid.Nil {
+		return nil
+	}
+
+	details, err := s.coursePurchaseDetailRepository.ListByPurchaseID(ctx, purchaseID, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to load purchase details")
+	}
+
+	seen := make(map[uuid.UUID]bool)
+	for _, detail := range details {
+		if detail == nil || detail.CouponID == nil {
+			continue
+		}
+		if _, exists := seen[*detail.CouponID]; exists {
+			continue
+		}
+		seen[*detail.CouponID] = true
+		if err := s.syncCouponCurrentRedemptions(ctx, *detail.CouponID); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -913,14 +1056,14 @@ func (s *subscriptionService) handleCoursePurchaseCheckoutFailed(ctx context.Con
 
 	purchase.Status = string(consts.CoursePurchaseStatusFailed)
 	purchase.PurchasedAt = nil
-	if purchase.Amount <= 0 {
-		purchase.Amount = checkoutSession.AmountTotal
+	if purchase.TotalAmount <= 0 {
+		purchase.TotalAmount = checkoutSession.AmountTotal
 	}
 	if strings.TrimSpace(purchase.Currency) == "" {
 		purchase.Currency = normalizeCurrency(string(checkoutSession.Currency), s.stripeConfig.DefaultCurrency)
 	}
-	if purchase.StripeFee <= 0 && purchase.Amount > 0 {
-		purchase.StripeFee = calculateStripeFeeFromAmount(purchase.Amount)
+	if purchase.StripeFee <= 0 && purchase.TotalAmount > 0 {
+		purchase.StripeFee = calculateStripeFeeFromAmount(purchase.TotalAmount)
 	}
 
 	if _, err := s.coursePurchaseRepository.Updates(ctx, purchase); err != nil {
@@ -1593,20 +1736,20 @@ func (s *subscriptionService) resolveSubscriptionPlanSnapshot(ctx context.Contex
 func (s *subscriptionService) createCoursePurchasePending(
 	ctx context.Context,
 	userID uuid.UUID,
-	couponID *uuid.UUID,
 	courseIDs []uuid.UUID,
 	checkoutSessionID string,
-	amount int64,
+	totalAmount int64,
 	currency string,
-	priceByCourseID map[uuid.UUID]int64,
+	priceOriginalByCourseID map[uuid.UUID]int64,
+	priceFinalByCourseID map[uuid.UUID]int64,
+	couponByCourseID map[uuid.UUID]*uuid.UUID,
 ) error {
 	purchase, err := s.coursePurchaseRepository.Create(ctx, &model.CoursePurchase{
 		UserID:                  userID,
-		CouponID:                couponID,
 		StripeCheckoutSessionID: checkoutSessionID,
-		Amount:                  amount,
+		TotalAmount:             totalAmount,
 		Currency:                currency,
-		StripeFee:               calculateStripeFeeFromAmount(amount),
+		StripeFee:               calculateStripeFeeFromAmount(totalAmount),
 		Status:                  string(consts.CoursePurchaseStatusPending),
 	})
 	if err != nil {
@@ -1615,11 +1758,23 @@ func (s *subscriptionService) createCoursePurchasePending(
 
 	details := make([]*model.CoursePurchaseDetail, 0, len(courseIDs))
 	for _, id := range courseIDs {
-		price := priceByCourseID[id]
+		priceOriginal := priceOriginalByCourseID[id]
+		priceFinal := priceFinalByCourseID[id]
+		if priceFinal <= 0 {
+			priceFinal = priceOriginal
+		}
+
+		var couponID *uuid.UUID
+		if couponByCourseID != nil {
+			couponID = couponByCourseID[id]
+		}
+
 		details = append(details, &model.CoursePurchaseDetail{
 			CoursePurchaseID: purchase.ID,
 			CourseID:         id,
-			Price:            price,
+			CouponID:         couponID,
+			PriceOriginal:    priceOriginal,
+			PriceFinal:       priceFinal,
 			Currency:         currency,
 		})
 	}
@@ -1864,8 +2019,8 @@ func applyCouponDiscountAmount(amount int64, coupon *model.Coupon) int64 {
 		return amount
 	}
 
-	switch strings.ToLower(strings.TrimSpace(coupon.DiscountType)) {
-	case "percent":
+	switch strings.TrimSpace(coupon.DiscountType) {
+	case consts.DiscountTypePercent:
 		discount := int64(math.Round(float64(amount) * (float64(coupon.DiscountValue) / 100)))
 		if discount <= 0 {
 			return amount
@@ -1874,7 +2029,7 @@ func applyCouponDiscountAmount(amount int64, coupon *model.Coupon) int64 {
 			return 0
 		}
 		return amount - discount
-	case "amount":
+	case consts.DiscountTypeAmount:
 		if coupon.DiscountValue <= 0 {
 			return amount
 		}

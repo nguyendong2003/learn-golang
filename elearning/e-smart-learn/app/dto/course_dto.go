@@ -17,7 +17,6 @@ type CourseResponse struct {
 	Slug              string                     `json:"slug"`
 	Duration          int                        `json:"duration"`
 	Price             float64                    `json:"price"`
-	OldPrice          float64                    `json:"old_price"`
 	Status            consts.CourseStatus        `json:"status"`
 	AverageRate       float64                    `json:"average_rate"`
 	TotalStudent      int64                      `json:"total_student"`
@@ -113,19 +112,33 @@ func NewCourseDetailResponse(m *model.Course) *CourseResponse {
 }
 
 type CreateCourseRequest struct {
-	Title       string    `json:"title" binding:"required,min=3,max=255"`
-	Description string    `json:"description"`
-	Price       float64   `json:"price" binding:"required,gt=0"`
-	ImageURL    string    `json:"image_url" binding:"required,url"`
-	CategoryID  uuid.UUID `json:"category_id" binding:"required,uuid"`
+	Title       string                      `json:"title" binding:"required,min=3,max=255"`
+	Description string                      `json:"description"`
+	Price       float64                     `json:"price" binding:"required,gt=0"`
+	ImageURL    string                      `json:"image_url" binding:"required,url"`
+	CategoryID  uuid.UUID                   `json:"category_id" binding:"required,uuid"`
+	Coupons     []CreateCourseCouponRequest `json:"coupons" binding:"omitempty,dive"`
+}
+
+type CreateCourseCouponRequest struct {
+	CouponID  string `json:"coupon_id" binding:"required,uuid"`
+	IsDefault bool   `json:"is_default"`
 }
 
 type UpdateCourseRequest struct {
-	Title       *string  `json:"title" binding:"omitempty,min=3,max=255"`
-	Description *string  `json:"description"`
-	Price       *float64 `json:"price" binding:"omitempty,gt=0"`
-	ImageURL    *string  `json:"image_url" binding:"omitempty,url"`
-	CategoryID  *string  `json:"category_id" binding:"omitempty,uuid"`
+	Title         *string                     `json:"title" binding:"omitempty,min=3,max=255"`
+	Description   *string                     `json:"description"`
+	Price         *float64                    `json:"price" binding:"omitempty,gt=0"`
+	ImageURL      *string                     `json:"image_url" binding:"omitempty,url"`
+	CategoryID    *string                     `json:"category_id" binding:"omitempty,uuid"`
+	CouponsAdd    []CreateCourseCouponRequest `json:"coupons_add" binding:"omitempty,dive"`
+	CouponsUpdate []UpdateCourseCouponRequest `json:"coupons_update" binding:"omitempty,dive"`
+	CouponsDelete []string                    `json:"coupons_delete" binding:"omitempty,dive,uuid"`
+}
+
+type UpdateCourseCouponRequest struct {
+	CouponID  string `json:"coupon_id" binding:"required,uuid"`
+	IsDefault bool   `json:"is_default"`
 }
 
 type UpdateCourseStatusRequest struct {

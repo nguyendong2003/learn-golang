@@ -16,8 +16,9 @@ type CouponHandler interface {
 	Create() gin.HandlerFunc
 	GetByID() gin.HandlerFunc
 	Deactivate() gin.HandlerFunc
-	GetAvailableCoupons() gin.HandlerFunc
 	GetList() gin.HandlerFunc
+	GetAssignableList() gin.HandlerFunc
+	GetAssignableListForCourse() gin.HandlerFunc
 }
 
 type couponHandler struct {
@@ -39,17 +40,23 @@ func NewCouponHandler(couponService service.CouponService) CouponHandler {
 // @Failure 400 {object} dto.ApiResponse
 // @Failure 401 {object} dto.ApiResponse
 // @Failure 500 {object} dto.ApiResponse
-// @Router /api/v1/admin/coupons [post]
+// @Router /api/v1/instructor/coupons [post]
 // @Security BearerAuth
 func (h *couponHandler) Create() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var request dto.CreateCouponRequest
-		if err := util.BindAndValidateJSON(c, &request); err != nil {
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
 			_ = c.Error(err)
 			return
 		}
 
-		result, err := h.couponService.Create(c.Request.Context(), request)
+		var request dto.CreateCouponRequest
+		if err = util.BindAndValidateJSON(c, &request); err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		result, err := h.couponService.Create(c.Request.Context(), userID, request)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -74,10 +81,16 @@ func (h *couponHandler) Create() gin.HandlerFunc {
 // @Failure 400 {object} dto.ApiResponse
 // @Failure 401 {object} dto.ApiResponse
 // @Failure 404 {object} dto.ApiResponse
-// @Router /api/v1/admin/coupons/{id}/deactivate [put]
+// @Router /api/v1/instructor/coupons/{id}/deactivate [put]
 // @Security BearerAuth
 func (h *couponHandler) Deactivate() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
 		id := c.Param("id")
 		couponID, err := uuid.Parse(id)
 		if err != nil {
@@ -85,7 +98,7 @@ func (h *couponHandler) Deactivate() gin.HandlerFunc {
 			return
 		}
 
-		if err := h.couponService.Deactivate(c.Request.Context(), couponID); err != nil {
+		if err := h.couponService.Deactivate(c.Request.Context(), userID, couponID); err != nil {
 			_ = c.Error(err)
 			return
 		}
@@ -108,9 +121,15 @@ func (h *couponHandler) Deactivate() gin.HandlerFunc {
 // @Success 200 {object} dto.ApiResponse
 // @Failure 400 {object} dto.ApiResponse
 // @Failure 404 {object} dto.ApiResponse
-// @Router /api/v1/admin/coupons/{id} [get]
+// @Router /api/v1/instructor/coupons/{id} [get]
 func (h *couponHandler) GetByID() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
 		id := c.Param("id")
 		couponID, err := uuid.Parse(id)
 		if err != nil {
@@ -118,7 +137,7 @@ func (h *couponHandler) GetByID() gin.HandlerFunc {
 			return
 		}
 
-		result, err := h.couponService.GetByID(c.Request.Context(), couponID)
+		result, err := h.couponService.GetByID(c.Request.Context(), userID, couponID)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -146,12 +165,18 @@ func (h *couponHandler) GetByID() gin.HandlerFunc {
 // @Param is_active query boolean false "Filter by active state"
 // @Success 200 {object} dto.ApiResponse
 // @Failure 400 {object} dto.ApiResponse
-// @Router /api/v1/admin/coupons [get]
+// @Router /api/v1/instructor/coupons [get]
 func (h *couponHandler) GetList() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
 		var request dto.ListCouponRequest
 
-		if err := c.ShouldBindQuery(&request); err != nil {
+		if err = c.ShouldBindQuery(&request); err != nil {
 			_ = c.Error(apperror.NewBadRequestError("Invalid query parameters"))
 			return
 		}
@@ -165,7 +190,7 @@ func (h *couponHandler) GetList() gin.HandlerFunc {
 		sortOrder := request.SortOrder
 
 		// Call service
-		data, total, err := h.couponService.GetList(c.Request.Context(), request)
+		data, total, err := h.couponService.GetList(c.Request.Context(), userID, request)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -180,9 +205,9 @@ func (h *couponHandler) GetList() gin.HandlerFunc {
 	}
 }
 
-// GetAvailableCoupons godoc
-// @Summary Get available coupons for user
-// @Description Retrieve list of active coupons that the user can apply
+// GetAssignableList godoc
+// @Summary List assignable coupons
+// @Description Retrieve paginated list of assignable coupons for course creation
 // @Tags coupons
 // @Accept json
 // @Produce json
@@ -190,30 +215,29 @@ func (h *couponHandler) GetList() gin.HandlerFunc {
 // @Param offset query int false "Offset" default(0)
 // @Param sortBy query string false "Sort field" default(created_at)
 // @Param sortOrder query string false "Sort order" Enums(asc,desc) default(desc)
-// @Param code query string false "Filter by coupon code"
+// @Param code query string false "Search by coupon code"
 // @Success 200 {object} dto.ApiResponse
+// @Failure 400 {object} dto.ApiResponse
 // @Failure 401 {object} dto.ApiResponse
+// @Router /api/v1/instructor/coupons/assignable [get]
 // @Security BearerAuth
-// @Router /api/v1/coupons [get]
-func (h *couponHandler) GetAvailableCoupons() gin.HandlerFunc {
+func (h *couponHandler) GetAssignableList() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var request dto.ListCouponRequest
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
 
-		if err := c.ShouldBindQuery(&request); err != nil {
+		var request dto.ListCouponRequest
+		if err = c.ShouldBindQuery(&request); err != nil {
 			_ = c.Error(apperror.NewBadRequestError("Invalid query parameters"))
 			return
 		}
 
-		// Process default pagination
 		request.Process()
 
-		limit := request.Limit
-		offset := request.Offset
-		sortBy := request.SortBy
-		sortOrder := request.SortOrder
-
-		// Call service
-		data, total, err := h.couponService.GetAvailableCoupons(c.Request.Context(), request)
+		data, total, err := h.couponService.GetAssignableList(c.Request.Context(), userID, request)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -222,7 +246,66 @@ func (h *couponHandler) GetAvailableCoupons() gin.HandlerFunc {
 		res := dto.NewApiResponse(c)
 		res.Request = dto.GetRequestClient(c)
 		res.Data = data
-		res.Metadata = dto.NewPagination(limit, offset, int(total), sortBy, sortOrder)
+		res.Metadata = dto.NewPagination(request.Limit, request.Offset, int(total), request.SortBy, request.SortOrder)
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// GetAssignableListForCourse godoc
+// @Summary List assignable coupons for course
+// @Description Retrieve paginated list of assignable coupons with pre-selected coupons prioritized
+// @Tags coupons
+// @Accept json
+// @Produce json
+// @Param course_id query string true "Course ID (UUID format)"
+// @Param limit query int false "Items per page" default(10)
+// @Param offset query int false "Offset" default(0)
+// @Param sortBy query string false "Sort field" default(created_at)
+// @Param sortOrder query string false "Sort order" Enums(asc,desc) default(desc)
+// @Param code query string false "Search by coupon code"
+// @Success 200 {object} dto.ApiResponse
+// @Failure 400 {object} dto.ApiResponse
+// @Failure 401 {object} dto.ApiResponse
+// @Router /api/v1/instructor/coupons/assignable-for-course [get]
+// @Security BearerAuth
+func (h *couponHandler) GetAssignableListForCourse() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		var request dto.ListCouponRequest
+		if err = c.ShouldBindQuery(&request); err != nil {
+			_ = c.Error(apperror.NewBadRequestError("Invalid query parameters"))
+			return
+		}
+
+		if request.CourseID == nil || *request.CourseID == "" {
+			_ = c.Error(apperror.NewBadRequestError("course_id is required"))
+			return
+		}
+
+		courseID, err := uuid.Parse(*request.CourseID)
+		if err != nil {
+			_ = c.Error(apperror.NewBadRequestError("Invalid course ID format"))
+			return
+		}
+
+		request.Process()
+
+		data, total, err := h.couponService.GetAssignableListForCourse(c.Request.Context(), userID, courseID, request)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		res := dto.NewApiResponse(c)
+		res.Request = dto.GetRequestClient(c)
+		res.Data = data
+		res.Metadata = dto.NewPagination(request.Limit, request.Offset, int(total), request.SortBy, request.SortOrder)
 
 		c.JSON(http.StatusOK, res)
 	}

@@ -31,6 +31,7 @@ type User struct {
 	InstructorProfile *InstructorProfile `gorm:"foreignKey:UserID;references:ID"`
 	Subscriptions     []*Subscription    `gorm:"foreignKey:UserID;references:ID"`
 	Courses           []*Course          `gorm:"foreignKey:UserID;references:ID"`
+	Coupons           []*Coupon          `gorm:"foreignKey:UserID;references:ID"`
 }
 
 type UserDirectoryRow struct {

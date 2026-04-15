@@ -35,16 +35,16 @@ func (r *coursePurchaseRevenueShareRepository) RebuildByCoursePurchaseID(ctx con
 		SELECT
 			cp.id AS course_purchase_id,
 			cp.user_id AS purchaser_user_id,
-			cp.amount AS purchase_amount,
+			cp.total_amount AS purchase_amount,
 			cp.stripe_fee AS purchase_stripe_fee,
 			COALESCE(cp.purchased_at, cp.created_at) AS purchased_at,
-			COALESCE(SUM(cpd.price), 0)::bigint AS gross_amount
+			COALESCE(SUM(cpd.price_final), 0)::bigint AS net_amount
 		FROM course_purchases cp
 		JOIN course_purchase_details cpd ON cpd.course_purchase_id = cp.id AND cpd.deleted_at IS NULL
 		WHERE cp.id = ?
 		  AND cp.status = 'paid'
 		  AND cp.deleted_at IS NULL
-		GROUP BY cp.id, cp.user_id, cp.amount, cp.stripe_fee, COALESCE(cp.purchased_at, cp.created_at)
+		GROUP BY cp.id, cp.user_id, cp.total_amount, cp.stripe_fee, COALESCE(cp.purchased_at, cp.created_at)
 	),
 	detail_base AS (
 		SELECT
@@ -55,41 +55,23 @@ func (r *coursePurchaseRevenueShareRepository) RebuildByCoursePurchaseID(ctx con
 			c.id AS course_id,
 			pc.purchase_amount,
 			pc.purchase_stripe_fee,
-			cpd.price AS detail_amount,
+			cpd.price_original AS detail_amount,
+			cpd.price_final AS detail_net_amount,
 			pc.purchased_at,
-			pc.gross_amount,
-			GREATEST(pc.gross_amount - pc.purchase_amount, 0)::bigint AS total_coupon_discount
+			pc.net_amount
 		FROM purchase_ctx pc
 		JOIN course_purchase_details cpd ON cpd.course_purchase_id = pc.course_purchase_id AND cpd.deleted_at IS NULL
 		JOIN courses c ON c.id = cpd.course_id AND c.deleted_at IS NULL
 	),
-	detail_calc AS (
+	detail_alloc AS (
 		SELECT
 			db.*,
 			CASE
-				WHEN db.total_coupon_discount <= 0 OR db.gross_amount <= 0 THEN 0::bigint
-				ELSE ROUND(db.total_coupon_discount::numeric * db.detail_amount::numeric / db.gross_amount::numeric)::bigint
-			END AS detail_coupon_discount
-		FROM detail_base db
-	),
-	detail_alloc AS (
-		SELECT
-			dc.course_purchase_id,
-			dc.course_purchase_detail_id,
-			dc.purchaser_user_id,
-			dc.instructor_user_id,
-			dc.course_id,
-			dc.purchase_amount,
-			dc.purchase_stripe_fee,
-			dc.detail_amount,
-			dc.detail_coupon_discount,
-			GREATEST(dc.detail_amount - dc.detail_coupon_discount, 0)::bigint AS detail_net_amount,
-			CASE
-				WHEN dc.purchase_amount <= 0 THEN 0::bigint
-				ELSE ROUND(dc.purchase_stripe_fee::numeric * GREATEST(dc.detail_amount - dc.detail_coupon_discount, 0)::numeric / dc.purchase_amount::numeric)::bigint
+				WHEN db.purchase_amount <= 0 THEN 0::bigint
+				ELSE ROUND(db.purchase_stripe_fee::numeric * db.detail_net_amount::numeric / db.purchase_amount::numeric)::bigint
 			END AS allocated_stripe_fee,
-			dc.purchased_at
-		FROM detail_calc dc
+			GREATEST(db.detail_amount - db.detail_net_amount, 0)::bigint AS detail_coupon_discount
+		FROM detail_base db
 	)
 	INSERT INTO course_purchase_revenue_shares (
 		course_purchase_id,

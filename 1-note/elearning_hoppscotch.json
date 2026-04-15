@@ -24,7 +24,7 @@
           },
           "body": {
             "contentType": "application/json",
-            "body": "{\n  \t\"username\": \"student1\",\n    \"password\": \"123456\"\n}"
+            "body": "{\n  \t\"username\": \"instructor1\",\n    \"password\": \"123456\"\n}"
           },
           "requestVariables": [],
           "responses": {},
@@ -1003,9 +1003,9 @@
           "requests": [
             {
               "v": "17",
-              "name": "enroll directly",
+              "name": "enroll course",
               "method": "POST",
-              "endpoint": "<<HOST>>/api/v1/courses/5abe4633-d7b2-4930-b24f-3e1915ea84c3/enroll",
+              "endpoint": "<<HOST>>/api/v1/courses/<<id>>/enroll",
               "params": [],
               "headers": [],
               "preRequestScript": "",
@@ -1018,7 +1018,13 @@
                 "contentType": null,
                 "body": null
               },
-              "requestVariables": [],
+              "requestVariables": [
+                {
+                  "key": "id",
+                  "value": "196d925c-2ecc-40ed-8989-c7e050e68f96",
+                  "active": true
+                }
+              ],
               "responses": {},
               "description": null
             }
@@ -1166,21 +1172,8 @@
             "authActive": true
           },
           "body": {
-            "contentType": "multipart/form-data",
-            "body": [
-              {
-                "key": "data",
-                "active": true,
-                "isFile": false,
-                "value": "{    \"title\": \"Go Backend Development Masterclass\",    \"description\": \"Learn scalable backend with Golang\",    \"price\": 49.99,    \"category_id\": \"6833eca2-41ef-4cf4-94ff-346beada2a25\"}"
-              },
-              {
-                "key": "image",
-                "active": true,
-                "isFile": false,
-                "value": ""
-              }
-            ]
+            "contentType": "application/json",
+            "body": "{\n    \"title\": \"Cloud Architecture on AWS 2\",\n    \"description\": \"Design and deploy scalable cloud solutions 2\",\n    \"price\": 29.99,\n    \"image_url\": \"https://p24zswjf-9002.asse.devtunnels.ms/elearning/images/1776238826625127626_zidane.jpg\",\n    \"category_id\": \"fc7f7584-b5df-4bc9-99f9-49f4a21a7ea2\",\n    \"coupons\": [\n        {\n            \"coupon_id\": \"818cfb49-4366-42a3-a8c9-f69c28fd6fa1\",\n            \"is_default\": false\n        },\n        {\n            \"coupon_id\": \"2688a03b-ea53-4092-b7c7-02200f440d56\",\n            \"is_default\": true\n        }\n    ]\n}"
           },
           "requestVariables": [],
           "responses": {},
@@ -1201,26 +1194,13 @@
             "authActive": true
           },
           "body": {
-            "contentType": "multipart/form-data",
-            "body": [
-              {
-                "key": "data",
-                "active": true,
-                "isFile": false,
-                "value": "{\n    \"title\": \"Khóa học Golang promax updated\",\n    \"description\": \"Khóa học golang từ A-Z updated\",\n    \"price\": 40.66,\n    \"category_id\": \"9801a392-039b-4833-8813-2c2c90358779\"\n}"
-              },
-              {
-                "key": "image",
-                "active": true,
-                "isFile": false,
-                "value": ""
-              }
-            ]
+            "contentType": "application/json",
+            "body": "{\n  \"coupons_add\": [\n    {\n      \"coupon_id\": \"aadfasdf-4366-42a3-a8c9-f69c28fd6fa1\",\n      \"is_default\": false\n    },\n    {\n      \"coupon_id\": \"a03b-ea53-4092-b7c7-02200f440d56\",\n      \"is_default\": false\n    }\n  ],\n  \"coupons_update\": [\n    {\n      \"coupon_id\": \"818cfb49-4366-42a3-a8c9-f69c28fd6fa1\",\n      \"is_default\": true\n    },\n    {\n      \"coupon_id\": \"2688a03b-ea53-4092-b7c7-02200f440d56\",\n      \"is_default\": false\n    }\n  ],\n  \"coupons_delete\": [\n    \"1cfe5966-9fca-4938-a971-96405cf0a791\",\n    \"8y9p8766-9fca-4938-a971-96405cf0a791\"\n  ]\n}\n"
           },
           "requestVariables": [
             {
               "key": "id",
-              "value": "adc3c45c-41d6-4cd7-abac-f1e9b1cece72",
+              "value": "81d1a564-e711-4c59-96b8-8c8658f5f0c2",
               "active": true
             }
           ],
@@ -1302,34 +1282,7 @@
           "requestVariables": [
             {
               "key": "id",
-              "value": "5b8a9fd6-ab2c-4d19-8c48-52eb246cc1af",
-              "active": true
-            }
-          ],
-          "responses": {},
-          "description": null
-        },
-        {
-          "v": "17",
-          "name": "enroll course",
-          "method": "POST",
-          "endpoint": "<<HOST>>/api/v1/courses/<<id>>/enroll",
-          "params": [],
-          "headers": [],
-          "preRequestScript": "",
-          "testScript": "",
-          "auth": {
-            "authType": "inherit",
-            "authActive": true
-          },
-          "body": {
-            "contentType": null,
-            "body": null
-          },
-          "requestVariables": [
-            {
-              "key": "id",
-              "value": "5b8a9fd6-ab2c-4d19-8c48-52eb246cc1af",
+              "value": "3c1d9048-bc0d-4ccd-97ba-d74f179d1f62",
               "active": true
             }
           ],
@@ -2078,17 +2031,17 @@
           "v": "17",
           "name": "get coupons",
           "method": "GET",
-          "endpoint": "<<HOST>>/api/v1/coupons",
+          "endpoint": "<<HOST>>/api/v1/instructor/coupons",
           "params": [
             {
               "key": "code",
-              "value": "ABC",
+              "value": "AB",
               "active": false,
               "description": ""
             },
             {
               "key": "limit",
-              "value": "2",
+              "value": "10",
               "active": true,
               "description": ""
             },
@@ -2135,9 +2088,133 @@
         },
         {
           "v": "17",
+          "name": "get assignable coupons",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/instructor/coupons/assignable",
+          "params": [
+            {
+              "key": "code",
+              "value": "AB",
+              "active": false,
+              "description": ""
+            },
+            {
+              "key": "limit",
+              "value": "10",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortBy",
+              "value": "created_at",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortOrder",
+              "value": "asc",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "get assignable coupons for course",
+          "method": "GET",
+          "endpoint": "<<HOST>>/api/v1/instructor/coupons/assignable-for-course",
+          "params": [
+            {
+              "key": "code",
+              "value": "S",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "limit",
+              "value": "10",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortBy",
+              "value": "created_at",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "sortOrder",
+              "value": "asc",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "course_id",
+              "value": "81d1a564-e711-4c59-96b8-8c8658f5f0c2",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
           "name": "get coupon",
           "method": "GET",
-          "endpoint": "<<HOST>>/api/v1/coupons/<<id>>",
+          "endpoint": "<<HOST>>/api/v1/instructor/coupons/<<id>>",
           "params": [],
           "headers": [
             {
@@ -2160,7 +2237,7 @@
           "requestVariables": [
             {
               "key": "id",
-              "value": "",
+              "value": "66540f30-b664-4abf-88ba-2d362d8f7e22",
               "active": true
             }
           ],
@@ -2199,7 +2276,7 @@
           "v": "17",
           "name": "deactive coupon",
           "method": "PUT",
-          "endpoint": "<<HOST>>/api/v1/coupons/<<coupon_id>>/deactivate",
+          "endpoint": "<<HOST>>/api/v1/instructor/coupons/<<coupon_id>>/deactivate",
           "params": [],
           "headers": [
             {
@@ -2222,7 +2299,7 @@
           "requestVariables": [
             {
               "key": "coupon_id",
-              "value": "a2b74601-f1c4-4df3-b3e7-5c4ff2aec809",
+              "value": "209bbde9-c2fb-43d6-8b3c-a5b00d113f4a",
               "active": true
             }
           ],
@@ -2366,7 +2443,7 @@
           "requestVariables": [
             {
               "key": "course_id",
-              "value": "4180112e-85ed-4bbd-a0ec-23a72fc8b36c",
+              "value": "7052c45d-b69b-4b9a-85c4-65985c02d1e6",
               "active": true
             }
           ],
@@ -2409,6 +2486,40 @@
         },
         {
           "v": "17",
+          "name": "checkout preview",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/carts/checkout-preview",
+          "params": [],
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n\t\"coupon_code\": \"SAVE30\"\n}\n"
+          },
+          "requestVariables": [
+            {
+              "key": "course_id",
+              "value": "",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
           "name": "checkout session",
           "method": "POST",
           "endpoint": "<<HOST>>/api/v1/carts/checkout-session",
@@ -2429,7 +2540,7 @@
           },
           "body": {
             "contentType": "application/json",
-            "body": "{\n\t\"coupon_code\": \"ABC1\"\n}\n"
+            "body": "{\n\t\"coupon_code\": \"SAVE30\"\n}\n"
           },
           "requestVariables": [
             {
@@ -2458,6 +2569,33 @@
       "requests": [
         {
           "v": "17",
+          "name": "preview purchase checkout",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/courses/<<id>>/purchase-checkout-preview",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "inherit",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \t\"coupon_code\": \"\"\n}"
+          },
+          "requestVariables": [
+            {
+              "key": "id",
+              "value": "dbe3c3a9-d39a-4d6d-832d-5bfbafe8be2f",
+              "active": true
+            }
+          ],
+          "responses": {},
+          "description": null
+        },
+        {
+          "v": "17",
           "name": "create purchase checkout session",
           "method": "POST",
           "endpoint": "<<HOST>>/api/v1/courses/<<id>>/purchase-checkout-session",
@@ -2471,12 +2609,12 @@
           },
           "body": {
             "contentType": "application/json",
-            "body": "{\n  \t\"coupon_code\": \"SAVE30\"\n}"
+            "body": "{\n  \t\"coupon_code\": \"\"\n}"
           },
           "requestVariables": [
             {
               "key": "id",
-              "value": "e9082f0c-8af7-4018-ba19-3f38dd4b9aa8",
+              "value": "dbe3c3a9-d39a-4d6d-832d-5bfbafe8be2f",
               "active": true
             }
           ],
@@ -2529,7 +2667,7 @@
           "v": "17",
           "name": "get subscription plans",
           "method": "GET",
-          "endpoint": "<<HOST>>/api/v1/subscription-plans",
+          "endpoint": "<<HOST>>/api/v1/admin/subscription-plans",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -2561,7 +2699,7 @@
           },
           "body": {
             "contentType": "application/json",
-            "body": "{\n    \"plan_id\": \"fb9c360f-d1fa-4108-a7e0-f5c35c371491\"\n}"
+            "body": "{\n    \"plan_id\": \"936dc400-fa18-412f-a449-5fd075b95088\"\n}"
           },
           "requestVariables": [],
           "responses": {},
@@ -2668,20 +2806,20 @@
       "requests": [
         {
           "v": "17",
-          "name": "get presigned url",
-          "method": "GET",
-          "endpoint": "https://echo.hoppscotch.io",
+          "name": "presign url",
+          "method": "POST",
+          "endpoint": "<<HOST>>/api/v1/upload/presign",
           "params": [],
           "headers": [],
           "preRequestScript": "",
-          "testScript": "",
+          "testScript": "const res = hopp.response.body.asJSON()\n\nif (res?.data?.presign_url) {\n    hopp.env.set(\"presign_url\", res.data.presign_url)\n}",
           "auth": {
             "authType": "inherit",
             "authActive": true
           },
           "body": {
-            "contentType": null,
-            "body": null
+            "contentType": "application/json",
+            "body": "{\n  \"filename\": \"zidane.jpg\",\n  \"filetype\": \"images\"\n}"
           },
           "requestVariables": [],
           "responses": {},
@@ -2691,13 +2829,13 @@
           "v": "17",
           "name": "upload with presigned url",
           "method": "PUT",
-          "endpoint": "http://localhost:9002/elearning/images/1774345445396559130_hello.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20260324%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260324T094405Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host&X-Amz-Signature=06ea8ab6abe2f839a6bdb5887341a9d93bb9341bd9184178428e2b7a932f0acd",
+          "endpoint": "<<presign_url>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
           "testScript": "",
           "auth": {
-            "authType": "inherit",
+            "authType": "none",
             "authActive": true
           },
           "body": {
@@ -3143,6 +3281,27 @@
                   "description": ""
                 }
               ],
+              "headers": [],
+              "preRequestScript": "",
+              "testScript": "",
+              "auth": {
+                "authType": "inherit",
+                "authActive": true
+              },
+              "body": {
+                "contentType": null,
+                "body": null
+              },
+              "requestVariables": [],
+              "responses": {},
+              "description": null
+            },
+            {
+              "v": "17",
+              "name": "get all teacher revenue",
+              "method": "GET",
+              "endpoint": "<<HOST>>/api/v1/admin/revenue/statistics/teachers/revenue",
+              "params": [],
               "headers": [],
               "preRequestScript": "",
               "testScript": "",

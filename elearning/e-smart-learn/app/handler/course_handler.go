@@ -25,7 +25,9 @@ type CourseHandler interface {
 	GetMyTaughtCourses() gin.HandlerFunc
 
 	PublishCourse() gin.HandlerFunc
+
 	CreatePurchaseCheckoutSession() gin.HandlerFunc
+	PreviewPurchaseCheckout() gin.HandlerFunc
 
 	CreateEvent() gin.HandlerFunc
 	GetEvents() gin.HandlerFunc
@@ -435,7 +437,7 @@ func (h *courseHandler) CreatePurchaseCheckoutSession() gin.HandlerFunc {
 		}
 
 		var request dto.CreateCoursePurchaseCheckoutSessionRequest
-		if err := c.ShouldBindJSON(&request); err != nil && err.Error() != "EOF" {
+		if err := util.BindAndValidateJSON(c, &request); err != nil {
 			_ = c.Error(apperror.NewBadRequestError("Invalid body"))
 			return
 		}
@@ -453,6 +455,60 @@ func (h *courseHandler) CreatePurchaseCheckoutSession() gin.HandlerFunc {
 		}
 
 		result, err := h.subscriptionService.CreateCourseCheckoutSession(c.Request.Context(), userID, courseID, request)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		res := dto.NewApiResponse(c)
+		res.Request = dto.GetRequestClient(c)
+		res.Data = result
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// PreviewPurchaseCheckout godoc
+// @Summary Preview checkout for one-time course purchase
+// @Description Preview the Stripe checkout amount for purchasing course lifetime access, including an applied coupon if available
+// @Tags courses
+// @Accept json
+// @Produce json
+// @Param id path string true "Course ID (UUID format)"
+// @Param payload body dto.CreateCoursePurchaseCheckoutSessionRequest false "Checkout preview request payload"
+// @Success 200 {object} dto.ApiResponse{data=dto.CoursePurchaseCheckoutPreviewResponse}
+// @Failure 400 {object} dto.ApiResponse
+// @Failure 401 {object} dto.ApiResponse
+// @Failure 404 {object} dto.ApiResponse
+// @Router /api/v1/courses/{id}/purchase-checkout-preview [post]
+// @Security BearerAuth
+func (h *courseHandler) PreviewPurchaseCheckout() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var idRequest dto.UUIDRequest
+		if err := c.ShouldBindUri(&idRequest); err != nil {
+			_ = c.Error(apperror.NewBadRequestError("Invalid UUID in URI"))
+			return
+		}
+
+		var request dto.CreateCoursePurchaseCheckoutSessionRequest
+		if err := util.BindAndValidateJSON(c, &request); err != nil {
+			_ = c.Error(apperror.NewBadRequestError("Invalid body"))
+			return
+		}
+
+		courseID, err := uuid.Parse(idRequest.ID)
+		if err != nil {
+			_ = c.Error(apperror.NewBadRequestError("Invalid UUID format"))
+			return
+		}
+
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		result, err := h.subscriptionService.PreviewCourseCheckout(c.Request.Context(), userID, courseID, request)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -869,7 +925,7 @@ func (h *courseHandler) UpdateEvent() gin.HandlerFunc {
 // @Security BearerAuth
 // @Success 200 {object} dto.ApiResponse{data=dto.CourseStatisticsResponse}
 // @Failure 500 {object} dto.ApiResponse "Internal server error"
-// @Router /api/v1/courses/admin/statistics [get]
+// @Router /api/v1/admin/courses/statistics [get]
 func (h *courseHandler) GetStatistics() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		stats, err := h.courseService.GetStatistics(c.Request.Context())

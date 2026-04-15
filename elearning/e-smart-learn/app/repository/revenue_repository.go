@@ -199,7 +199,7 @@ func (r *revenueRepository) GetAdminTransactions(ctx context.Context, limit, off
 			u.name AS user_name,
 			u.avatar AS user_avatar,
 			'stripe' AS method,
-			cp.amount::double precision / 100.0 AS amount,
+			cp.total_amount::double precision / 100.0 AS amount,
 			'course_purchase' AS type,
 			COALESCE(cp.purchased_at, cp.created_at) AS created_at
 		FROM course_purchases cp
@@ -270,49 +270,79 @@ func (r *revenueRepository) GetAllTeachersRevenue(
 	offset int,
 	sortOrder string,
 ) ([]*TeacherRevenueRow, int64, error) {
-	// Build optional WHERE clauses for date filtering on course_purchases.
-	var dateConditions []string
-	var dateArgs []any
+	// Build optional WHERE clauses for date filtering on revenue ledgers.
+	var courseDateConditions []string
+	var subscriptionDateConditions []string
+	var courseDateArgs []any
+	var subscriptionDateArgs []any
 	if startDate != nil {
-		dateConditions = append(dateConditions, "cp.purchased_at >= ?")
-		dateArgs = append(dateArgs, *startDate)
+		courseDateConditions = append(courseDateConditions, "cprs.purchased_at >= ?")
+		subscriptionDateConditions = append(subscriptionDateConditions, "srs.paid_at >= ?")
+		courseDateArgs = append(courseDateArgs, *startDate)
+		subscriptionDateArgs = append(subscriptionDateArgs, *startDate)
 	}
 	if endDate != nil {
-		dateConditions = append(dateConditions, "cp.purchased_at <= ?")
-		dateArgs = append(dateArgs, *endDate)
+		courseDateConditions = append(courseDateConditions, "cprs.purchased_at <= ?")
+		subscriptionDateConditions = append(subscriptionDateConditions, "srs.paid_at <= ?")
+		courseDateArgs = append(courseDateArgs, *endDate)
+		subscriptionDateArgs = append(subscriptionDateArgs, *endDate)
 	}
 
-	dateFilter := ""
-	if len(dateConditions) > 0 {
-		dateFilter = "AND " + strings.Join(dateConditions, " AND ")
+	courseDateFilter := ""
+	if len(courseDateConditions) > 0 {
+		courseDateFilter = "AND " + strings.Join(courseDateConditions, " AND ")
 	}
 
-	// CTE: aggregate course-purchase revenue per instructor.
-	// stripe_fee is prorated per course-detail line proportionally to its price.
+	subscriptionDateFilter := ""
+	if len(subscriptionDateConditions) > 0 {
+		subscriptionDateFilter = "AND " + strings.Join(subscriptionDateConditions, " AND ")
+	}
+
+	// CTE: aggregate ledger-backed revenue per instructor from both
+	// course purchases and subscriptions.
 	baseCTE := `
 		WITH course_revenue AS (
 			SELECT
-				c.user_id AS teacher_id,
-				SUM(cpd.price)                                                         AS total_amount,
-				SUM(cp.stripe_fee * cpd.price / NULLIF(cp.amount, 0))                  AS stripe_fee,
-				SUM(cpd.price) - SUM(cp.stripe_fee * cpd.price / NULLIF(cp.amount, 0)) AS instructor_net
-			FROM course_purchase_details cpd
-			JOIN course_purchases cp
-				ON  cp.id         = cpd.course_purchase_id
-				AND cp.status     = 'paid'
-				AND cp.deleted_at IS NULL
-				` + dateFilter + `
-			JOIN courses c
-				ON  c.id         = cpd.course_id
-				AND c.deleted_at IS NULL
-			WHERE cpd.deleted_at IS NULL
-			GROUP BY c.user_id
+				cprs.instructor_user_id AS teacher_id,
+				COALESCE(SUM(cprs.detail_net_amount), 0)::BIGINT AS total_amount,
+				COALESCE(SUM(cprs.allocated_stripe_fee), 0)::BIGINT AS stripe_fee,
+				COALESCE(SUM(cprs.instructor_net), 0)::BIGINT AS instructor_net
+			FROM course_purchase_revenue_shares cprs
+			WHERE cprs.deleted_at IS NULL
+			  AND cprs.purchased_at IS NOT NULL
+			  ` + courseDateFilter + `
+			GROUP BY cprs.instructor_user_id
+		),
+		subscription_revenue AS (
+			SELECT
+				srs.instructor_user_id AS teacher_id,
+				COALESCE(SUM(srs.allocated_amount), 0)::BIGINT AS total_amount,
+				COALESCE(SUM(srs.allocated_stripe_fee), 0)::BIGINT AS stripe_fee,
+				COALESCE(SUM(srs.instructor_net), 0)::BIGINT AS instructor_net
+			FROM subscription_revenue_shares srs
+			WHERE srs.deleted_at IS NULL
+			  AND srs.paid_at IS NOT NULL
+			  ` + subscriptionDateFilter + `
+			GROUP BY srs.instructor_user_id
+		),
+		total_revenue AS (
+			SELECT
+				teacher_id,
+				COALESCE(SUM(total_amount), 0)::BIGINT AS total_amount,
+				COALESCE(SUM(stripe_fee), 0)::BIGINT AS stripe_fee,
+				COALESCE(SUM(instructor_net), 0)::BIGINT AS instructor_net
+			FROM (
+				SELECT teacher_id, total_amount, stripe_fee, instructor_net FROM course_revenue
+				UNION ALL
+				SELECT teacher_id, total_amount, stripe_fee, instructor_net FROM subscription_revenue
+			) merged
+			GROUP BY teacher_id
 		)
 	`
 
-	// Prepare args: date args first, then will add limit/offset for list query.
-	countArgs := make([]any, len(dateArgs))
-	copy(countArgs, dateArgs)
+	countArgs := make([]any, 0, len(courseDateArgs)+len(subscriptionDateArgs))
+	countArgs = append(countArgs, courseDateArgs...)
+	countArgs = append(countArgs, subscriptionDateArgs...)
 
 	countQuery := baseCTE + `
 		SELECT COUNT(DISTINCT u.id)
@@ -332,29 +362,32 @@ func (r *revenueRepository) GetAllTeachersRevenue(
 	}
 	orderClause := fmt.Sprintf("total_amount %s", sortOrder)
 
-	listArgs := append(dateArgs, limit, offset) //nolint:gocritic
+	listArgs := make([]any, 0, len(courseDateArgs)+len(subscriptionDateArgs)+2)
+	listArgs = append(listArgs, courseDateArgs...)
+	listArgs = append(listArgs, subscriptionDateArgs...)
+	listArgs = append(listArgs, limit, offset)
 	listQuery := baseCTE + `
 		SELECT
 			u.id::text                AS teacher_id,
 			u.name                    AS teacher_name,
 			u.email                   AS teacher_email,
 			COALESCE(u.avatar, '')   AS teacher_avatar,
-			COALESCE(cr.total_amount,   0) AS total_amount,
-			COALESCE(cr.stripe_fee,     0) AS stripe_fee,
-			COALESCE(cr.instructor_net, 0) AS instructor_net,
+			COALESCE(tr.total_amount,   0) AS total_amount,
+			COALESCE(tr.stripe_fee,     0) AS stripe_fee,
+			COALESCE(tr.instructor_net, 0) AS instructor_net,
 			COUNT(DISTINCT c.id)          AS total_courses
 		FROM users u
 		JOIN roles ro
 			ON  ro.id         = u.role_id
 			AND ro.deleted_at IS NULL
 			AND ro.name       = 'instructor'
-		LEFT JOIN course_revenue cr ON cr.teacher_id = u.id
+		LEFT JOIN total_revenue tr ON tr.teacher_id = u.id
 		LEFT JOIN courses c
 			ON  c.user_id    = u.id
 			AND c.deleted_at IS NULL
 		WHERE u.deleted_at IS NULL
 		GROUP BY u.id, u.name, u.email, u.avatar,
-		         cr.total_amount, cr.stripe_fee, cr.instructor_net
+		         tr.total_amount, tr.stripe_fee, tr.instructor_net
 		ORDER BY ` + orderClause + `
 		LIMIT ? OFFSET ?
 	`

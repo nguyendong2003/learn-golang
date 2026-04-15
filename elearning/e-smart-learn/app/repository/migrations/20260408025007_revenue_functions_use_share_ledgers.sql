@@ -379,18 +379,36 @@ RETURNS TABLE (
 )
 LANGUAGE sql
 AS $$
+WITH payment_totals AS (
+	SELECT
+		COALESCE(SUM(p.amount), 0)::BIGINT AS total_amount,
+		COALESCE(SUM(p.stripe_fee), 0)::BIGINT AS stripe_fee
+	FROM payments p
+	WHERE p.status = 'succeeded'
+	  AND p.paid_at IS NOT NULL
+	  AND p.paid_at >= p_from
+	  AND p.paid_at < p_to
+	  AND p.deleted_at IS NULL
+),
+ledger_totals AS (
+	SELECT
+		COALESCE(SUM(srs.instructor_gross), 0)::BIGINT AS instructor_gross,
+		COALESCE(SUM(srs.instructor_net), 0)::BIGINT AS instructor_net
+	FROM subscription_revenue_shares srs
+	WHERE srs.paid_at IS NOT NULL
+	  AND srs.paid_at >= p_from
+	  AND srs.paid_at < p_to
+	  AND srs.deleted_at IS NULL
+)
 SELECT
-	COALESCE(SUM(allocated_amount), 0)::BIGINT AS total_amount,
-	COALESCE(SUM(instructor_gross), 0)::BIGINT AS instructor_gross,
-	COALESCE(SUM(platform_gross), 0)::BIGINT AS platform_gross,
-	COALESCE(SUM(allocated_stripe_fee), 0)::BIGINT AS stripe_fee,
-	COALESCE(SUM(instructor_net), 0)::BIGINT AS instructor_net,
-	COALESCE(SUM(platform_net), 0)::BIGINT AS platform_net
-FROM subscription_revenue_shares
-WHERE paid_at IS NOT NULL
-  AND paid_at >= p_from
-  AND paid_at < p_to
-  AND deleted_at IS NULL;
+	pt.total_amount,
+	lt.instructor_gross,
+	(pt.total_amount - lt.instructor_gross) AS platform_gross,
+	pt.stripe_fee,
+	lt.instructor_net,
+	((pt.total_amount - pt.stripe_fee) - lt.instructor_net) AS platform_net
+FROM payment_totals pt
+CROSS JOIN ledger_totals lt;
 $$;
 
 CREATE OR REPLACE FUNCTION get_admin_subscription_revenue()

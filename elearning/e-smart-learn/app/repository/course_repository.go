@@ -95,7 +95,7 @@ func (r *courseRepository) GetInstructorTaughtCourseRevenue(
 			c.status,
 			c.total_student,
 			c.created_at,
-			COALESCE(SUM(CASE WHEN cp.id IS NOT NULL THEN cpd.price ELSE 0 END), 0) AS revenue
+			COALESCE(SUM(CASE WHEN cp.id IS NOT NULL THEN cpd.price_final ELSE 0 END), 0) AS revenue
 		`).
 		Joins("LEFT JOIN course_purchase_details cpd ON cpd.course_id = c.id AND cpd.deleted_at IS NULL").
 		Joins("LEFT JOIN course_purchases cp ON cp.id = cpd.course_purchase_id AND cp.deleted_at IS NULL AND cp.status = ?", consts.CoursePurchaseStatusPaid).

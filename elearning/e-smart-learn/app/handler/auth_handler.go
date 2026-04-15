@@ -212,7 +212,7 @@ func (h *authHandler) RefreshToken() gin.HandlerFunc {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param payload body dto.ResetPasswordRequest true "Change password payload"
+// @Param payload body dto.ChangePasswordRequest true "Change password payload"
 // @Success 200 {object} any
 // @Failure 400 {object} any
 // @Failure 401 {object} any

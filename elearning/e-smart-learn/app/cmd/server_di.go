@@ -62,6 +62,7 @@ func (s *ApiServer) initDatabase(config *config.Config) {
 	s.coursePurchaseRevenueShareRepository = repository.NewCoursePurchaseRevenueShareRepository(db)
 	s.revenueRepository = repository.NewRevenueRepository(db)
 	s.couponRepository = repository.NewCouponRepository(db)
+	s.courseCouponRepository = repository.NewCourseCouponRepository(db)
 	s.cartRepository = repository.NewCartRepository(db)
 	s.presignUploadTrackingRepository = repository.NewPresignedUploadTrackingRepository(db)
 }
@@ -130,6 +131,8 @@ func (s *ApiServer) initServices(config *config.Config) {
 	s.courseService = service.NewCourseService(
 		s.courseRepository,
 		s.coursePurchaseRepository,
+		s.couponRepository,
+		s.courseCouponRepository,
 		s.categoryRepository,
 		s.instructorProfileService,
 		s.courseEventRepository,
@@ -146,7 +149,7 @@ func (s *ApiServer) initServices(config *config.Config) {
 	s.followService = service.NewFollowService(s.followRepository, s.userRepository)
 	s.meetingService = service.NewMeetingService(s.courseEventRepository, s.courseRepository, s.userRepository)
 	s.meetingHub = service.NewMeetingHub()
-	s.couponService = service.NewCouponService(s.couponRepository, &config.Stripe)
+	s.couponService = service.NewCouponService(s.couponRepository, s.courseRepository, s.courseCouponRepository, &config.Stripe)
 	s.subscriptionService = service.NewSubscriptionService(
 		s.userRepository,
 		s.planRepository,
@@ -160,6 +163,7 @@ func (s *ApiServer) initServices(config *config.Config) {
 		s.coursePurchaseDetailRepository,
 		s.cartRepository,
 		s.couponRepository,
+		s.courseCouponRepository,
 		s.stripeEventRepository,
 		&config.Stripe,
 	)
@@ -168,6 +172,7 @@ func (s *ApiServer) initServices(config *config.Config) {
 		s.userRepository,
 		s.courseRepository,
 		s.couponRepository,
+		s.courseCouponRepository,
 		s.coursePurchaseRepository,
 		s.coursePurchaseDetailRepository,
 		&config.Stripe,
@@ -235,6 +240,7 @@ func (s *ApiServer) initBackgroundJob() {
 
 	go s.startStripeSubscriptionSyncCron()
 	go s.startStripeCoursePurchaseSyncCron()
+	go s.startCourseCouponCleanupCron()
 }
 
 func (s *ApiServer) startStripeSubscriptionSyncCron() {
@@ -273,5 +279,27 @@ func (s *ApiServer) startStripeCoursePurchaseSyncCron() {
 		cancel()
 
 		<-ticker.C
+	}
+}
+
+func (s *ApiServer) startCourseCouponCleanupCron() {
+	logger := util.WithLayer(util.LayerWorker)
+	logger.Info("started course coupon cleanup cron", "schedule", "daily at 00:00")
+
+	for {
+		now := time.Now()
+		nextRun := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+
+		timer := time.NewTimer(time.Until(nextRun))
+		<-timer.C
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		deletedCount, err := s.courseCouponRepository.DeleteUnusableCoupons(ctx, time.Now())
+		if err != nil {
+			logger.Error("course coupon cleanup failed", "error", err)
+		} else {
+			logger.Info("course coupon cleanup completed", "deleted_rows", deletedCount)
+		}
+		cancel()
 	}
 }

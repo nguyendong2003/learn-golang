@@ -2,6 +2,7 @@
 TRUNCATE TABLE 
     role_permissions,
     follows,
+    course_coupons,
     course_purchase_revenue_shares,
     subscription_revenue_shares,
     instructor_profiles,
@@ -259,10 +260,10 @@ INSERT INTO plans (name, description, billing_cycle, price, stripe_product_id, s
 ('Premium Yearly','Premium Plan - Subscription hàng năm',CAST('yearly' AS billing_cycle_enum),100,'prod_UGDNxhE4s8PVNL','price_1THgwLLAb7u1ek8LBJuJcnkF','usd', true);
 
 ------------------- Create sample coupons --------------------
-INSERT INTO coupons (code, discount_type, discount_value, max_redemptions, current_redemptions, is_active, expires_at, stripe_coupon_id, stripe_promotion_code_id) VALUES
-('ABCDE1','percent',20,200,1,true,'2026-12-31 23:59:59','b3D3RJFC','promo_1THgfjLAb7u1ek8LrU60TDtl'),
-('SAVE30','percent',30,10000,4,true,'2026-12-31 23:59:59','ColjXNJv','promo_1THghoLAb7u1ek8LBsEcqWnm'),
-('SUMMER2000','amount',2000,100,0,true,'2026-12-31 23:59:59','fTqOxa4G','promo_1THgksLAb7u1ek8LRp857fji');
+INSERT INTO coupons (code, discount_type, discount_value, max_redemptions, current_redemptions, is_active, expires_at, stripe_coupon_id, stripe_promotion_code_id, user_id) VALUES
+('ABCDE1','percent',20,200,1,true,'2026-12-31 23:59:59','b3D3RJFC','promo_1THgfjLAb7u1ek8LrU60TDtl',(SELECT id FROM users WHERE username='instructor1')),
+('SAVE30','percent',30,10000,4,true,'2026-12-31 23:59:59','ColjXNJv','promo_1THghoLAb7u1ek8LBsEcqWnm',(SELECT id FROM users WHERE username='instructor1')),
+('SUMMER2000','amount',2000,100,0,true,'2026-12-31 23:59:59','fTqOxa4G','promo_1THgksLAb7u1ek8LRp857fji',(SELECT id FROM users WHERE username='instructor1'));
 
 -- ------------------- Create sample subscriptions --------------------
 -- INSERT INTO subscriptions (user_id, plan_id, plan_name, plan_description, plan_price, plan_currency, plan_stripe_price_id, billing_cycle, stripe_subscription_id, status, started_at, current_period_start, current_period_end) VALUES

@@ -44,6 +44,7 @@ type ApiServer struct {
 	coursePurchaseRevenueShareRepository repository.CoursePurchaseRevenueShareRepository
 	revenueRepository                    repository.RevenueRepository
 	couponRepository                     repository.CouponRepository
+	courseCouponRepository               repository.CourseCouponRepository
 	cartRepository                       repository.CartRepository
 	presignUploadTrackingRepository      repository.PresignedUploadTrackingRepository
 

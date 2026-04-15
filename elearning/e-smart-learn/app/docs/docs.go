@@ -200,87 +200,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/coupons": {
+        "/api/v1/admin/courses/statistics": {
             "get": {
-                "description": "Retrieve paginated list of coupons",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "coupons"
-                ],
-                "summary": "List coupons",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 10,
-                        "description": "Items per page",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "default": "created_at",
-                        "description": "Sort field",
-                        "name": "sortBy",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "asc",
-                            "desc"
-                        ],
-                        "type": "string",
-                        "default": "desc",
-                        "description": "Sort order",
-                        "name": "sortOrder",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by coupon code",
-                        "name": "code",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Filter by active state",
-                        "name": "is_active",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a coupon and sync to Stripe promotion code",
+                "description": "Retrieve aggregated statistics for courses, such as total courses, published courses, and total revenue.",
                 "consumes": [
                     "application/json"
                 ],
@@ -288,140 +215,30 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "coupons"
+                    "courses"
                 ],
-                "summary": "Create coupon",
-                "parameters": [
-                    {
-                        "description": "Create coupon payload",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreateCouponRequest"
-                        }
-                    }
-                ],
+                "summary": "Get course statistics",
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.CourseStatisticsResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/admin/coupons/{id}": {
-            "get": {
-                "description": "Retrieve coupon detail by UUID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "coupons"
-                ],
-                "summary": "Get coupon by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Coupon ID (UUID format)",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/admin/coupons/{id}/deactivate": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deactivate coupon on Stripe and local database",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "coupons"
-                ],
-                "summary": "Deactivate coupon",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Coupon ID (UUID format)",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/dto.ApiResponse"
                         }
@@ -2120,7 +1937,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.ResetPasswordRequest"
+                            "$ref": "#/definitions/dto.ChangePasswordRequest"
                         }
                     }
                 ],
@@ -2584,6 +2401,62 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/carts/checkout-preview": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Preview cart pricing with entered coupon and default coupon fallback per course",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "carts"
+                ],
+                "summary": "Preview cart checkout",
+                "parameters": [
+                    {
+                        "description": "Cart checkout preview request",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CartCheckoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/dto.ApiResponse"
                         }
@@ -3143,80 +3016,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/coupons": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve list of active coupons that the user can apply",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "coupons"
-                ],
-                "summary": "Get available coupons for user",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 10,
-                        "description": "Items per page",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "default": "created_at",
-                        "description": "Sort field",
-                        "name": "sortBy",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "asc",
-                            "desc"
-                        ],
-                        "type": "string",
-                        "default": "desc",
-                        "description": "Sort order",
-                        "name": "sortOrder",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by coupon code",
-                        "name": "code",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/course-purchase/{session_id}": {
             "get": {
                 "description": "Retrieve course purchase record by Stripe checkout session ID (exclude payment intent id)",
@@ -3429,52 +3228,6 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/courses/admin/statistics": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve aggregated statistics for courses, such as total courses, published courses, and total revenue.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "courses"
-                ],
-                "summary": "Get course statistics",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.CourseStatisticsResponse"
-                                        }
-                                    }
-                                }
-                            ]
                         }
                     },
                     "500": {
@@ -4511,6 +4264,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/courses/{id}/purchase-checkout-preview": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Preview the Stripe checkout amount for purchasing course lifetime access, including an applied coupon if available",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Preview checkout for one-time course purchase",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Course ID (UUID format)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Checkout preview request payload",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateCoursePurchaseCheckoutSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.CoursePurchaseCheckoutPreviewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/courses/{id}/purchase-checkout-session": {
             "post": {
                 "security": [
@@ -5177,6 +5005,402 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/instructor/coupons": {
+            "get": {
+                "description": "Retrieve paginated list of coupons",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "coupons"
+                ],
+                "summary": "List coupons",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "created_at",
+                        "description": "Sort field",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort order",
+                        "name": "sortOrder",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by coupon code",
+                        "name": "code",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active state",
+                        "name": "is_active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a coupon and sync to Stripe promotion code",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "coupons"
+                ],
+                "summary": "Create coupon",
+                "parameters": [
+                    {
+                        "description": "Create coupon payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateCouponRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/instructor/coupons/assignable": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve paginated list of assignable coupons for course creation",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "coupons"
+                ],
+                "summary": "List assignable coupons",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "created_at",
+                        "description": "Sort field",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort order",
+                        "name": "sortOrder",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by coupon code",
+                        "name": "code",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/instructor/coupons/assignable-for-course": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve paginated list of assignable coupons with pre-selected coupons prioritized",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "coupons"
+                ],
+                "summary": "List assignable coupons for course",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Course ID (UUID format)",
+                        "name": "course_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "created_at",
+                        "description": "Sort field",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort order",
+                        "name": "sortOrder",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by coupon code",
+                        "name": "code",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/instructor/coupons/{id}": {
+            "get": {
+                "description": "Retrieve coupon detail by UUID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "coupons"
+                ],
+                "summary": "Get coupon by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Coupon ID (UUID format)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/instructor/coupons/{id}/deactivate": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deactivate coupon on Stripe and local database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "coupons"
+                ],
+                "summary": "Deactivate coupon",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Coupon ID (UUID format)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/dto.ApiResponse"
                         }
@@ -6881,6 +7105,23 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CartCheckoutCouponResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "discount_type": {
+                    "type": "string"
+                },
+                "discount_value": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.CartCheckoutRequest": {
             "type": "object",
             "properties": {
@@ -6906,6 +7147,26 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ChangePasswordRequest": {
+            "type": "object",
+            "required": [
+                "confirm_password",
+                "new_password",
+                "old_password"
+            ],
+            "properties": {
+                "confirm_password": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "old_password": {
                     "type": "string"
                 }
             }
@@ -7021,6 +7282,26 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CoursePurchaseCheckoutPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "coupon": {
+                    "$ref": "#/definitions/dto.CartCheckoutCouponResponse"
+                },
+                "course": {
+                    "$ref": "#/definitions/dto.CourseResponse"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "price_final": {
+                    "type": "number"
+                },
+                "price_original": {
+                    "type": "number"
+                }
+            }
+        },
         "dto.CourseResponse": {
             "type": "object",
             "properties": {
@@ -7050,9 +7331,6 @@ const docTemplate = `{
                 },
                 "is_purchased": {
                     "type": "boolean"
-                },
-                "old_price": {
-                    "type": "number"
                 },
                 "price": {
                     "type": "number"
@@ -7186,6 +7464,20 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CreateCourseCouponRequest": {
+            "type": "object",
+            "required": [
+                "coupon_id"
+            ],
+            "properties": {
+                "coupon_id": {
+                    "type": "string"
+                },
+                "is_default": {
+                    "type": "boolean"
+                }
+            }
+        },
         "dto.CreateCoursePurchaseCheckoutSessionRequest": {
             "type": "object",
             "properties": {
@@ -7206,6 +7498,12 @@ const docTemplate = `{
             "properties": {
                 "category_id": {
                     "type": "string"
+                },
+                "coupons": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.CreateCourseCouponRequest"
+                    }
                 },
                 "description": {
                     "type": "string"
@@ -8083,11 +8381,43 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UpdateCourseCouponRequest": {
+            "type": "object",
+            "required": [
+                "coupon_id"
+            ],
+            "properties": {
+                "coupon_id": {
+                    "type": "string"
+                },
+                "is_default": {
+                    "type": "boolean"
+                }
+            }
+        },
         "dto.UpdateCourseRequest": {
             "type": "object",
             "properties": {
                 "category_id": {
                     "type": "string"
+                },
+                "coupons_add": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.CreateCourseCouponRequest"
+                    }
+                },
+                "coupons_delete": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "coupons_update": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.UpdateCourseCouponRequest"
+                    }
                 },
                 "description": {
                     "type": "string"

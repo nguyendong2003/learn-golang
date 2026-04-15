@@ -43,6 +43,8 @@ type CourseService interface {
 type courseService struct {
 	courseRepository         repository.CourseRepository
 	coursePurchaseRepository repository.CoursePurchaseRepository
+	couponRepository         repository.CouponRepository
+	courseCouponRepository   repository.CourseCouponRepository
 	categoryRepository       repository.CategoryRepository
 	instructorProfileService InstructorProfileService
 	courseEventRepository    repository.CourseEventRepository
@@ -57,6 +59,8 @@ type courseService struct {
 func NewCourseService(
 	courseRepository repository.CourseRepository,
 	coursePurchaseRepository repository.CoursePurchaseRepository,
+	couponRepository repository.CouponRepository,
+	courseCouponRepository repository.CourseCouponRepository,
 	categoryRepository repository.CategoryRepository,
 	instructorProfileService InstructorProfileService,
 	courseEventRepository repository.CourseEventRepository,
@@ -70,6 +74,8 @@ func NewCourseService(
 	return &courseService{
 		courseRepository:         courseRepository,
 		coursePurchaseRepository: coursePurchaseRepository,
+		couponRepository:         couponRepository,
+		courseCouponRepository:   courseCouponRepository,
 		categoryRepository:       categoryRepository,
 		instructorProfileService: instructorProfileService,
 		courseEventRepository:    courseEventRepository,
@@ -83,6 +89,10 @@ func NewCourseService(
 }
 
 func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dto.CreateCourseRequest) (*dto.CourseResponse, error) {
+	if err := validateCreateCourseCouponsRequest(request.Coupons); err != nil {
+		return nil, err
+	}
+
 	category, err := s.categoryRepository.FindByID(ctx, request.CategoryID, nil)
 	if err != nil {
 		return nil, err
@@ -101,6 +111,8 @@ func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dt
 	var createdCourse *model.Course
 	err = s.db.Transaction(ctx, func(txDb repository.DbRepository) error {
 		txCourseRepository := repository.NewCourseRepository(txDb)
+		txCouponRepository := repository.NewCouponRepository(txDb)
+		txCourseCouponRepository := repository.NewCourseCouponRepository(txDb)
 
 		if err := s.validateAndConfirmCourseImageURL(ctx, txDb, request.ImageURL); err != nil {
 			return err
@@ -123,6 +135,37 @@ func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dt
 			return apperror.NewInternalServerError("Failed to create course")
 		}
 
+		if len(request.Coupons) > 0 {
+			courseCoupons := make([]*model.CourseCoupon, 0, len(request.Coupons))
+			for _, reqCoupon := range request.Coupons {
+				couponID, parseErr := uuid.Parse(strings.TrimSpace(reqCoupon.CouponID))
+				if parseErr != nil {
+					return apperror.NewBadRequestError("Invalid coupon id format")
+				}
+
+				coupon, err := txCouponRepository.FindByID(ctx, couponID, nil)
+				if err != nil {
+					return apperror.NewInternalServerError("Failed to retrieve coupon")
+				}
+				if err := validateCouponAvailability(coupon); err != nil {
+					return err
+				}
+				if coupon.UserID == nil || *coupon.UserID != userID {
+					return apperror.NewForbiddenError("Coupon does not belong to this instructor")
+				}
+
+				courseCoupons = append(courseCoupons, &model.CourseCoupon{
+					CourseID:  createdCourse.ID,
+					CouponID:  couponID,
+					IsDefault: reqCoupon.IsDefault,
+				})
+			}
+
+			if err := txCourseCouponRepository.CreateBatch(ctx, courseCoupons); err != nil {
+				return apperror.NewInternalServerError("Failed to assign coupons to course")
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -130,6 +173,75 @@ func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dt
 	}
 
 	return dto.NewCourseDetailResponse(createdCourse), nil
+}
+
+func validateCreateCourseCouponsRequest(coupons []dto.CreateCourseCouponRequest) error {
+	if len(coupons) == 0 {
+		return nil
+	}
+
+	defaultCount := 0
+	seenCouponIDs := make(map[string]bool, len(coupons))
+
+	for _, coupon := range coupons {
+		couponID := strings.TrimSpace(coupon.CouponID)
+		if couponID == "" {
+			return apperror.NewBadRequestError("coupon_id is required")
+		}
+
+		if _, exists := seenCouponIDs[couponID]; exists {
+			return apperror.NewBadRequestError("Duplicate coupon id in request")
+		}
+		seenCouponIDs[couponID] = true
+
+		if coupon.IsDefault {
+			defaultCount++
+			if defaultCount > 1 {
+				return apperror.NewBadRequestError("Only one default coupon is allowed")
+			}
+		}
+	}
+
+	return nil
+}
+
+func validateUpdateCourseCouponsRequest(addCoupons []dto.CreateCourseCouponRequest, updateCoupons []dto.UpdateCourseCouponRequest, deleteCoupons []string) error {
+	if len(addCoupons) == 0 && len(updateCoupons) == 0 && len(deleteCoupons) == 0 {
+		return nil
+	}
+
+	seenCouponIDs := make(map[string]bool)
+	validate := func(couponID string) error {
+		couponID = strings.TrimSpace(couponID)
+		if couponID == "" {
+			return apperror.NewBadRequestError("coupon_id is required")
+		}
+		if _, exists := seenCouponIDs[couponID]; exists {
+			return apperror.NewBadRequestError("Duplicate coupon id in request")
+		}
+		seenCouponIDs[couponID] = true
+		return nil
+	}
+
+	for _, addRequest := range addCoupons {
+		if err := validate(addRequest.CouponID); err != nil {
+			return err
+		}
+	}
+
+	for _, updateRequest := range updateCoupons {
+		if err := validate(updateRequest.CouponID); err != nil {
+			return err
+		}
+	}
+
+	for _, deleteID := range deleteCoupons {
+		if err := validate(deleteID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *courseService) Update(ctx context.Context, userID, courseID uuid.UUID, request dto.UpdateCourseRequest) (*dto.CourseResponse, error) {
@@ -143,10 +255,15 @@ func (s *courseService) Update(ctx context.Context, userID, courseID uuid.UUID, 
 	if course.UserID != userID {
 		return nil, apperror.NewForbiddenError("You do not have permission to update this course")
 	}
+	if err := validateUpdateCourseCouponsRequest(request.CouponsAdd, request.CouponsUpdate, request.CouponsDelete); err != nil {
+		return nil, err
+	}
 
 	var updatedCourse *model.Course
 	err = s.db.Transaction(ctx, func(txDb repository.DbRepository) error {
 		txCourseRepository := repository.NewCourseRepository(txDb)
+		txCouponRepository := repository.NewCouponRepository(txDb)
+		txCourseCouponRepository := repository.NewCourseCouponRepository(txDb)
 
 		if request.Title != nil {
 			course.Title = *request.Title
@@ -173,6 +290,121 @@ func (s *courseService) Update(ctx context.Context, userID, courseID uuid.UUID, 
 				return apperror.NewValidationError(map[string]string{"category_id": "Invalid UUID"})
 			}
 			course.CategoryID = categoryID
+		}
+
+		if len(request.CouponsAdd) > 0 || len(request.CouponsUpdate) > 0 || len(request.CouponsDelete) > 0 {
+			existingCoupons, err := txCourseCouponRepository.ListByCourseID(ctx, course.ID, nil)
+			if err != nil {
+				return apperror.NewInternalServerError("Failed to retrieve course coupons")
+			}
+
+			// 1. Build current state
+			finalMap := make(map[uuid.UUID]*model.CourseCoupon)
+			for _, cc := range existingCoupons {
+				if cc != nil {
+					copy := *cc
+					finalMap[cc.CouponID] = &copy
+				}
+			}
+
+			// 2. DELETE
+			for _, idStr := range request.CouponsDelete {
+				couponID, err := uuid.Parse(strings.TrimSpace(idStr))
+				if err != nil {
+					return apperror.NewBadRequestError("Invalid coupon id")
+				}
+				if _, ok := finalMap[couponID]; !ok {
+					return apperror.NewNotFoundError("Course coupon not found")
+				}
+				delete(finalMap, couponID)
+			}
+
+			// 3. UPDATE
+			for _, u := range request.CouponsUpdate {
+				couponID, err := uuid.Parse(strings.TrimSpace(u.CouponID))
+				if err != nil {
+					return apperror.NewBadRequestError("Invalid coupon id")
+				}
+
+				cc, ok := finalMap[couponID]
+				if !ok {
+					return apperror.NewNotFoundError("Course coupon not found")
+				}
+
+				cc.IsDefault = u.IsDefault
+			}
+
+			// 4. ADD
+			for _, a := range request.CouponsAdd {
+				couponID, err := uuid.Parse(strings.TrimSpace(a.CouponID))
+				if err != nil {
+					return apperror.NewBadRequestError("Invalid coupon id")
+				}
+
+				if _, exists := finalMap[couponID]; exists {
+					return apperror.NewBadRequestError("Coupon already assigned")
+				}
+
+				coupon, err := txCouponRepository.FindByID(ctx, couponID, nil)
+				if err != nil {
+					return apperror.NewInternalServerError("Failed to retrieve coupon")
+				}
+				if err := validateCouponAvailability(coupon); err != nil {
+					return err
+				}
+				if coupon.UserID == nil || *coupon.UserID != userID {
+					return apperror.NewForbiddenError("Coupon does not belong to this instructor")
+				}
+
+				finalMap[couponID] = &model.CourseCoupon{
+					CourseID:  course.ID,
+					CouponID:  couponID,
+					IsDefault: a.IsDefault,
+				}
+			}
+
+			// 5. VALIDATE: only 1 default
+			defaultCount := 0
+			for _, cc := range finalMap {
+				if cc.IsDefault {
+					defaultCount++
+				}
+			}
+			if defaultCount > 1 {
+				return apperror.NewBadRequestError("Only one default coupon is allowed")
+			}
+
+			// 6. SYNC DB
+			existingMap := make(map[uuid.UUID]*model.CourseCoupon)
+			for _, cc := range existingCoupons {
+				existingMap[cc.CouponID] = cc
+			}
+
+			// DELETE
+			for couponID := range existingMap {
+				if _, ok := finalMap[couponID]; !ok {
+					if err := txCourseCouponRepository.DeleteByCouponID(ctx, course.ID, couponID); err != nil {
+						return apperror.NewInternalServerError("Failed to delete coupon")
+					}
+				}
+			}
+
+			// UPSERT
+			for couponID, final := range finalMap {
+				if existing, ok := existingMap[couponID]; ok {
+					if existing.IsDefault != final.IsDefault {
+						if _, err := txCourseCouponRepository.Update(ctx, existing.ID, map[string]any{
+							"is_default": final.IsDefault,
+						}); err != nil {
+							return apperror.NewInternalServerError("Failed to update coupon")
+						}
+					}
+				} else {
+					if _, err := txCourseCouponRepository.Create(ctx, final); err != nil {
+						return apperror.NewInternalServerError("Failed to create coupon")
+					}
+				}
+			}
 		}
 
 		var err error
