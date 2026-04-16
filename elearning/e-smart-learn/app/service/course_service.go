@@ -20,6 +20,7 @@ import (
 type CourseService interface {
 	Create(ctx context.Context, userID uuid.UUID, request dto.CreateCourseRequest) (*dto.CourseResponse, error)
 	Update(ctx context.Context, userID, courseID uuid.UUID, request dto.UpdateCourseRequest) (*dto.CourseResponse, error)
+	AssignCoupons(ctx context.Context, userID, courseID uuid.UUID, request dto.AssignCourseCouponsRequest) (*dto.CourseResponse, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status consts.CourseStatus) (*dto.CourseResponse, error)
 	SubmitForReview(ctx context.Context, userID uuid.UUID, courseID uuid.UUID) (*dto.CourseResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -255,6 +256,11 @@ func (s *courseService) Update(ctx context.Context, userID, courseID uuid.UUID, 
 	if course.UserID != userID {
 		return nil, apperror.NewForbiddenError("You do not have permission to update this course")
 	}
+
+	if course.Status == consts.CoursePublished {
+		return nil, apperror.NewBadRequestError("Cannot update published course")
+	}
+
 	if err := validateUpdateCourseCouponsRequest(request.CouponsAdd, request.CouponsUpdate, request.CouponsDelete); err != nil {
 		return nil, err
 	}
@@ -413,6 +419,150 @@ func (s *courseService) Update(ctx context.Context, userID, courseID uuid.UUID, 
 			return apperror.NewInternalServerError("Failed to update course")
 		}
 
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return dto.NewCourseDetailResponse(updatedCourse), nil
+}
+
+func (s *courseService) AssignCoupons(ctx context.Context, userID, courseID uuid.UUID, request dto.AssignCourseCouponsRequest) (*dto.CourseResponse, error) {
+	course, err := s.courseRepository.FindByID(ctx, courseID, nil)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to retrieve course")
+	}
+	if course == nil {
+		return nil, apperror.NewNotFoundError("Course not found")
+	}
+	if course.UserID != userID {
+		return nil, apperror.NewForbiddenError("You do not have permission to assign coupons to this course")
+	}
+
+	if err := validateUpdateCourseCouponsRequest(request.CouponsAdd, request.CouponsUpdate, request.CouponsDelete); err != nil {
+		return nil, err
+	}
+
+	var updatedCourse *model.Course
+	err = s.db.Transaction(ctx, func(txDb repository.DbRepository) error {
+		txCouponRepository := repository.NewCouponRepository(txDb)
+		txCourseCouponRepository := repository.NewCourseCouponRepository(txDb)
+
+		if len(request.CouponsAdd) > 0 || len(request.CouponsUpdate) > 0 || len(request.CouponsDelete) > 0 {
+			existingCoupons, err := txCourseCouponRepository.ListByCourseID(ctx, course.ID, nil)
+			if err != nil {
+				return apperror.NewInternalServerError("Failed to retrieve course coupons")
+			}
+
+			// 1. Build current state
+			finalMap := make(map[uuid.UUID]*model.CourseCoupon)
+			for _, cc := range existingCoupons {
+				if cc != nil {
+					copy := *cc
+					finalMap[cc.CouponID] = &copy
+				}
+			}
+
+			// 2. DELETE
+			for _, idStr := range request.CouponsDelete {
+				couponID, err := uuid.Parse(strings.TrimSpace(idStr))
+				if err != nil {
+					return apperror.NewBadRequestError("Invalid coupon id")
+				}
+				if _, ok := finalMap[couponID]; !ok {
+					return apperror.NewNotFoundError("Course coupon not found")
+				}
+				delete(finalMap, couponID)
+			}
+
+			// 3. UPDATE
+			for _, u := range request.CouponsUpdate {
+				couponID, err := uuid.Parse(strings.TrimSpace(u.CouponID))
+				if err != nil {
+					return apperror.NewBadRequestError("Invalid coupon id")
+				}
+
+				cc, ok := finalMap[couponID]
+				if !ok {
+					return apperror.NewNotFoundError("Course coupon not found")
+				}
+
+				cc.IsDefault = u.IsDefault
+			}
+
+			// 4. ADD
+			for _, a := range request.CouponsAdd {
+				couponID, err := uuid.Parse(strings.TrimSpace(a.CouponID))
+				if err != nil {
+					return apperror.NewBadRequestError("Invalid coupon id")
+				}
+
+				if _, exists := finalMap[couponID]; exists {
+					return apperror.NewBadRequestError("Coupon already assigned")
+				}
+
+				coupon, err := txCouponRepository.FindByID(ctx, couponID, nil)
+				if err != nil {
+					return apperror.NewInternalServerError("Failed to retrieve coupon")
+				}
+				if err := validateCouponAvailability(coupon); err != nil {
+					return err
+				}
+				if coupon.UserID == nil || *coupon.UserID != userID {
+					return apperror.NewForbiddenError("Coupon does not belong to this instructor")
+				}
+
+				finalMap[couponID] = &model.CourseCoupon{
+					CourseID:  course.ID,
+					CouponID:  couponID,
+					IsDefault: a.IsDefault,
+				}
+			}
+
+			// 5. VALIDATE: only 1 default
+			defaultCount := 0
+			for _, cc := range finalMap {
+				if cc.IsDefault {
+					defaultCount++
+				}
+			}
+			if defaultCount > 1 {
+				return apperror.NewBadRequestError("Only one default coupon is allowed")
+			}
+
+			// 6. SYNC DB
+			existingMap := make(map[uuid.UUID]*model.CourseCoupon)
+			for _, cc := range existingCoupons {
+				existingMap[cc.CouponID] = cc
+			}
+
+			// Delete removed coupons
+			for couponID := range existingMap {
+				if _, ok := finalMap[couponID]; !ok {
+					if err := txCourseCouponRepository.DeleteByCouponID(ctx, course.ID, couponID); err != nil {
+						return apperror.NewInternalServerError("Failed to delete course coupon")
+					}
+				}
+			}
+
+			// Upsert remaining coupons
+			for couponID, cc := range finalMap {
+				if existing, ok := existingMap[couponID]; ok && existing != nil {
+					// Update existing
+					if _, err := txCourseCouponRepository.Updates(ctx, cc); err != nil {
+						return apperror.NewInternalServerError("Failed to update course coupon")
+					}
+				} else {
+					// Insert new
+					if _, err := txCourseCouponRepository.Create(ctx, cc); err != nil {
+						return apperror.NewInternalServerError("Failed to create course coupon")
+					}
+				}
+			}
+		}
+
+		updatedCourse = course
 		return nil
 	})
 	if err != nil {

@@ -100,6 +100,21 @@ definitions:
     - education
     - years_of_experience
     type: object
+  dto.AssignCourseCouponsRequest:
+    properties:
+      coupons_add:
+        items:
+          $ref: '#/definitions/dto.CreateCourseCouponRequest'
+        type: array
+      coupons_delete:
+        items:
+          type: string
+        type: array
+      coupons_update:
+        items:
+          $ref: '#/definitions/dto.UpdateCourseCouponRequest'
+        type: array
+    type: object
   dto.AuthorResponse:
     properties:
       avatar:
@@ -3341,7 +3356,8 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update a course by ID (instructor only) using JSON body.
+      description: Update a unpublished course by ID (instructor only) using JSON
+        body.
       parameters:
       - description: Course ID (UUID format)
         in: path
@@ -3384,7 +3400,62 @@ paths:
             $ref: '#/definitions/dto.ApiResponse'
       security:
       - BearerAuth: []
-      summary: Update an existing course
+      summary: Update an existing course which status is not published (instructor
+        only)
+      tags:
+      - courses
+  /api/v1/courses/{id}/coupons:
+    put:
+      consumes:
+      - application/json
+      description: Manage coupons for a course (add, update, or remove).
+      parameters:
+      - description: Course ID (UUID format)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Coupon assignment payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AssignCourseCouponsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CourseResponse'
+              type: object
+        "400":
+          description: Invalid UUID or payload
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Course not found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign coupons to a course
       tags:
       - courses
   /api/v1/courses/{id}/enroll:

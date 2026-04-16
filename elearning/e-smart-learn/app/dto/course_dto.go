@@ -141,6 +141,12 @@ type UpdateCourseCouponRequest struct {
 	IsDefault bool   `json:"is_default"`
 }
 
+type AssignCourseCouponsRequest struct {
+	CouponsAdd    []CreateCourseCouponRequest `json:"coupons_add" binding:"omitempty,dive"`
+	CouponsUpdate []UpdateCourseCouponRequest `json:"coupons_update" binding:"omitempty,dive"`
+	CouponsDelete []string                    `json:"coupons_delete" binding:"omitempty,dive,uuid"`
+}
+
 type UpdateCourseStatusRequest struct {
 	Status consts.CourseStatus `json:"status" binding:"required,oneof=draft pending_review published rejected archived"`
 }

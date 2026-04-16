@@ -3368,7 +3368,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update a course by ID (instructor only) using JSON body.",
+                "description": "Update a unpublished course by ID (instructor only) using JSON body.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3378,7 +3378,7 @@ const docTemplate = `{
                 "tags": [
                     "courses"
                 ],
-                "summary": "Update an existing course",
+                "summary": "Update an existing course which status is not published (instructor only)",
                 "parameters": [
                     {
                         "type": "string",
@@ -3483,6 +3483,94 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Course not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/courses/{id}/coupons": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Manage coupons for a course (add, update, or remove).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Assign coupons to a course",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Course ID (UUID format)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Coupon assignment payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.AssignCourseCouponsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.CourseResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID or payload",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/dto.ApiResponse"
                         }
@@ -7023,6 +7111,29 @@ const docTemplate = `{
                 },
                 "youtube_url": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.AssignCourseCouponsRequest": {
+            "type": "object",
+            "properties": {
+                "coupons_add": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.CreateCourseCouponRequest"
+                    }
+                },
+                "coupons_delete": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "coupons_update": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.UpdateCourseCouponRequest"
+                    }
                 }
             }
         },

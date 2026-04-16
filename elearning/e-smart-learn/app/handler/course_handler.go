@@ -16,6 +16,7 @@ import (
 type CourseHandler interface {
 	Create() gin.HandlerFunc
 	Update() gin.HandlerFunc
+	AssignCoupons() gin.HandlerFunc
 	UpdateStatus() gin.HandlerFunc
 	Delete() gin.HandlerFunc
 
@@ -109,8 +110,8 @@ func (h *courseHandler) Create() gin.HandlerFunc {
 }
 
 // Update godoc
-// @Summary Update an existing course
-// @Description Update a course by ID (instructor only) using JSON body.
+// @Summary Update an existing course which status is not published (instructor only)
+// @Description Update a unpublished course by ID (instructor only) using JSON body.
 // @Tags courses
 // @Accept json
 // @Produce json
@@ -141,6 +142,51 @@ func (h *courseHandler) Update() gin.HandlerFunc {
 			return
 		}
 		updatedCourse, err := h.courseService.Update(c.Request.Context(), userID, id, request)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+		res := dto.NewApiResponse(c)
+		res.Request = dto.GetRequestClient(c)
+		res.Data = updatedCourse
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// AssignCoupons godoc
+// @Summary Assign coupons to a course
+// @Description Manage coupons for a course (add, update, or remove).
+// @Tags courses
+// @Accept json
+// @Produce json
+// @Param id path string true "Course ID (UUID format)"
+// @Param payload body dto.AssignCourseCouponsRequest true "Coupon assignment payload"
+// @Success 200 {object} dto.ApiResponse{data=dto.CourseResponse}
+// @Failure 400 {object} dto.ApiResponse "Invalid UUID or payload"
+// @Failure 401 {object} dto.ApiResponse "Unauthorized"
+// @Failure 403 {object} dto.ApiResponse "Forbidden"
+// @Failure 404 {object} dto.ApiResponse "Course not found"
+// @Failure 500 {object} dto.ApiResponse "Internal server error"
+// @Router /api/v1/courses/{id}/coupons [put]
+// @Security BearerAuth
+func (h *courseHandler) AssignCoupons() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			_ = c.Error(apperror.NewBadRequestError("Invalid UUID format"))
+			return
+		}
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+		var request dto.AssignCourseCouponsRequest
+		if err := util.BindAndValidateJSON(c, &request); err != nil {
+			_ = c.Error(err)
+			return
+		}
+		updatedCourse, err := h.courseService.AssignCoupons(c.Request.Context(), userID, id, request)
 		if err != nil {
 			_ = c.Error(err)
 			return

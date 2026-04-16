@@ -55,6 +55,7 @@ VALUES
 ('course_read', 'Read courses'),
 ('course_create', 'Create courses'),
 ('course_update', 'Update courses'),
+('course_update_status', 'Update status courses'),
 ('course_delete', 'Delete courses'),
 
 ('chapter_read', 'Read chapters'),

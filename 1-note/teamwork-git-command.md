@@ -123,7 +123,13 @@ Sau đó
 git push --force
 ```
 
-###
+### Câu hỏi 5: Lỡ push thừa vài file vào nhánh feature/course-coupon-manage và giờ muốn sửa lại commit gần nhất đó thì làm như sau
+```
+git checkout feature/course-coupon-manage   (Sau đó thay đổi)
+git add .
+git commit --amend    (Sau đó sửa và bấm Ctrl + O rồi Ctrl + X)
+git push --force-with-lease origin feature/course-coupon-manage
+```
 
 
 

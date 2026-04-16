@@ -139,10 +139,16 @@ func (server *ApiServer) route() {
 			server.courseHandler.Update(),
 		)
 		courseProtected.PUT("/:id/update-status",
-			server.RequirePermissionHandler("course_update"),
+			server.RequirePermissionHandler("course_update_status"),
 			server.LoadCourseHandler(),
 			server.RequireCourseOwnerHandler(),
 			server.courseHandler.UpdateStatus(),
+		)
+		courseProtected.PUT("/:id/coupons",
+			server.RequirePermissionHandler("course_update"),
+			server.LoadCourseHandler(),
+			server.RequireCourseOwnerHandler(),
+			server.courseHandler.AssignCoupons(),
 		)
 		courseProtected.DELETE("/:id",
 			server.RequirePermissionHandler("course_delete"),
