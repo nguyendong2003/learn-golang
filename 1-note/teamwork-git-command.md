@@ -131,8 +131,6 @@ git commit --amend    (Sau đó sửa và bấm Ctrl + O rồi Ctrl + X)
 git push --force-with-lease origin feature/course-coupon-manage
 ```
 
-
-
 ### Migrate goose
 1. Cài đặt goose
 ```bash
