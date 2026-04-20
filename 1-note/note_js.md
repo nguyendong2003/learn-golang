@@ -62,9 +62,16 @@ npx prisma studio
 
 ```bash
 npm install @prisma/client
+npx prisma generate
 ```
 
-### 9
+### 9. Install driver for SQLite
+
+```bash
+npm install @prisma/adapter-better-sqlite3
+```
+
+### 10
 
 ```
 cd crud
@@ -79,3 +86,66 @@ nest g s prisma --flat --no-spec
 ```
 
 - Sau câu lệnh này sẽ tạo ra file `shared.module.ts` trong thư mục `crud/src/shared/services`
+
+### 11. Câu lệnh migrate database
+
+- Xem trong file `crud/prisma-cli.md`
+
+### 12. Validation trong nestjs (https://docs.nestjs.com/techniques/validation)
+
+```bash
+npm i --save class-validator class-transformer
+```
+
+- Validation trong nestjs dùng thư viện (`https://github.com/typestack/class-validator`)
+
+- Thêm `app.useGlobalPipes(new ValidationPipe())` vào `main.ts` để kích hoạt auto validation
+
+### 13. Hash password
+
+- Sau khi chạy câu lệnh dưới thì tạo ra file `hashing.service.ts`
+
+```bash
+nest g s shared/services/hashing --flat --no-spec
+```
+
+- Cài đặt thư viện `bcrypt`
+
+```bash
+npm i brcypt
+npm i @types/bcrypt -D
+```
+
+- Xem `prisma error code`: `https://www.prisma.io/docs/orm/reference/error-reference`
+
+### 14. Serialization (https://docs.nestjs.com/techniques/serialization)
+
+- Thêm code này vào `app.module.ts` để serialize global
+
+```ts
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ClassSerializerInterceptor,
+    },
+  ],
+```
+
+### 15. Interceptors (https://docs.nestjs.com/interceptors)
+
+- Thêm code này vào `main.ts` để chèn thêm `interceptor` ở global
+
+```ts
+app.useGlobalInterceptors(new LoggingInterceptor());
+```
+
+### 16. JWT (https://docs.nestjs.com/security/authentication#jwt-token)
+
+```bash
+npm install --save @nestjs/jwt
+```
+
+```bash
+nest g s shared/services/token --flat --no-spec
+```
