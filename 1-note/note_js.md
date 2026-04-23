@@ -733,3 +733,149 @@ Table SkusVariantOptions {
   variant_option_id Int [ref: > VariantOption.id]
 }
 ```
+
+### 20. Prisma schema
+
+#### 1. Self-relations
+
+- Ví dụ 1: Category (self relation 1–n)
+
+```schema.prisma
+model Category {
+  id       Int        @id @default(autoincrement())
+  name     String
+
+  parentId Int?
+  parent   Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryToCategory")
+}
+```
+
+👉 SQL tạo bảng
+
+```sql
+CREATE TABLE "Category" (
+  "id" SERIAL PRIMARY KEY,
+  "name" TEXT NOT NULL,
+  "parentId" INTEGER,
+  CONSTRAINT "Category_parentId_fkey"
+    FOREIGN KEY ("parentId") REFERENCES "Category"("id")
+    ON DELETE SET NULL
+    ON UPDATE CASCADE
+);
+```
+
+- Ví dụ 2: User (many-to-many implicit)
+
+```schema.prisma
+model User {
+  id         Int     @id @default(autoincrement())
+  name       String
+
+  following  User[]  @relation("UserFollows")
+  followers  User[]  @relation("UserFollows")
+}
+```
+
+👉 SQL tạo bảng
+
+```sql
+-- 1. User
+CREATE TABLE "User" (
+  "id" SERIAL PRIMARY KEY,
+  "name" TEXT NOT NULL
+);
+
+-- 2. Bảng trung gian (Prisma tự tạo)
+CREATE TABLE "_UserFollows" (
+  "A" INTEGER NOT NULL,
+  "B" INTEGER NOT NULL,
+
+  CONSTRAINT "_UserFollows_A_fkey"
+    FOREIGN KEY ("A") REFERENCES "User"("id")
+    ON DELETE CASCADE ON UPDATE CASCADE,
+
+  CONSTRAINT "_UserFollows_B_fkey"
+    FOREIGN KEY ("B") REFERENCES "User"("id")
+    ON DELETE CASCADE ON UPDATE CASCADE
+
+-- 3. Index (Prisma thường tạo thêm)
+CREATE UNIQUE INDEX "_UserFollows_AB_unique" ON "_UserFollows"("A", "B");
+CREATE INDEX "_UserFollows_B_index" ON "_UserFollows"("B");
+);
+```
+
+- Ví dụ 3: User + Follow (explicit)
+
+```schema.prisma
+model User {
+  id         Int              @id @default(autoincrement())
+  name       String
+
+  following  Follow[] @relation("following")
+  followers  Follow[] @relation("followers")
+}
+
+model Follow {
+  id          Int @id @default(autoincrement())
+
+  followerId  Int
+  followingId Int
+
+  follower    User @relation("following", fields: [followerId], references: [id])
+  following   User @relation("followers", fields: [followingId], references: [id])
+}
+```
+
+👉 SQL tạo bảng
+
+```sql
+-- 1. User
+CREATE TABLE "User" (
+  "id" SERIAL PRIMARY KEY,
+  "name" TEXT NOT NULL
+);
+
+-- 2. Follow
+CREATE TABLE "Follow" (
+  "id" SERIAL PRIMARY KEY,
+  "followerId" INTEGER NOT NULL,
+  "followingId" INTEGER NOT NULL,
+
+  CONSTRAINT "Follow_followerId_fkey"
+    FOREIGN KEY ("followerId") REFERENCES "User"("id")
+    ON DELETE CASCADE ON UPDATE CASCADE,
+
+  CONSTRAINT "Follow_followingId_fkey"
+    FOREIGN KEY ("followingId") REFERENCES "User"("id")
+    ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Best practice (nên thêm)
+CREATE UNIQUE INDEX "Follow_unique"
+ON "Follow"("followerId", "followingId");
+```
+
+### 20. Postgres
+
+```bash
+docker run -d \
+  --name postgres-ecommerce-db \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=123456 \
+  -e POSTGRES_DB=ecom_dev \
+  -p 5435:5432 \
+  postgres:16-alpine
+
+
+docker stop postgres-ecommerce-db
+docker start postgres-ecommerce-db
+
+docker rm -f postgres-ecommerce-db
+```
+
+### 21. Install zod (object validation schema) (https://docs.nestjs.com/pipes#object-schema-validation)
+
+```bash
+npm install --save zod
+```
