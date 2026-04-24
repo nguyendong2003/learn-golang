@@ -144,7 +144,14 @@ func (h *lessonHandler) GetByCourseID() gin.HandlerFunc {
 			_ = c.Error(apperror.NewBadRequestError("Invalid UUID format"))
 			return
 		}
-		data, err := h.lessonService.GetByCourseID(c.Request.Context(), courseID)
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(apperror.NewBadRequestError("Invalid user ID format"))
+			return
+		}
+		userRole := util.GetRole(c)
+
+		data, err := h.lessonService.GetByCourseID(c.Request.Context(), userID, userRole, courseID)
 		if err != nil {
 			_ = c.Error(err)
 			return

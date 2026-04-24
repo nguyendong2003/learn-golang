@@ -138,6 +138,11 @@ func (s *blogService) Create(
 			now := time.Now().UTC()
 			blog.PublishedAt = &now
 		}
+		if blog.Status == consts.BlogStatusScheduled {
+			if blog.ScheduledAt == nil || !blog.ScheduledAt.UTC().After(time.Now().UTC()) {
+				return apperror.NewBadRequestError("ScheduledAt must be in the future when status is scheduled")
+			}
+		}
 
 		if createdBlog, err = txBlogRepository.Create(ctx, blog); err != nil {
 			return apperror.NewInternalServerError("Failed to create blog")
@@ -286,6 +291,7 @@ func (s *blogService) UpdateBlogs(ctx context.Context, authorId, blogId uuid.UUI
 	err := s.db.Transaction(ctx, func(txDb repository.DbRepository) error {
 		txBlogRepository := repository.NewBlogRepository(txDb)
 		txCategoryRepository := repository.NewCategoryRepository(txDb)
+		txUserRepository := repository.NewUserRepository(txDb)
 		var err error
 
 		blog, err = txBlogRepository.FindByID(ctx, blogId, nil)
@@ -295,7 +301,11 @@ func (s *blogService) UpdateBlogs(ctx context.Context, authorId, blogId uuid.UUI
 		if blog == nil {
 			return apperror.NewNotFoundError("Blog not found")
 		}
-		if blog.AuthorID != authorId {
+		author, err := txUserRepository.FindByID(ctx, authorId, []repository.Preload{repository.Role})
+		if err != nil {
+			return apperror.NewInternalServerError("Failed to retrieve author")
+		}
+		if author.Role != nil && author.Role.Name == string(consts.RoleInstructor) && blog.AuthorID != authorId {
 			return apperror.NewForbiddenError("You do not have permission to update this blog")
 		}
 
@@ -330,21 +340,25 @@ func (s *blogService) UpdateBlogs(ctx context.Context, authorId, blogId uuid.UUI
 				return apperror.NewInternalServerError("Failed to confirm image URL")
 			}
 		}
-		
 
 		blog.Title = data.Title
 		blog.CategoryID = data.CategoryID
 		blog.Content = data.Content
 		blog.ImageURL = data.ImageURL
 		blog.Tags = data.Tags
-		if blog.Status != consts.BlogStatusPublished {
-			blog.Status = consts.BlogStatus(data.Status)
-			blog.ScheduledAt = data.ScheduledAt
-			if blog.Status == consts.BlogStatusPublished {
-				now := time.Now().UTC()
-				blog.PublishedAt = &now
+
+		blog.Status = consts.BlogStatus(data.Status)
+		blog.ScheduledAt = data.ScheduledAt
+		if blog.Status == consts.BlogStatusPublished {
+			now := time.Now().UTC()
+			blog.PublishedAt = &now
+		}
+		if blog.Status == consts.BlogStatusScheduled {
+			if blog.ScheduledAt == nil || !blog.ScheduledAt.UTC().After(time.Now().UTC()) {
+				return apperror.NewBadRequestError("ScheduledAt must be in the future when status is scheduled")
 			}
 		}
+
 		if blog, err = txBlogRepository.Updates(ctx, blog); err != nil {
 			return apperror.NewInternalServerError("Failed to update blog")
 		}

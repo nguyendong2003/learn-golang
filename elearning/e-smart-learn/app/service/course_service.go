@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"time"
 
@@ -18,16 +19,16 @@ import (
 )
 
 type CourseService interface {
-	Create(ctx context.Context, userID uuid.UUID, request dto.CreateCourseRequest) (*dto.CourseResponse, error)
+	Create(ctx context.Context, userID uuid.UUID, userRole string, request dto.CreateCourseRequest) (*dto.CourseResponse, error)
 	Update(ctx context.Context, userID, courseID uuid.UUID, request dto.UpdateCourseRequest) (*dto.CourseResponse, error)
 	AssignCoupons(ctx context.Context, userID, courseID uuid.UUID, request dto.AssignCourseCouponsRequest) (*dto.CourseResponse, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status consts.CourseStatus) (*dto.CourseResponse, error)
-	SubmitForReview(ctx context.Context, userID uuid.UUID, courseID uuid.UUID) (*dto.CourseResponse, error)
+	SubmitForReview(ctx context.Context, userRole string, userID uuid.UUID, courseID uuid.UUID) (*dto.CourseResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 
 	GetByID(ctx context.Context, id uuid.UUID) (*dto.CourseResponse, error)
 	GetBySlug(ctx context.Context, slug string, userID uuid.UUID, userRole string) (*dto.CourseResponse, error)
-	GetList(ctx context.Context, request dto.ListCourseRequest) ([]*dto.CourseResponse, int64, error)
+	GetList(ctx context.Context, request dto.ListCourseRequest, userRole string) ([]*dto.CourseResponse, int64, error)
 
 	CreateEvent(ctx context.Context, userID, courseID uuid.UUID, request dto.CourseEventRequest) (*dto.CourseEventResponse, error)
 	GetEvents(ctx context.Context, courseID uuid.UUID) ([]*dto.CourseEventResponse, error)
@@ -39,6 +40,10 @@ type CourseService interface {
 	GetNewCoursesLast30Days(ctx context.Context) (*dto.NewCoursesLast30DaysResponse, error)
 
 	GetCoursePurchaseBySessionID(ctx context.Context, sessionID string) (*dto.CoursePurchaseResponse, error)
+	GetRecommendedCourses(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.CourseResponse, error)
+	GetFeaturedCourses(ctx context.Context, limit int) ([]*dto.CourseResponse, error)
+	GetPersonalizedRecommendations(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.CourseResponse, error)
+	GetRecommendedCoursesByCategories(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.CourseResponse, error)
 }
 
 type courseService struct {
@@ -89,11 +94,10 @@ func NewCourseService(
 	}
 }
 
-func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dto.CreateCourseRequest) (*dto.CourseResponse, error) {
-	if err := validateCreateCourseCouponsRequest(request.Coupons); err != nil {
+func (s *courseService) Create(ctx context.Context, userID uuid.UUID, userRole string, request dto.CreateCourseRequest) (*dto.CourseResponse, error) {
+  if err := validateCreateCourseCouponsRequest(request.Coupons); err != nil {
 		return nil, err
 	}
-
 	category, err := s.categoryRepository.FindByID(ctx, request.CategoryID, nil)
 	if err != nil {
 		return nil, err
@@ -108,7 +112,12 @@ func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dt
 	if user == nil {
 		return nil, apperror.NewNotFoundError("User not found")
 	}
-
+  // Course status will be CourseDraft by default
+  // When creator is Admin, status will be CoursePublished
+	createCourseStatus := consts.CourseDraft
+	if userRole == string(consts.RoleAdmin) {
+		createCourseStatus = consts.CoursePublished
+	}
 	var createdCourse *model.Course
 	err = s.db.Transaction(ctx, func(txDb repository.DbRepository) error {
 		txCourseRepository := repository.NewCourseRepository(txDb)
@@ -125,7 +134,7 @@ func (s *courseService) Create(ctx context.Context, userID uuid.UUID, request dt
 			Image:       request.ImageURL,
 			Slug:        util.GenerateSlug(request.Title),
 			Price:       request.Price,
-			Status:      consts.CourseDraft,
+			Status:      createCourseStatus,
 			CategoryID:  request.CategoryID,
 			UserID:      userID,
 		}
@@ -592,7 +601,7 @@ func (s *courseService) UpdateStatus(ctx context.Context, id uuid.UUID, status c
 	return dto.NewCourseDetailResponse(updatedCourse), nil
 }
 
-func (s *courseService) SubmitForReview(ctx context.Context, userID uuid.UUID, courseID uuid.UUID) (*dto.CourseResponse, error) {
+func (s *courseService) SubmitForReview(ctx context.Context, userRole string, userID uuid.UUID, courseID uuid.UUID) (*dto.CourseResponse, error) {
 	course, err := s.courseRepository.FindByID(ctx, courseID, nil)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to retrieve course")
@@ -607,6 +616,9 @@ func (s *courseService) SubmitForReview(ctx context.Context, userID uuid.UUID, c
 	}
 
 	course.Status = consts.CoursePending
+	if userRole == string(consts.RoleAdmin) {
+		course.Status = consts.CoursePublished
+	}
 
 	updatedCourse, err := s.courseRepository.Updates(ctx, course)
 	if err != nil {
@@ -677,12 +689,12 @@ func (s *courseService) GetBySlug(ctx context.Context, slug string, userID uuid.
 	return result, nil
 }
 
-func (s *courseService) GetList(ctx context.Context, request dto.ListCourseRequest) ([]*dto.CourseResponse, int64, error) {
+func (s *courseService) GetList(ctx context.Context, request dto.ListCourseRequest, userRole string) ([]*dto.CourseResponse, int64, error) {
 	// Build sort query
 	orderQuery := buildCourseSortQuery(request.SortBy, request.SortOrder)
 
 	// Build filter query
-	query, args := buildCourseQuery(request)
+	query, args := buildCourseQuery(request, userRole)
 
 	courses, total, err := s.courseRepository.List(
 		ctx,
@@ -969,6 +981,172 @@ func (s *courseService) GetCoursePurchaseBySessionID(ctx context.Context, sessio
 	return dto.NewCoursePurchaseResponse(purchase), nil
 }
 
+func (s *courseService) GetRecommendedCourses(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.CourseResponse, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	var exclude []uuid.UUID
+	if userID != uuid.Nil {
+		enrollments, _, err := s.enrollmentRepository.ListByUser(ctx, userID, 0, 0)
+		if err != nil {
+			return nil, apperror.NewInternalServerError("Failed to retrieve enrollments")
+		}
+		for _, e := range enrollments {
+			exclude = append(exclude, e.CourseID)
+		}
+	}
+
+	courses, err := s.courseRepository.GetTopCoursesByEnrollment(ctx, limit, exclude)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to retrieve recommended courses")
+	}
+
+	return dto.NewListCourseResponse(courses), nil
+}
+
+func (s *courseService) GetFeaturedCourses(ctx context.Context, limit int) ([]*dto.CourseResponse, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	categoryID, err := s.courseRepository.GetTopCategoryID(ctx)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to determine top category")
+	}
+	if categoryID == uuid.Nil {
+		return []*dto.CourseResponse{}, nil
+	}
+
+	courses, err := s.courseRepository.GetTopCoursesByCategory(ctx, categoryID, limit, nil)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to retrieve featured courses")
+	}
+
+	return dto.NewListCourseResponse(courses), nil
+}
+
+func (s *courseService) GetPersonalizedRecommendations(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.CourseResponse, error) {
+	if userID == uuid.Nil {
+		return nil, apperror.NewUnauthorizedError("Unauthorized")
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	// Determine the category the user has enrolled in the most
+	categoryID, err := s.enrollmentRepository.GetTopCategoryByUser(ctx, userID)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to determine user's top category")
+	}
+	if categoryID == uuid.Nil {
+		return []*dto.CourseResponse{}, nil
+	}
+
+	// Build exclusion list of user's enrolled courses
+	enrollments, _, err := s.enrollmentRepository.ListByUser(ctx, userID, 0, 0)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to retrieve enrollments")
+	}
+	var exclude []uuid.UUID
+	for _, e := range enrollments {
+		exclude = append(exclude, e.CourseID)
+	}
+
+	courses, err := s.courseRepository.GetTopCoursesByCategory(ctx, categoryID, limit, exclude)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to retrieve personalized courses")
+	}
+
+	return dto.NewListCourseResponse(courses), nil
+}
+
+func (s *courseService) GetRecommendedCoursesByCategories(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.CourseResponse, error) {
+	if userID == uuid.Nil {
+		return nil, apperror.NewUnauthorizedError("Unauthorized")
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	// Get categories the user is enrolled in
+	categoryIDs, err := s.enrollmentRepository.GetEnrolledCategoryIDs(ctx, userID)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to retrieve enrolled categories")
+	}
+	if len(categoryIDs) == 0 {
+		return []*dto.CourseResponse{}, nil
+	}
+
+	// Build exclusion list of user's enrolled courses
+	enrollments, _, err := s.enrollmentRepository.ListByUser(ctx, userID, 0, 0)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to retrieve enrollments")
+	}
+	var exclude []uuid.UUID
+	for _, e := range enrollments {
+		exclude = append(exclude, e.CourseID)
+	}
+
+	type candidate struct {
+		CourseID uuid.UUID
+		Total    int64
+	}
+
+	var candidates []candidate
+
+	for _, cid := range categoryIDs {
+		rows, err := s.courseRepository.GetTopCourseIDsAndCountsByCategory(ctx, cid, 1, exclude)
+		if err != nil {
+			return nil, apperror.NewInternalServerError("Failed to retrieve top courses for categories")
+		}
+		if len(rows) == 0 {
+			continue
+		}
+		candidates = append(candidates, candidate{CourseID: rows[0].CourseID, Total: rows[0].Total})
+	}
+
+	if len(candidates) == 0 {
+		return []*dto.CourseResponse{}, nil
+	}
+
+	sort.Slice(candidates, func(i, j int) bool { return candidates[i].Total > candidates[j].Total })
+
+	if limit > 0 && len(candidates) > limit {
+		candidates = candidates[:limit]
+	}
+
+	ids := make([]uuid.UUID, 0, len(candidates))
+	for _, c := range candidates {
+		ids = append(ids, c.CourseID)
+	}
+
+	preloads := []repository.Preload{
+		repository.PreloadPath(repository.User, repository.InstructorProfile, repository.User),
+		repository.PreloadPath(repository.Category),
+	}
+
+	courses, err := s.courseRepository.FindAll(ctx, "id IN ?", preloads, ids)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to retrieve courses")
+	}
+
+	// preserve sorted order
+	courseMap := make(map[uuid.UUID]*model.Course, len(courses))
+	for _, c := range courses {
+		courseMap[c.ID] = c
+	}
+
+	var ordered []*model.Course
+	for _, cand := range candidates {
+		if c, ok := courseMap[cand.CourseID]; ok {
+			ordered = append(ordered, c)
+		}
+	}
+
+	return dto.NewListCourseResponse(ordered), nil
+}
+
 func buildCourseSortQuery(sortBy string, sortOrder string) string {
 	defaultSort := "created_at DESC"
 
@@ -996,7 +1174,7 @@ func buildCourseSortQuery(sortBy string, sortOrder string) string {
 	return sortBy + " " + strings.ToUpper(sortOrder)
 }
 
-func buildCourseQuery(request dto.ListCourseRequest) (string, []any) {
+func buildCourseQuery(request dto.ListCourseRequest, userRole string) (string, []any) {
 	var conditions []string
 	var args []any
 
@@ -1007,6 +1185,9 @@ func buildCourseQuery(request dto.ListCourseRequest) (string, []any) {
 	util.AddEqualCondition(&conditions, &args, "category_id", request.CategoryID)
 	if request.Status != nil {
 		util.AddEqualCondition(&conditions, &args, "status", (*string)(request.Status))
+	}
+	if userRole == string(consts.RoleInstructor) && request.UserID != nil {
+		util.AddEqualCondition(&conditions, &args, "user_id", request.UserID)
 	}
 
 	query := strings.Join(conditions, " AND ")

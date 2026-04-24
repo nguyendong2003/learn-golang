@@ -16,7 +16,7 @@ import (
 type LessonService interface {
 	Create(ctx context.Context, userID, courseID uuid.UUID, chapterRequests []dto.CreateLessonRequest) ([]*dto.ChapterResponse, error)
 	UpdateCourseWithChapters(ctx context.Context, userID, courseID uuid.UUID, request dto.UpdateCourseWithChaptersRequest) ([]*dto.ChapterResponse, error)
-	GetByCourseID(ctx context.Context, courseID uuid.UUID) ([]*dto.ChapterResponse, error)
+	GetByCourseID(ctx context.Context, userID uuid.UUID, userRole string, courseID uuid.UUID) ([]*dto.ChapterResponse, error)
 }
 
 type lessonService struct {
@@ -24,6 +24,7 @@ type lessonService struct {
 	db                repository.DbRepository
 	courseRepository  repository.CourseRepository
 	chapterRepository repository.ChapterRepository
+	enrollmentRepo    repository.EnrollmentRepository
 	uploadService     UploadService
 }
 
@@ -33,12 +34,14 @@ func NewLessonService(
 	courseRepository repository.CourseRepository,
 	chapterRepository repository.ChapterRepository,
 	uploadService UploadService,
+	enrollmentRepo repository.EnrollmentRepository,
 ) LessonService {
 	return &lessonService{
 		lessonRepository:  lessonRepository,
 		db:                db,
 		courseRepository:  courseRepository,
 		chapterRepository: chapterRepository,
+		enrollmentRepo:    enrollmentRepo,
 		uploadService:     uploadService,
 	}
 }
@@ -98,21 +101,21 @@ func (s *lessonService) Create(ctx context.Context, userID, courseID uuid.UUID, 
 				}
 				if hasVideo {
 					isVideoValid, err := s.uploadService.ValidateVideoURL(ctx, item.VideoURL)
-					if err != nil {
-						return apperror.NewBadRequestError("Failed to validate video url")
-					}
 					if !isVideoValid {
 						return apperror.NewBadRequestError("Video does not exist")
+					}
+					if err != nil {
+						return apperror.NewBadRequestError("Failed to validate video url")
 					}
 					lesson.VideoURL = item.VideoURL
 				}
 				if hasDocument {
 					isDocumentValid, err := s.uploadService.ValidateDocumentURL(ctx, item.DocumentURL)
-					if err != nil {
-						return apperror.NewBadRequestError("Failed to validate document url")
-					}
 					if !isDocumentValid {
 						return apperror.NewBadRequestError("Document does not exist")
+					}
+					if err != nil {
+						return apperror.NewBadRequestError("Failed to validate document url")
 					}
 					lesson.DocumentURL = item.DocumentURL
 				}
@@ -319,12 +322,49 @@ func (s *lessonService) UpdateCourseWithChapters(ctx context.Context, userID, co
 	return dto.NewListChapterResponse(resultChapters), nil
 }
 
-func (s *lessonService) GetByCourseID(ctx context.Context, courseID uuid.UUID) ([]*dto.ChapterResponse, error) {
+func (s *lessonService) GetByCourseID(ctx context.Context, userID uuid.UUID, userRole string, courseID uuid.UUID) ([]*dto.ChapterResponse, error) {
+	// Fetch course to validate existence and check owner
+	course, err := s.courseRepository.FindByID(ctx, courseID, nil)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to retrieve course")
+	}
+	if course == nil {
+		return nil, apperror.NewNotFoundError("Course not found")
+	}
+
 	chapters, err := s.chapterRepository.FindAll(ctx, "course_id = ?", []repository.Preload{
 		repository.PreloadPath(repository.Lessons),
 	}, courseID)
 	if err != nil {
 		return nil, apperror.NewInternalServerError("Failed to retrieve chapters and lessons")
+	}
+
+	// If user is course owner or admin, no need to check enrollment
+	if userID != uuid.Nil && (userRole == string(consts.RoleAdmin) || course.UserID == userID) {
+		return dto.NewListChapterResponse(chapters), nil
+	}
+
+	// Determine if user is enrolled
+	// If not enrolled (or unauthenticated), filter lessons to previews only
+	isEnrolled := false
+	if userID != uuid.Nil {
+		enrolled, err := s.enrollmentRepo.CheckEnrollment(ctx, userID, courseID)
+		if err != nil {
+			return nil, apperror.NewInternalServerError("Failed to check enrollment")
+		}
+		isEnrolled = enrolled
+	}
+
+	if !isEnrolled {
+		for _, ch := range chapters {
+			filtered := make([]*model.Lesson, 0, len(ch.Lessons))
+			for _, l := range ch.Lessons {
+				if l.IsAbleToPreview {
+					filtered = append(filtered, l)
+				}
+			}
+			ch.Lessons = filtered
+		}
 	}
 
 	return dto.NewListChapterResponse(chapters), nil

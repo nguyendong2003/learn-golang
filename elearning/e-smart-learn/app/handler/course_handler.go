@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"elearning-api/apperror"
 	"elearning-api/consts"
@@ -23,6 +24,13 @@ type CourseHandler interface {
 	GetByID() gin.HandlerFunc
 	GetBySlug() gin.HandlerFunc
 	GetList() gin.HandlerFunc
+	Recommend() gin.HandlerFunc
+	// Get most popular courses from the most popular category
+	Featured() gin.HandlerFunc
+	// Get personalized recommendations based on user's most enrolled category, excluding courses user already enrolled in
+	PersonalizedRecommend() gin.HandlerFunc
+	// Get one top course per category the user is enrolled in
+	RecommendByCategories() gin.HandlerFunc
 	GetMyTaughtCourses() gin.HandlerFunc
 
 	PublishCourse() gin.HandlerFunc
@@ -89,12 +97,14 @@ func (h *courseHandler) Create() gin.HandlerFunc {
 			_ = c.Error(err)
 			return
 		}
+		userRole := util.GetRole(c)
+
 		var request dto.CreateCourseRequest
 		if err := util.BindAndValidateJSON(c, &request); err != nil {
 			_ = c.Error(err)
 			return
 		}
-		createdCourse, err := h.courseService.Create(c.Request.Context(), userID, request)
+		createdCourse, err := h.courseService.Create(c.Request.Context(), userID, userRole, request)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -420,10 +430,10 @@ func (h *courseHandler) GetList() gin.HandlerFunc {
 		}
 
 		userRole := util.GetRole(c)
-		// Only admin and instructor can see all courses
+		// Only admin and instructor can see all courses with any status
 		// Students can only see published courses
 		// Instructors can see their own courses in any status + all published courses
-		if userRole != string(consts.RoleAdmin) {
+		if userRole == string(consts.RoleStudent) {
 			publishedStatus := consts.CoursePublished
 			request.Status = &publishedStatus
 		} else if userRole == string(consts.RoleInstructor) {
@@ -445,7 +455,7 @@ func (h *courseHandler) GetList() gin.HandlerFunc {
 		sortOrder := request.SortOrder
 
 		// Call service
-		data, total, err := h.courseService.GetList(c.Request.Context(), request)
+		data, total, err := h.courseService.GetList(c.Request.Context(), request, userRole)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -455,6 +465,174 @@ func (h *courseHandler) GetList() gin.HandlerFunc {
 		res.Request = dto.GetRequestClient(c)
 		res.Data = data
 		res.Metadata = dto.NewPagination(limit, offset, int(total), sortBy, sortOrder)
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// Recommend godoc
+// @Summary Get recommended courses
+// @Description Return top N courses by enrollment count. If authenticated, exclude courses the requesting user has already enrolled in.
+// @Tags courses
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of courses to return" default(10)
+// @Success 200 {object} dto.ApiResponse{data=[]dto.CourseResponse}
+// @Router /api/v1/courses/recommend [get]
+func (h *courseHandler) Recommend() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		limitStr := c.DefaultQuery("limit", "10")
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil || limit < 1 {
+			_ = c.Error(apperror.NewBadRequestError("Invalid limit parameter"))
+			return
+		}
+		if limit > 50 {
+			limit = 50
+		}
+
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		data, err := h.courseService.GetRecommendedCourses(c.Request.Context(), userID, limit)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		res := dto.NewApiResponse(c)
+		res.Request = dto.GetRequestClient(c)
+		res.Data = data
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// Featured godoc
+// @Summary Get featured courses
+// @Description Return top courses from the most popular category
+// @Tags courses
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of courses to return" default(10)
+// @Success 200 {object} dto.ApiResponse{data=[]dto.CourseResponse}
+// @Router /api/v1/courses/featured [get]
+func (h *courseHandler) Featured() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		limitStr := c.DefaultQuery("limit", "10")
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil || limit < 1 {
+			_ = c.Error(apperror.NewBadRequestError("Invalid limit parameter"))
+			return
+		}
+		if limit > 50 {
+			limit = 50
+		}
+
+		data, err := h.courseService.GetFeaturedCourses(c.Request.Context(), limit)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		res := dto.NewApiResponse(c)
+		res.Request = dto.GetRequestClient(c)
+		res.Data = data
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// PersonalizedRecommend godoc
+// @Summary Get personalized course recommendations
+// @Description Return top courses from the category the current user has enrolled in the most. Excludes courses the user already enrolled in.
+// @Tags courses
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of courses to return" default(10)
+// @Success 200 {object} dto.ApiResponse{data=[]dto.CourseResponse}
+// @Router /api/v1/courses/recommend/personalized [get]
+// @Security BearerAuth
+func (h *courseHandler) PersonalizedRecommend() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+		if userID == uuid.Nil {
+			_ = c.Error(apperror.NewUnauthorizedError("Unauthorized"))
+			return
+		}
+
+		limitStr := c.DefaultQuery("limit", "10")
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil || limit < 1 {
+			_ = c.Error(apperror.NewBadRequestError("Invalid limit parameter"))
+			return
+		}
+		if limit > 50 {
+			limit = 50
+		}
+
+		data, err := h.courseService.GetPersonalizedRecommendations(c.Request.Context(), userID, limit)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		res := dto.NewApiResponse(c)
+		res.Request = dto.GetRequestClient(c)
+		res.Data = data
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// RecommendByCategories godoc
+// @Summary Get recommended courses by categories
+// @Description Return one top course per category that the user is enrolled in, sorted by highest enrollments. Excludes courses the user already enrolled in.
+// @Tags courses
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of courses to return" default(10)
+// @Success 200 {object} dto.ApiResponse{data=[]dto.CourseResponse}
+// @Router /api/v1/courses/recommend/by-categories [get]
+// @Security BearerAuth
+func (h *courseHandler) RecommendByCategories() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+		if userID == uuid.Nil {
+			_ = c.Error(apperror.NewUnauthorizedError("Unauthorized"))
+			return
+		}
+
+		limitStr := c.DefaultQuery("limit", "10")
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil || limit < 1 {
+			_ = c.Error(apperror.NewBadRequestError("Invalid limit parameter"))
+			return
+		}
+		if limit > 50 {
+			limit = 50
+		}
+
+		data, err := h.courseService.GetRecommendedCoursesByCategories(c.Request.Context(), userID, limit)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		res := dto.NewApiResponse(c)
+		res.Request = dto.GetRequestClient(c)
+		res.Data = data
 
 		c.JSON(http.StatusOK, res)
 	}
@@ -631,20 +809,19 @@ func (h *courseHandler) SubmitForReview() gin.HandlerFunc {
 			_ = c.Error(apperror.NewBadRequestError("Invalid UUID in URI"))
 			return
 		}
-
 		courseID, err := uuid.Parse(idRequest.ID)
 		if err != nil {
 			_ = c.Error(apperror.NewBadRequestError("Invalid UUID format"))
 			return
 		}
-
 		userID, err := util.GetRequestUserID(c)
 		if err != nil {
 			_ = c.Error(err)
 			return
 		}
+		userRole := util.GetRole(c)
 
-		updated, err := h.courseService.SubmitForReview(c.Request.Context(), userID, courseID)
+		updated, err := h.courseService.SubmitForReview(c.Request.Context(), userRole, userID, courseID)
 		if err != nil {
 			_ = c.Error(err)
 			return

@@ -44,6 +44,7 @@ type userService struct {
 	instructorProfileRepository repository.InstructorProfileRepository
 	enrollmentRepository        repository.EnrollmentRepository
 	storageProvider             pkg.StorageProvider
+	categoryRepository          repository.CategoryRepository
 }
 
 func NewUserService(
@@ -54,6 +55,7 @@ func NewUserService(
 	instructorProfileRepository repository.InstructorProfileRepository,
 	enrollmentRepository repository.EnrollmentRepository,
 	storageProvider pkg.StorageProvider,
+	categoryRepository repository.CategoryRepository,
 ) UserService {
 	return &userService{
 		db:                          db,
@@ -63,6 +65,7 @@ func NewUserService(
 		instructorProfileRepository: instructorProfileRepository,
 		enrollmentRepository:        enrollmentRepository,
 		storageProvider:             storageProvider,
+		categoryRepository:          categoryRepository,
 	}
 }
 
@@ -273,6 +276,14 @@ func (s *userService) ApplyToInstructor(ctx context.Context, userID uuid.UUID, r
 	if instructorRole == nil {
 		return apperror.NewNotFoundError("Instructor role not found")
 	}
+	categoryIDParse := uuid.MustParse(*request.CategoryID)
+	category, err := s.categoryRepository.FindByID(ctx, categoryIDParse, nil)
+	if err != nil {
+		return apperror.NewInternalServerError("Failed to get category")
+	}
+	if category == nil {
+		return apperror.NewNotFoundError("Category not found")
+	}
 
 	err = s.db.Transaction(ctx, func(txDb repository.DbRepository) error {
 		// Create instructor profile record with pending status
@@ -290,6 +301,7 @@ func (s *userService) ApplyToInstructor(ctx context.Context, userID uuid.UUID, r
 				PortfolioURL:      request.PortfolioURL,
 				Certifications:    request.Certifications,
 				Status:            consts.InstructorProfilePending,
+				CategoryID:        categoryIDParse,
 			}); err != nil {
 			return apperror.NewInternalServerError("Failed to create instructor profile")
 		}

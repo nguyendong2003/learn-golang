@@ -61,6 +61,37 @@ type MemberRetentionResponse struct {
 	RetentionPct      float64 `json:"retention_pct"`
 }
 
+type PaymentResponse struct {
+	ID                  string     `json:"id"`
+	StripeInvoiceID     string     `json:"stripe_invoice_id"`
+	StripePaymentIntent string     `json:"stripe_payment_intent"`
+	Status              string     `json:"status"`
+	Amount              float64    `json:"amount"`
+	Currency            string     `json:"currency"`
+	StripeFee           float64    `json:"stripe_fee"`
+	FailureReason       string     `json:"failure_reason"`
+	AttemptCount        int64      `json:"attempt_count"`
+	PaidAt              *time.Time `json:"paid_at"`
+	CreatedAt           time.Time  `json:"created_at"`
+}
+
+type SubscriptionPurchaseResponse struct {
+	ID                      string                `json:"id"`
+	StripeSubscriptionID    string                `json:"stripe_subscription_id"`
+	StripeCheckoutSessionID string                `json:"stripe_checkout_session_id"`
+	Status                  string                `json:"status"`
+	BillingCycle            string                `json:"billing_cycle"`
+	CancelAtPeriodEnd       bool                  `json:"cancel_at_period_end"`
+	CurrentPeriodStart      *time.Time            `json:"current_period_start"`
+	CurrentPeriodEnd        *time.Time            `json:"current_period_end"`
+	StartedAt               time.Time             `json:"started_at"`
+	EndedAt                 *time.Time            `json:"ended_at"`
+	CanceledAt              *time.Time            `json:"canceled_at"`
+	Plan                    *SubscriptionPlanInfo `json:"plan,omitempty"`
+	User                    *UserResponse         `json:"user,omitempty"`
+	Payments                []*PaymentResponse    `json:"payments,omitempty"`
+}
+
 func NewListPlanResponse(plans []*model.Plan) []*PlanResponse {
 	res := make([]*PlanResponse, len(plans))
 	for i, p := range plans {
@@ -113,6 +144,56 @@ func NewMySubscriptionResponse(s *model.Subscription) *MySubscriptionResponse {
 			Price:        s.PlanPrice,
 			Currency:     s.PlanCurrency,
 		},
+	}
+
+	return res
+}
+
+func NewSubscriptionPurchaseResponse(s *model.Subscription) *SubscriptionPurchaseResponse {
+	if s == nil {
+		return nil
+	}
+
+	res := &SubscriptionPurchaseResponse{
+		ID:                      s.ID.String(),
+		StripeSubscriptionID:    s.StripeSubscriptionID,
+		StripeCheckoutSessionID: s.StripeCheckoutSessionID,
+		Status:                  s.Status,
+		BillingCycle:            s.BillingCycle,
+		CancelAtPeriodEnd:       s.CancelAtPeriodEnd,
+		CurrentPeriodStart:      s.CurrentPeriodStart,
+		CurrentPeriodEnd:        s.CurrentPeriodEnd,
+		StartedAt:               s.StartedAt,
+		EndedAt:                 s.EndedAt,
+		CanceledAt:              s.CanceledAt,
+		Plan: &SubscriptionPlanInfo{
+			ID:           s.PlanID.String(),
+			Name:         s.PlanName,
+			Description:  s.PlanDescription,
+			BillingCycle: s.BillingCycle,
+			Price:        s.PlanPrice,
+			Currency:     s.PlanCurrency,
+		},
+		User: NewUserDetailResponse(s.User),
+	}
+
+	if len(s.Payments) > 0 {
+		res.Payments = make([]*PaymentResponse, len(s.Payments))
+		for i, p := range s.Payments {
+			res.Payments[i] = &PaymentResponse{
+				ID:                  p.ID.String(),
+				StripeInvoiceID:     p.StripeInvoiceID,
+				StripePaymentIntent: p.StripePaymentIntent,
+				Status:              p.Status,
+				Amount:              float64(p.Amount) / 100,
+				Currency:            p.Currency,
+				StripeFee:           float64(p.StripeFee) / 100,
+				FailureReason:       p.FailureReason,
+				AttemptCount:        p.AttemptCount,
+				PaidAt:              p.PaidAt,
+				CreatedAt:           p.CreatedAt,
+			}
+		}
 	}
 
 	return res

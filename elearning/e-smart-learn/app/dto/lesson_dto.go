@@ -84,8 +84,8 @@ type CreateLessonRequest struct {
 	Lessons      []CreateLessonAssetRequest `json:"lessons" binding:"required,min=1,dive"`
 }
 type CreateLessonAssetRequest struct {
-	Title           string `json:"title" binding:"required,min=3,max=255"`
-	Duration        int    `json:"duration" binding:"required,gt=0"`
+	Title           string `json:"title"`
+	Duration        int    `json:"duration" binding:"omitempty,gte=0"`
 	IsAbleToPreview bool   `json:"is_able_to_preview"`
 	VideoURL        string `json:"video_url" binding:"omitempty,url"`
 	DocumentURL     string `json:"document_url" binding:"omitempty,url"`
@@ -95,13 +95,13 @@ type UpdateCourseWithChaptersRequest struct {
 }
 type UpdateChapterWithLessonsRequest struct {
 	ID      string                         `json:"id" binding:"omitempty,uuid"` // Empty = new chapter, filled = update/keep existing
-	Title   string                         `json:"title" binding:"required,min=3,max=255"`
+	Title   string                         `json:"title" binding:"omitempty"`
 	Lessons []UpdateLessonInChapterRequest `json:"lessons" binding:"required,min=1,dive"`
 }
 type UpdateLessonInChapterRequest struct {
 	ID              string `json:"id" binding:"omitempty,uuid"` // Empty = new lesson, filled = update/keep existing
-	Title           string `json:"title" binding:"required,min=3,max=255"`
-	Duration        int    `json:"duration" binding:"required,gt=0"`
+	Title           string `json:"title" binding:"omitempty"`
+	Duration        int    `json:"duration" binding:"omitempty,gte=0"`
 	IsAbleToPreview bool   `json:"is_able_to_preview"`
 	VideoURL        string `json:"video_url" binding:"omitempty,url"`
 	DocumentURL     string `json:"document_url" binding:"omitempty,url"`

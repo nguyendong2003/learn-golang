@@ -72,7 +72,7 @@ func NewInstructorProfileDetailResponse(data *model.InstructorProfile) *Instruct
 
 type CreateInstructorProfileRequest struct {
 	Bio          string  `json:"bio" binding:"required,min=3,max=1000"`
-	Education    string  `json:"education" binding:"required,min=3,max=2000"`
+	Education    string  `json:"education" binding:"omitempty"`
 	LinkedinURL  *string `json:"linkedin_url" binding:"omitempty,url"`
 	YoutubeURL   *string `json:"youtube_url" binding:"omitempty,url"`
 	InstagramURL *string `json:"instagram_url" binding:"omitempty,url"`
@@ -96,7 +96,7 @@ type ListInstructorProfileRequest struct {
 
 type ApplyInstructorRequest struct {
 	Bio               string   `json:"bio" binding:"required,min=3,max=1000"`
-	Education         string   `json:"education" binding:"required,min=3,max=2000"`
+	Education         string   `json:"education"`
 	LinkedinURL       string   `json:"linkedin_url" binding:"omitempty,url"`
 	YoutubeURL        string   `json:"youtube_url" binding:"omitempty,url"`
 	InstagramURL      string   `json:"instagram_url" binding:"omitempty,url"`

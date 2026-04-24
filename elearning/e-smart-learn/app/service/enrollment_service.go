@@ -130,6 +130,8 @@ func (s *enrollmentService) GetMyCourses(ctx context.Context, userID uuid.UUID, 
 		"user_id = ?",
 		[]repository.Preload{
 			repository.Course,
+			repository.PreloadPath(repository.Course, repository.User),
+			repository.PreloadPath(repository.Course, repository.Category),
 			repository.PreloadPath(repository.Course, repository.Chapters, repository.Lessons),
 		},
 		userID,

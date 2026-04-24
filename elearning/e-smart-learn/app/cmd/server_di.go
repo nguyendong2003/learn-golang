@@ -100,7 +100,8 @@ func (s *ApiServer) initServices(config *config.Config) {
 		s.blogRepository,
 		s.instructorProfileRepository,
 		s.enrollmentRepository,
-		storage)
+		storage,
+		s.categoryRepository)
 	s.authService = service.NewAuthService(
 		s.userRepository,
 		s.roleRepository,
@@ -145,7 +146,7 @@ func (s *ApiServer) initServices(config *config.Config) {
 	)
 	s.feedbackService = service.NewFeedbackService(s.feedbackRepository, s.userRepository, s.enrollmentRepository)
 	s.revenueService = service.NewRevenueService(s.revenueRepository)
-	s.lessonService = service.NewLessonService(s.lessonRepository, s.dbRepository, s.courseRepository, s.chapterRepository, s.uploadService)
+	s.lessonService = service.NewLessonService(s.lessonRepository, s.dbRepository, s.courseRepository, s.chapterRepository, s.uploadService, s.enrollmentRepository)
 	s.followService = service.NewFollowService(s.followRepository, s.userRepository)
 	s.meetingService = service.NewMeetingService(s.courseEventRepository, s.courseRepository, s.userRepository)
 	s.meetingHub = service.NewMeetingHub()

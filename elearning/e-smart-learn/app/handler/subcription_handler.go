@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	"elearning-api/apperror"
 	"elearning-api/dto"
 	"elearning-api/service"
 	"elearning-api/util"
@@ -19,6 +20,8 @@ type SubscriptionHandler interface {
 	Resume() gin.HandlerFunc
 	CreateBillingPortalSession() gin.HandlerFunc
 	GetSubscribers() gin.HandlerFunc
+
+	GetSubscriptionPurchaseBySessionID() gin.HandlerFunc
 
 	// Get subscription retention statistics for admin dashboard
 	GetMemberRetention() gin.HandlerFunc
@@ -306,6 +309,41 @@ func (h *subscriptionHandler) GetMemberRetention() gin.HandlerFunc {
 		response.Status = dto.NewResponseStatus(http.StatusOK)
 		response.Request = dto.GetRequestClient(c)
 		response.Data = stats
+
+		c.JSON(http.StatusOK, response)
+	}
+}
+
+// GetSubscriptionPurchaseBySessionID godoc
+// @Summary Get subscription purchase by session ID
+// @Description Get subscription detail by Stripe checkout session ID
+// @Tags subscriptions
+// @Accept json
+// @Produce json
+// @Param session_id path string true "Checkout Session ID"
+// @Success 200 {object} dto.ApiResponse{data=dto.SubscriptionPurchaseResponse}
+// @Failure 400 {object} dto.ApiResponse
+// @Failure 404 {object} dto.ApiResponse
+// @Failure 500 {object} dto.ApiResponse
+// @Router /api/v1/subscription-purchase/{session_id} [get]
+func (h *subscriptionHandler) GetSubscriptionPurchaseBySessionID() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sessionID := c.Param("session_id")
+		if sessionID == "" {
+			_ = c.Error(apperror.NewBadRequestError("Session ID is required"))
+			return
+		}
+
+		result, err := h.subscriptionService.GetSubscriptionPurchaseBySessionID(c.Request.Context(), sessionID)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+
+		response := dto.NewApiResponse(c)
+		response.Status = dto.NewResponseStatus(http.StatusOK)
+		response.Request = dto.GetRequestClient(c)
+		response.Data = result
 
 		c.JSON(http.StatusOK, response)
 	}

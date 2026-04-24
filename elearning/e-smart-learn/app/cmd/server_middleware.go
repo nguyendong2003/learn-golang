@@ -319,6 +319,39 @@ func (s *ApiServer) RequireInstructorProfileHandler() gin.HandlerFunc {
 	}
 }
 
+func (s *ApiServer) RequireInstructorProfileOrAdminHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.GetString(consts.ContextUserRole) == string(consts.RoleAdmin) {
+			c.Next()
+			return
+		}
+
+		userID, err := util.GetRequestUserID(c)
+		if err != nil {
+			_ = c.Error(apperror.NewUnauthorizedError("Invalid user ID"))
+			c.Abort()
+			return
+		}
+
+		instructor, err := s.instructorProfileService.GetByUserID(c.Request.Context(), userID)
+		if err != nil {
+			_ = c.Error(apperror.NewForbiddenError("Instructor profile required"))
+			c.Abort()
+			return
+		}
+
+		if instructor == nil {
+			_ = c.Error(apperror.NewForbiddenError("Instructor profile required"))
+			c.Abort()
+			return
+		}
+
+		c.Set(consts.ContextInstructorProfile, instructor)
+
+		c.Next()
+	}
+}
+
 func (s *ApiServer) LoadCourseHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var courseIDRequest dto.UUIDRequest

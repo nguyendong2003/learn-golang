@@ -20,6 +20,8 @@ type EnrollmentRepository interface {
 	CancelActiveSubscriptionEnrollmentsByUser(ctx context.Context, userID uuid.UUID) error
 	MarkCourseCompleted(ctx context.Context, userID, courseID uuid.UUID) error
 	GetCourseEnrollmentCount(ctx context.Context, userID uuid.UUID) (int64, int64, error)
+	GetTopCategoryByUser(ctx context.Context, userID uuid.UUID) (uuid.UUID, error)
+	GetEnrolledCategoryIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
 
 type enrollmentRepository struct {
@@ -157,4 +159,61 @@ func (r *enrollmentRepository) MarkCourseCompleted(ctx context.Context, userID, 
 			"is_completed": true,
 			"completed_at": &now,
 		}).Error
+}
+
+func (r *enrollmentRepository) GetTopCategoryByUser(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
+	type catRow struct {
+		CategoryID uuid.UUID `gorm:"column:category_id"`
+		Total      int64     `gorm:"column:total"`
+	}
+
+	var row catRow
+	query := r.db.GetDB().WithContext(ctx).
+		Table("enrollments e").
+		Select("c.category_id as category_id, COUNT(*) as total").
+		Joins("JOIN courses c ON c.id = e.course_id").
+		Where("e.user_id = ? AND e.canceled_at IS NULL AND c.deleted_at IS NULL", userID).
+		Group("c.category_id").
+		Order("total DESC").
+		Limit(1)
+
+	if err := query.Scan(&row).Error; err != nil {
+		return uuid.Nil, err
+	}
+
+	if row.CategoryID == uuid.Nil {
+		return uuid.Nil, nil
+	}
+
+	return row.CategoryID, nil
+}
+
+// Return list of category IDs the user has enrolled in, ordered by most enrolled to least enrolled
+func (r *enrollmentRepository) GetEnrolledCategoryIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	type catRow struct {
+		CategoryID uuid.UUID `gorm:"column:category_id"`
+		Total      int64     `gorm:"column:total"`
+	}
+
+	var rows []catRow
+	query := r.db.GetDB().WithContext(ctx).
+		Table("enrollments e").
+		Select("DISTINCT c.category_id as category_id, COUNT(*) as total").
+		Joins("JOIN courses c ON c.id = e.course_id").
+		Where("e.user_id = ? AND e.canceled_at IS NULL AND c.deleted_at IS NULL", userID).
+		Group("c.category_id").
+		Order("total DESC")
+
+	if err := query.Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	res := make([]uuid.UUID, 0, len(rows))
+	for _, rrow := range rows {
+		if rrow.CategoryID != uuid.Nil {
+			res = append(res, rrow.CategoryID)
+		}
+	}
+
+	return res, nil
 }

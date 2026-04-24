@@ -44,6 +44,8 @@ type SubscriptionService interface {
 	PublishCourseAndCreateProductCatalog(ctx context.Context, courseID uuid.UUID) (*dto.CourseResponse, error)
 	SyncPublishedCourseCatalog(ctx context.Context, courseID uuid.UUID) (*dto.CourseResponse, error)
 
+	GetSubscriptionPurchaseBySessionID(ctx context.Context, sessionID string) (*dto.SubscriptionPurchaseResponse, error)
+
 	HandleStripeWebhook(ctx context.Context, payload []byte, signature string) error
 	GetMySubscription(ctx context.Context, userID uuid.UUID) (*dto.MySubscriptionResponse, error)
 	CancelAtPeriodEnd(ctx context.Context, userID uuid.UUID) (*dto.MySubscriptionResponse, error)
@@ -844,6 +846,29 @@ func (s *subscriptionService) GetMemberRetention(ctx context.Context) (*dto.Memb
 		ActiveMemberships: activeMemberships,
 		RetentionPct:      math.Round(retentionPct*10) / 10,
 	}, nil
+}
+
+func (s *subscriptionService) GetSubscriptionPurchaseBySessionID(ctx context.Context, sessionID string) (*dto.SubscriptionPurchaseResponse, error) {
+	if strings.TrimSpace(sessionID) == "" {
+		return nil, apperror.NewBadRequestError("Session ID is required")
+	}
+
+	preloads := []repository.Preload{
+		repository.Plan,
+		repository.User,
+		repository.Payments,
+	}
+
+	sub, err := s.subscriptionRepository.GetByCheckoutSessionID(ctx, sessionID, preloads)
+	if err != nil {
+		return nil, apperror.NewInternalServerError("Failed to get subscription by session id")
+	}
+
+	if sub == nil {
+		return nil, apperror.NewNotFoundError("Subscription not found for this session id")
+	}
+
+	return dto.NewSubscriptionPurchaseResponse(sub), nil
 }
 
 func (s *subscriptionService) ensureStripeCustomer(ctx context.Context, user *model.User) (string, error) {

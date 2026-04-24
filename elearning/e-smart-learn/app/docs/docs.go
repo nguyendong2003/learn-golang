@@ -3239,6 +3239,204 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/courses/featured": {
+            "get": {
+                "description": "Return top courses from the most popular category",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Get featured courses",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of courses to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.CourseResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/courses/recommend": {
+            "get": {
+                "description": "Return top N courses by enrollment count. If authenticated, exclude courses the requesting user has already enrolled in.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Get recommended courses",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of courses to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.CourseResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/courses/recommend/by-categories": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return one top course per category that the user is enrolled in, sorted by highest enrollments. Excludes courses the user already enrolled in.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Get recommended courses by categories",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of courses to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.CourseResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/courses/recommend/personalized": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return top courses from the category the current user has enrolled in the most. Excludes courses the user already enrolled in.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "courses"
+                ],
+                "summary": "Get personalized course recommendations",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of courses to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.CourseResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/courses/slug/{slug}": {
             "get": {
                 "description": "Retrieve a course by its slug",
@@ -5647,6 +5845,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/subscription-purchase/{session_id}": {
+            "get": {
+                "description": "Get subscription detail by Stripe checkout session ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Get subscription purchase by session ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Checkout Session ID",
+                        "name": "session_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.SubscriptionPurchaseResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/subscriptions/billing-portal": {
             "post": {
                 "security": [
@@ -7070,7 +7330,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "bio",
-                "education",
                 "years_of_experience"
             ],
             "properties": {
@@ -7092,9 +7351,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "education": {
-                    "type": "string",
-                    "maxLength": 2000,
-                    "minLength": 3
+                    "type": "string"
                 },
                 "instagram_url": {
                     "type": "string"
@@ -7416,6 +7673,9 @@ const docTemplate = `{
         "dto.CourseResponse": {
             "type": "object",
             "properties": {
+                "author": {
+                    "$ref": "#/definitions/dto.AuthorResponse"
+                },
                 "average_rate": {
                     "type": "number"
                 },
@@ -7655,8 +7915,7 @@ const docTemplate = `{
         "dto.CreateInstructorProfileRequest": {
             "type": "object",
             "required": [
-                "bio",
-                "education"
+                "bio"
             ],
             "properties": {
                 "bio": {
@@ -7668,9 +7927,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "education": {
-                    "type": "string",
-                    "maxLength": 2000,
-                    "minLength": 3
+                    "type": "string"
                 },
                 "instagram_url": {
                     "type": "string"
@@ -7685,24 +7942,19 @@ const docTemplate = `{
         },
         "dto.CreateLessonAssetRequest": {
             "type": "object",
-            "required": [
-                "duration",
-                "title"
-            ],
             "properties": {
                 "document_url": {
                     "type": "string"
                 },
                 "duration": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "is_able_to_preview": {
                     "type": "boolean"
                 },
                 "title": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "minLength": 3
+                    "type": "string"
                 },
                 "video_url": {
                     "type": "string"
@@ -8098,6 +8350,44 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.PaymentResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "attempt_count": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "failure_reason": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "paid_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "stripe_fee": {
+                    "type": "number"
+                },
+                "stripe_invoice_id": {
+                    "type": "string"
+                },
+                "stripe_payment_intent": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.PresignUploadRequest": {
             "type": "object",
             "required": [
@@ -8348,6 +8638,79 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.SubscriptionPlanInfo": {
+            "type": "object",
+            "properties": {
+                "billing_cycle": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                }
+            }
+        },
+        "dto.SubscriptionPurchaseResponse": {
+            "type": "object",
+            "properties": {
+                "billing_cycle": {
+                    "type": "string"
+                },
+                "cancel_at_period_end": {
+                    "type": "boolean"
+                },
+                "canceled_at": {
+                    "type": "string"
+                },
+                "current_period_end": {
+                    "type": "string"
+                },
+                "current_period_start": {
+                    "type": "string"
+                },
+                "ended_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.PaymentResponse"
+                    }
+                },
+                "plan": {
+                    "$ref": "#/definitions/dto.SubscriptionPlanInfo"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "stripe_checkout_session_id": {
+                    "type": "string"
+                },
+                "stripe_subscription_id": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/dto.UserResponse"
+                }
+            }
+        },
         "dto.TeacherGrowthStatisticsResponse": {
             "type": "object",
             "properties": {
@@ -8470,8 +8833,7 @@ const docTemplate = `{
         "dto.UpdateChapterWithLessonsRequest": {
             "type": "object",
             "required": [
-                "lessons",
-                "title"
+                "lessons"
             ],
             "properties": {
                 "id": {
@@ -8486,9 +8848,7 @@ const docTemplate = `{
                     }
                 },
                 "title": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "minLength": 3
+                    "type": "string"
                 }
             }
         },
@@ -8612,16 +8972,13 @@ const docTemplate = `{
         },
         "dto.UpdateLessonInChapterRequest": {
             "type": "object",
-            "required": [
-                "duration",
-                "title"
-            ],
             "properties": {
                 "document_url": {
                     "type": "string"
                 },
                 "duration": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "id": {
                     "description": "Empty = new lesson, filled = update/keep existing",
@@ -8631,9 +8988,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "title": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "minLength": 3
+                    "type": "string"
                 },
                 "video_url": {
                     "type": "string"

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"elearning-api/apperror"
@@ -272,6 +273,7 @@ func (h *userHandler) ApplyToInstructor() gin.HandlerFunc {
 			_ = c.Error(err)
 			return
 		}
+		fmt.Printf("Received apply to instructor request: %+v\n", *request.CategoryID)
 
 		err = h.userService.ApplyToInstructor(c.Request.Context(), userID, request)
 		if err != nil {

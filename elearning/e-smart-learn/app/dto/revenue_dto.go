@@ -88,12 +88,12 @@ func (r *TeacherRevenueFilterRequest) Process() {
 // TeacherRevenueItemResponse is one row in the teacher revenue list.
 // Monetary values are in USD (dollars), converted from cents.
 type TeacherRevenueItemResponse struct {
-	TeacherID       string  `json:"teacher_id"`
-	TeacherName     string  `json:"teacher_name"`
-	TeacherEmail    string  `json:"teacher_email"`
-	TeacherAvatar   string  `json:"teacher_avatar"`
-	TotalAmount     float64 `json:"total_amount"`     // gross revenue from course sales
-	StripeFee       float64 `json:"stripe_fee"`       // Stripe processing fee share
-	InstructorNet   float64 `json:"instructor_net"`   // total_amount - stripe_fee
-	TotalCourses    int64   `json:"total_courses"`    // number of courses owned
+	TeacherID     string  `json:"teacher_id"`
+	TeacherName   string  `json:"teacher_name"`
+	TeacherEmail  string  `json:"teacher_email"`
+	TeacherAvatar string  `json:"teacher_avatar"`
+	TotalAmount   float64 `json:"total_amount"`   // gross revenue from course sales
+	StripeFee     float64 `json:"stripe_fee"`     // Stripe processing fee share
+	InstructorNet float64 `json:"instructor_net"` // total_amount - stripe_fee
+	TotalCourses  int64   `json:"total_courses"`  // number of courses owned
 }

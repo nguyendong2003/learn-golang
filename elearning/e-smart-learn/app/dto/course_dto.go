@@ -21,6 +21,7 @@ type CourseResponse struct {
 	AverageRate       float64                    `json:"average_rate"`
 	TotalStudent      int64                      `json:"total_student"`
 	IsPurchased       bool                       `json:"is_purchased"`
+	Author            *AuthorResponse            `json:"author,omitempty"`
 	Category          *CategoryResponse          `json:"category,omitempty"`
 	InstructorProfile *InstructorProfileResponse `json:"instructor,omitempty"`
 	CreatedAt         time.Time                  `json:"created_at"`
@@ -104,6 +105,7 @@ func NewCourseDetailResponse(m *model.Course) *CourseResponse {
 		AverageRate:       m.AverageRate,
 		TotalStudent:      m.TotalStudent,
 		IsPurchased:       false,
+		Author:            NewAuthorResponse(m.User),
 		Category:          category,
 		InstructorProfile: instructorProfile,
 		CreatedAt:         m.CreatedAt,
@@ -114,7 +116,7 @@ func NewCourseDetailResponse(m *model.Course) *CourseResponse {
 type CreateCourseRequest struct {
 	Title       string                      `json:"title" binding:"required,min=3,max=255"`
 	Description string                      `json:"description"`
-	Price       float64                     `json:"price" binding:"required,gt=0"`
+	Price       float64                     `json:"price" binding:"required,gt=0,lt=100000000"`
 	ImageURL    string                      `json:"image_url" binding:"required,url"`
 	CategoryID  uuid.UUID                   `json:"category_id" binding:"required,uuid"`
 	Coupons     []CreateCourseCouponRequest `json:"coupons" binding:"omitempty,dive"`
@@ -128,7 +130,7 @@ type CreateCourseCouponRequest struct {
 type UpdateCourseRequest struct {
 	Title         *string                     `json:"title" binding:"omitempty,min=3,max=255"`
 	Description   *string                     `json:"description"`
-	Price         *float64                    `json:"price" binding:"omitempty,gt=0"`
+	Price         *float64                    `json:"price" binding:"omitempty,gt=0,lt=100000000"`
 	ImageURL      *string                     `json:"image_url" binding:"omitempty,url"`
 	CategoryID    *string                     `json:"category_id" binding:"omitempty,uuid"`
 	CouponsAdd    []CreateCourseCouponRequest `json:"coupons_add" binding:"omitempty,dive"`
@@ -157,7 +159,7 @@ type ListCourseRequest struct {
 	Title      *string              `form:"title"`
 	CategoryID *string              `form:"category_id" binding:"omitempty,uuid"`
 	Status     *consts.CourseStatus `form:"status"`
-	UserID     *string              `form:"-"`
+	UserID     *string              `form:"user_id"`
 }
 
 type CourseSlugRequest struct {

@@ -23,19 +23,19 @@ func NewLessonRepository(db DbRepository) LessonRepository {
 	}
 }
 func (r *lessonRepository) SaveAll(ctx context.Context, lessons []*model.Lesson) ([]*model.Lesson, error) {
-    if len(lessons) == 0 {
-        return lessons, nil
-    }
-    err := r.db.GetDB().WithContext(ctx).
-        Clauses(clause.OnConflict{
-            Columns:   []clause.Column{{Name: "id"}},
-            UpdateAll: true, 
-        }).
-        CreateInBatches(&lessons, 100).Error 
+	if len(lessons) == 0 {
+		return lessons, nil
+	}
+	err := r.db.GetDB().WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "id"}},
+			UpdateAll: true,
+		}).
+		CreateInBatches(&lessons, 100).Error
 
-    if err != nil {
-        return nil, err
-    }
+	if err != nil {
+		return nil, err
+	}
 
-    return lessons, nil
+	return lessons, nil
 }

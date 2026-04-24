@@ -111,9 +111,10 @@ func (server *ApiServer) route() {
 		courseGroup := server.router.Group("/api/v1/courses")
 		courseGroup.Use(server.OptionalAuthHandler())
 		courseGroup.GET("", server.courseHandler.GetList())
+		courseGroup.GET("/recommend", server.courseHandler.Recommend())
+		courseGroup.GET("/featured", server.courseHandler.Featured())
 		courseGroup.GET("/:id", server.courseHandler.GetByID())
 		courseGroup.GET("/slug/:slug",
-			server.OptionalAuthHandler(),
 			server.LoadRolePermissionOptionalHandler(),
 			server.courseHandler.GetBySlug(),
 		)
@@ -121,6 +122,8 @@ func (server *ApiServer) route() {
 
 		courseBuyer := courseGroup.Group("")
 		courseBuyer.Use(server.AuthHandler())
+		courseBuyer.GET("/recommend/personalized", server.courseHandler.PersonalizedRecommend())
+		courseBuyer.GET("/recommend/by-categories", server.courseHandler.RecommendByCategories())
 		courseBuyer.POST("/:id/purchase-checkout-session", server.courseHandler.CreatePurchaseCheckoutSession())
 		courseBuyer.POST("/:id/purchase-checkout-preview", server.courseHandler.PreviewPurchaseCheckout())
 
@@ -132,6 +135,7 @@ func (server *ApiServer) route() {
 		)
 		courseProtected.POST("",
 			server.RequirePermissionHandler("course_create"),
+			server.RequireInstructorProfileOrAdminHandler(),
 			server.courseHandler.Create(),
 		)
 		courseProtected.PUT("/:id",
@@ -165,9 +169,9 @@ func (server *ApiServer) route() {
 		)
 
 		courseProtected.POST("/:id/submit",
-			server.RequireInstructorProfileHandler(),
-			server.LoadCourseHandler(),
-			server.RequireCourseOwnerHandler(),
+			server.RequireInstructorProfileOrAdminHandler(),
+			// server.LoadCourseHandler(),
+			// server.RequireCourseOwnerHandler(),
 			server.courseHandler.SubmitForReview(),
 		)
 		//
@@ -189,6 +193,9 @@ func (server *ApiServer) route() {
 	}
 	// Course purchase verify by session
 	server.router.GET("/api/v1/course-purchase/:session_id", server.courseHandler.GetCoursePurchaseBySessionID())
+
+	// Subscription purchase verify by session
+	server.router.GET("/api/v1/subscription-purchase/:session_id", server.subscriptionHandler.GetSubscriptionPurchaseBySessionID())
 
 	// Admin review endpoints for courses
 	server.router.POST("/api/v1/admin/courses/:id/approve",
@@ -262,6 +269,7 @@ func (server *ApiServer) route() {
 	// Lesson route
 	{
 		lessonGroup := server.router.Group("/api/v1/courses/:id")
+		lessonGroup.Use(server.OptionalAuthHandler())
 		lessonGroup.GET("/lessons", server.lessonHandler.GetByCourseID())
 		lessonProtected := lessonGroup.Group("")
 		lessonProtected.Use(server.AuthHandler(), server.LoadRolePermissionHandler())

@@ -11,6 +11,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type CourseCountRow struct {
+	CourseID uuid.UUID `gorm:"column:course_id"`
+	Total    int64     `gorm:"column:total"`
+}
+
 type CourseRepository interface {
 	Repository[model.Course]
 	GetStatistics(ctx context.Context) (*model.CourseStatistics, error)
@@ -23,6 +28,11 @@ type CourseRepository interface {
 		sortOrder string,
 	) ([]*model.InstructorTaughtCourseRevenue, int64, error)
 	CountCreatedSince(ctx context.Context, since time.Time) (int64, error)
+	GetTopCoursesByEnrollment(ctx context.Context, limit int, excludeCourseIDs []uuid.UUID) ([]*model.Course, error)
+	// Return category ID of category that with most enrollments
+	GetTopCategoryID(ctx context.Context) (uuid.UUID, error)
+	GetTopCoursesByCategory(ctx context.Context, categoryID uuid.UUID, limit int, excludeCourseIDs []uuid.UUID) ([]*model.Course, error)
+	GetTopCourseIDsAndCountsByCategory(ctx context.Context, categoryID uuid.UUID, limit int, excludeCourseIDs []uuid.UUID) ([]CourseCountRow, error)
 }
 
 type courseRepository struct {
@@ -117,4 +127,128 @@ func (r *courseRepository) GetInstructorTaughtCourseRevenue(
 
 func (r *courseRepository) CountCreatedSince(ctx context.Context, since time.Time) (int64, error) {
 	return r.Count(ctx, "created_at >= ? AND deleted_at IS NULL", since)
+}
+
+func (r *courseRepository) GetTopCoursesByEnrollment(ctx context.Context, limit int, excludeCourseIDs []uuid.UUID) ([]*model.Course, error) {
+	var courses []*model.Course
+
+	db := r.db.GetDB().WithContext(ctx).
+		Table("courses c").
+		Select("c.*").
+		Joins("LEFT JOIN enrollments e ON e.course_id = c.id AND e.canceled_at IS NULL").
+		Where("c.deleted_at IS NULL AND c.status = ?", consts.CoursePublished)
+
+	if len(excludeCourseIDs) > 0 {
+		db = db.Where("c.id NOT IN ?", excludeCourseIDs)
+	}
+
+	db = db.Group("c.id").Order("COUNT(e.id) DESC")
+
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
+
+	if err := db.Scan(&courses).Error; err != nil {
+		return nil, err
+	}
+
+	return courses, nil
+}
+
+func (r *courseRepository) GetTopCategoryID(ctx context.Context) (uuid.UUID, error) {
+	type catRow struct {
+		CategoryID uuid.UUID `gorm:"column:category_id"`
+		Total      int64     `gorm:"column:total"`
+	}
+
+	var row catRow
+	query := r.db.GetDB().WithContext(ctx).
+		Table("courses c").
+		Select("c.category_id as category_id, COUNT(e.id) as total").
+		Joins("LEFT JOIN enrollments e ON e.course_id = c.id AND e.canceled_at IS NULL").
+		Where("c.deleted_at IS NULL AND c.status = ?", consts.CoursePublished).
+		Group("c.category_id").
+		Order("total DESC").
+		Limit(1)
+
+	if err := query.Scan(&row).Error; err != nil {
+		return uuid.Nil, err
+	}
+
+	if row.CategoryID == uuid.Nil {
+		return uuid.Nil, nil
+	}
+
+	return row.CategoryID, nil
+}
+
+func (r *courseRepository) GetTopCoursesByCategory(ctx context.Context, categoryID uuid.UUID, limit int, excludeCourseIDs []uuid.UUID) ([]*model.Course, error) {
+	type idRow struct {
+		CourseID uuid.UUID `gorm:"column:course_id"`
+		Total    int64     `gorm:"column:total"`
+	}
+
+	var rows []idRow
+	query := r.db.GetDB().WithContext(ctx).
+		Table("courses c").
+		Select("c.id as course_id, COUNT(e.id) as total").
+		Joins("LEFT JOIN enrollments e ON e.course_id = c.id AND e.canceled_at IS NULL").
+		Where("c.category_id = ? AND c.deleted_at IS NULL AND c.status = ?", categoryID, consts.CoursePublished)
+
+	if len(excludeCourseIDs) > 0 {
+		query = query.Where("c.id NOT IN ?", excludeCourseIDs)
+	}
+
+	query = query.Group("c.id").Order("total DESC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	if len(rows) == 0 {
+		return []*model.Course{}, nil
+	}
+
+	ids := make([]uuid.UUID, 0, len(rows))
+	for _, rrow := range rows {
+		ids = append(ids, rrow.CourseID)
+	}
+
+	// fetch courses with preloads
+	preloads := []Preload{
+		PreloadPath(User, InstructorProfile, User),
+		PreloadPath(Category),
+	}
+
+	return r.FindAll(ctx, "id IN ?", preloads, ids)
+}
+
+func (r *courseRepository) GetTopCourseIDsAndCountsByCategory(ctx context.Context, categoryID uuid.UUID, limit int, excludeCourseIDs []uuid.UUID) ([]CourseCountRow, error) {
+	var rows []CourseCountRow
+
+	query := r.db.GetDB().WithContext(ctx).
+		Table("courses c").
+		Select("c.id as course_id, COUNT(e.id) as total").
+		Joins("LEFT JOIN enrollments e ON e.course_id = c.id AND e.canceled_at IS NULL").
+		Where("c.category_id = ? AND c.deleted_at IS NULL AND c.status = ?", categoryID, consts.CoursePublished)
+
+	if len(excludeCourseIDs) > 0 {
+		query = query.Where("c.id NOT IN ?", excludeCourseIDs)
+	}
+
+	query = query.Group("c.id").Order("total DESC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	return rows, nil
 }
