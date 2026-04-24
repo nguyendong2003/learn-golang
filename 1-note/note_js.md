@@ -281,10 +281,18 @@ npm install @prisma/client
 npx prisma generate
 ```
 
-### 9. Install driver for SQLite
+### 9. Install driver
+
+- SQLite
 
 ```bash
 npm install @prisma/adapter-better-sqlite3
+```
+
+- Postgres
+
+```bash
+npm install @prisma/adapter-pg
 ```
 
 ### 10
