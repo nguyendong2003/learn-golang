@@ -887,3 +887,33 @@ docker rm -f postgres-ecommerce-db
 ```bash
 npm install --save zod
 ```
+
+### 22. Install tsconfig-paths (để tạo seed data initialScript)
+
+- Cài thư viện này để `initialScript/index.ts` có thể nhận path và chạy
+
+```bash
+npm i tsconfig-paths -D
+```
+
+- Thêm config vào `tsconfig.json` cùng cấp với "compilerOptions"
+
+```json
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  }
+```
+
+- Chạy sau khi thêm vào `package.json`:
+
+```bash
+npm run init-seed-data
+```
+
+### 23. Install nestjs-zod (https://github.com/BenLorantfy/nestjs-zod)
+
+- Cài thư viện `nestjs-zod` để validation
+
+```bash
+npm i nestjs-zod
+```
