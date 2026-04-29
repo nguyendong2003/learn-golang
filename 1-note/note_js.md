@@ -917,3 +917,68 @@ npm run init-seed-data
 ```bash
 npm i nestjs-zod
 ```
+
+### 24. Install ms, date-fns
+
+- Cài thư viện `ms` để convert env 1m -> 1 minutes
+
+```bash
+npm i ms
+```
+
+- Cài thư viện `date-fns` để xử lý ngày giờ
+
+```bash
+npm i date-fns
+```
+
+### 25. Send email
+
+- Dùng `https://resend.com/` để gửi email -> vào trang web đó đăng nhập vào và tạo API Key
+- Trong môi trường sandbox do chưa verify domain nên chỉ gửi được email cho tài khoản tạo API key thôi
+- Muốn gửi cho người khác thì phải verify domain
+- Lên google search `email html checker` -> vào `https://app.postdrop.io/` để preview change html template send email
+- Dùng thư viện `react email` để hổ trợ gửi email (`https://react.email/docs/integrations/resend`) -> đọc docs này để tích hợp `react email` với `resend` (tạo project mới ở thư mục mới và chạy thử: `npx create-email@latest`)
+
+- Cài đặt thư viện `resend` vào project ecommerce (`https://resend.com/docs/send-with-nodejs`)
+
+```bash
+npm install resend
+```
+
+- Cài đặt thư viện `react email` vào project ecommerce (`https://react.email/docs/getting-started/manual-setup`)
+
+1. Chạy
+
+```bash
+npm install @react-email/ui -D -E
+npm install react-email react react-dom -E
+```
+
+2. Thêm vào `package.json`
+
+```json
+{
+  "scripts": {
+    "email:dev": "email dev"
+  }
+}
+```
+
+3. Thêm vào `tsconfig.json`
+
+```json
+{
+  "compilerOptions": {
+    "jsx": "react"
+  }
+}
+```
+
+### 26. Install uuid (https://www.npmjs.com/package/uuid)
+
+```bash
+npm i uuid
+```
+
+- Dùng thư viện uuid này trong chỗ `token.service.ts` để khi sign access token, refresh token nếu payload trùng thì token sinh ra có thể bị trùng. Cài thư viện này để gen ra tránh khả năng trùng nếu giống payload
