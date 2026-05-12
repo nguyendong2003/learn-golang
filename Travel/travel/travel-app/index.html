@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TravelViet — Khám phá Việt Nam tươi đẹp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --primary: oklch(0.38 0.15 220);
+      --primary-hov: oklch(0.32 0.14 220);
+      --primary-mid: oklch(0.55 0.13 220);
+      --primary-lt: oklch(0.93 0.05 220);
+      --primary-xlt: oklch(0.97 0.02 220);
+      --accent: oklch(0.67 0.19 35);
+      --accent-hov: oklch(0.60 0.18 35);
+      --accent-lt: oklch(0.95 0.07 35);
+      --gold: oklch(0.72 0.15 80);
+      --gold-lt: oklch(0.96 0.05 80);
+      --bg: oklch(0.985 0.007 80);
+      --surface: #fff;
+      --text: oklch(0.18 0.012 250);
+      --text2: oklch(0.45 0.018 250);
+      --text3: oklch(0.65 0.012 250);
+      --border: oklch(0.91 0.007 250);
+      --border-lt: oklch(0.96 0.004 250);
+      --success: oklch(0.58 0.14 148);
+      --success-lt: oklch(0.94 0.05 148);
+      --danger: oklch(0.58 0.19 25);
+      --danger-lt: oklch(0.95 0.06 25);
+      --warn: oklch(0.72 0.14 75);
+      --warn-lt: oklch(0.96 0.05 75);
+      --r-sm: 8px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px; --r-full: 9999px;
+      --sh-xs: 0 1px 3px rgba(0,0,0,.07);
+      --sh-sm: 0 2px 8px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --sh-md: 0 4px 16px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.04);
+      --sh-lg: 0 12px 32px rgba(0,0,0,.12), 0 4px 8px rgba(0,0,0,.05);
+      --sh-xl: 0 24px 48px rgba(0,0,0,.15), 0 8px 16px rgba(0,0,0,.08);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Be Vietnam Pro', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+    button, input, select, textarea { font-family: inherit; }
+    a { color: inherit; text-decoration: none; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--border-lt); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Container */
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 22px; border-radius: var(--r-full); font-weight: 600;
+      font-size: 14px; cursor: pointer; border: none; transition: all 0.18s;
+      white-space: nowrap; letter-spacing: 0.01em; line-height: 1.4;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hov); box-shadow: 0 4px 14px rgba(27,72,148,.3); }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-accent:hover { background: var(--accent-hov); box-shadow: 0 4px 14px rgba(200,82,42,.3); }
+    .btn-outline { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); }
+    .btn-outline:hover { background: var(--primary-xlt); }
+    .btn-outline-w { background: transparent; border: 1.5px solid rgba(255,255,255,.7); color: #fff; }
+    .btn-outline-w:hover { background: rgba(255,255,255,.12); border-color: #fff; }
+    .btn-ghost { background: transparent; color: var(--text2); border: none; }
+    .btn-ghost:hover { background: var(--border-lt); color: var(--text); }
+    .btn-sm { padding: 7px 16px; font-size: 13px; }
+    .btn-lg { padding: 14px 32px; font-size: 16px; font-weight: 700; }
+
+    /* Badges */
+    .badge {
+      display: inline-flex; align-items: center; padding: 3px 9px;
+      border-radius: var(--r-full); font-size: 11px; font-weight: 700;
+      letter-spacing: .03em; white-space: nowrap;
+    }
+    .badge-primary { background: var(--primary-lt); color: var(--primary); }
+    .badge-accent { background: var(--accent-lt); color: var(--accent); }
+    .badge-success { background: var(--success-lt); color: var(--success); }
+    .badge-danger { background: var(--danger-lt); color: var(--danger); }
+    .badge-gold { background: var(--gold-lt); color: var(--gold); }
+    .badge-warn { background: var(--warn-lt); color: var(--warn); }
+    .badge-neutral { background: var(--border-lt); color: var(--text2); }
+
+    /* Card */
+    .card { background: var(--surface); border-radius: var(--r-md); box-shadow: var(--sh-sm); overflow: hidden; transition: box-shadow .2s, transform .2s; }
+    .card:hover { box-shadow: var(--sh-md); transform: translateY(-3px); }
+    .card-flat { background: var(--surface); border-radius: var(--r-md); border: 1.5px solid var(--border); }
+
+    /* Form */
+    .input {
+      width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+      border-radius: var(--r-sm); font-size: 14px; color: var(--text);
+      background: var(--surface); outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(27,72,148,.10); }
+    .input::placeholder { color: var(--text3); }
+
+    /* Section */
+    .section { padding: 60px 0; }
+    .section-sm { padding: 40px 0; }
+    .section-title { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+    .section-sub { font-size: 14px; color: var(--text2); margin-top: 4px; }
+
+    /* H-scroll */
+    .h-scroll { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+    .h-scroll::-webkit-scrollbar { display: none; }
+
+    /* Grid */
+    .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; }
+
+    /* Stars */
+    .stars { color: var(--gold); letter-spacing: 1px; }
+
+    /* Status */
+    .status { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: var(--r-full); font-size: 12px; font-weight: 600; }
+    .st-pending { background: var(--warn-lt); color: var(--warn); }
+    .st-confirmed { background: var(--primary-lt); color: var(--primary); }
+    .st-paid { background: oklch(.93 .06 148); color: oklch(.45 .14 148); }
+    .st-completed { background: var(--success-lt); color: var(--success); }
+    .st-cancelled { background: var(--danger-lt); color: var(--danger); }
+    .st-inprogress { background: oklch(.93 .04 278); color: oklch(.42 .16 278); }
+
+    /* Chip */
+    .chip {
+      display: inline-flex; align-items: center; padding: 5px 14px;
+      border-radius: var(--r-full); font-size: 13px; font-weight: 500;
+      border: 1.5px solid var(--border); background: var(--surface);
+      color: var(--text2); cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .chip:hover, .chip.active { border-color: var(--primary); color: var(--primary); background: var(--primary-xlt); }
+
+    /* Img placeholder */
+    .imgbox { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+    /* Num stepper */
+    .nstep { display: flex; align-items: center; gap: 0; }
+    .nbtn { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--border); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--text2); transition: all .15s; line-height: 1; }
+    .nbtn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-xlt); }
+    .nval { width: 36px; text-align: center; font-weight: 700; font-size: 15px; }
+
+    /* Divider */
+    hr { border: none; border-top: 1px solid var(--border); }
+
+    /* Animation */
+    @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+    .page-anim { animation: fadeUp .25s ease both; }
+    @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+    .dropdown-anim { animation: slideDown .18s ease both; }
+
+    /* Tooltip */
+    .tooltip-wrap { position: relative; }
+
+    /* Progress steps */
+    .step-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; transition: all .2s; }
+    .step-line { flex: 1; height: 2px; background: var(--border); }
+    .step-line.done { background: var(--primary); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="utils.jsx"></script>
+  <script type="text/babel" src="Header.jsx"></script>
+  <script type="text/babel" src="HomePage.jsx"></script>
+  <script type="text/babel" src="SearchPage.jsx"></script>
+  <script type="text/babel" src="TourDetailPage.jsx"></script>
+  <script type="text/babel" src="HotelDetailPage.jsx"></script>
+  <script type="text/babel" src="ComboDetailPage.jsx"></script>
+  <script type="text/babel" src="DealsPage.jsx"></script>
+  <script type="text/babel" src="BookingPage.jsx"></script>
+  <script type="text/babel" src="AccountPage.jsx"></script>
+  <script type="text/babel" src="App.jsx"></script>
+</body>
+</html>

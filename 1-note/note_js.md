@@ -982,3 +982,19 @@ npm i uuid
 ```
 
 - Dùng thư viện uuid này trong chỗ `token.service.ts` để khi sign access token, refresh token nếu payload trùng thì token sinh ra có thể bị trùng. Cài thư viện này để gen ra tránh khả năng trùng nếu giống payload
+
+### 27. Install googleapis (https://www.npmjs.com/package/googleapis)
+
+```bash
+npm i googleapis
+```
+
+- Cài thư viện này để đăng nhập bằng google
+
+### 28. Install otpauth (https://www.npmjs.com/package/otpauth)
+
+- Cài đặt thư viện `otpauth` để làm chức năng 2fa (Two-Factor Authentication)
+
+```bash
+npm i otpauth
+```
