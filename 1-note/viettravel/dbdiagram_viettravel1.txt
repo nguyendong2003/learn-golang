@@ -1,18 +1,7 @@
-// --- ĐỊNH NGHĨA ENUM TRONG POSTGRES ---
-
-Enum role_name_enum {
-  ADMIN       // Toàn quyền hệ thống
-  STAFF       // Nhân viên vận hành (Moderator, CS, Finance)
-  AGENT       // Đại lý (Chủ KS, Công ty tour)
-  USER        // Khách hàng cá nhân
-  CORPORATE   // Khách hàng doanh nghiệp
-  AFFILIATE   // Cộng tác viên
-}
-
+// --- NHÓM 1: HỆ THỐNG RBAC (UUID + ENUM + SOFT DELETE) ---
 Enum user_status_enum {
   ACTIVE
   LOCKED
-  PENDING
   DELETED
 }
 
@@ -23,11 +12,9 @@ Enum agent_status_enum {
   BANNED
 }
 
-// --- NHÓM 1: HỆ THỐNG RBAC (UUID + ENUM + SOFT DELETE) ---
-
 Table roles {
   id uuid [primary key, default: `gen_random_uuid()`]
-  name role_name_enum [not null, unique]
+  name varchar(100) [not null, unique]
   description text
   
   created_at timestamp [default: `now()`]
@@ -46,15 +33,6 @@ Table permissions {
   deleted_at timestamp
 }
 
-Table role_permissions {
-  role_id uuid [ref: > roles.id, not null]
-  permission_id uuid [ref: > permissions.id, not null]
-  
-  indexes {
-    (role_id, permission_id) [pk]
-  }
-}
-
 Table users {
   id uuid [primary key, default: `gen_random_uuid()`]
   role_id uuid [ref: > roles.id, not null]
@@ -64,19 +42,36 @@ Table users {
   password varchar(255) [not null]
   name varchar(255)
   phone varchar(20) [unique]
-  avatar text
+  avatar_url text
   
   status user_status_enum [default: 'ACTIVE']
   is_affiliate boolean [default: false]
   
   // Tích điểm & Hạng (Module 5.6)
-  rank_id uuid [ref: > customer_ranks.id]
-  points integer [default: 0]
+  customer_rank_id uuid [ref: > customer_ranks.id]
+  point integer [default: 0]
   
-  last_login_at timestamp
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
   deleted_at timestamp
+}
+
+Table role_permissions {
+  role_id uuid [ref: > roles.id, not null]
+  permission_id uuid [ref: > permissions.id, not null]
+  
+  indexes {
+    (role_id, permission_id) [pk]
+  }
+}
+
+Table user_roles {
+  user_id uuid [ref: > users.id, not null]
+  role_id uuid [ref: > roles.id, not null]
+  
+  indexes {
+    (user_id, role_id) [pk]
+  }
 }
 
 Table customer_ranks {
@@ -90,17 +85,37 @@ Table customer_ranks {
   deleted_at timestamp
 }
 
+// Bảng danh mục lĩnh vực hoạt động
+Table activity_fields {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(255) [not null, unique, note: 'Tên lĩnh vực hoạt động']
+  slug varchar(255) [unique, not null]
+  description text
+  
+  // Theo BR-18: Không xóa, chỉ chuyển trạng thái
+  is_active boolean [default: true] 
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
 Table agents {
   id uuid [primary key, default: `gen_random_uuid()`]
-  user_id uuid [ref: - users.id, unique, not null]
-  agent_code varchar(20) [unique, not null]
-  
+  user_id uuid [ref: > users.id, unique, not null]
+
   business_name varchar(255)
+  license_url text [note: 'Link ảnh/PDF giấy phép kinh doanh']
+  agent_code varchar(20) [unique, not null, note: 'Format: AG-YYYYMM-XXXXX']
   tax_code varchar(50) [unique, not null]
-  license_url text
-  representative_name varchar(255)
-  address text
   
+  // Thông tin người đại diện
+  representative_name varchar(255)
+  representative_id_number varchar(20) [unique, note: 'Số CCCD']
+  
+  bussiness_address varchar
+  bussiness_phone varchar(20)
+  description text
+
   status agent_status_enum [default: 'PENDING']
   commission_rate float [default: 10.0]
   
@@ -109,45 +124,53 @@ Table agents {
   deleted_at timestamp
 }
 
-Table audit_logs {
+Table agent_activities {
+  agent_id uuid [ref: > agents.id, not null]
+  activity_field_id uuid [ref: > activity_fields.id, not null]
+  
+  indexes {
+    (agent_id, activity_field_id) [pk]
+  }
+}
+
+Table staff_audit_logs {
   id uuid [primary key, default: `gen_random_uuid()`]
   user_id uuid [ref: > users.id]
-  action varchar(100)
-  target_table varchar(100)
-  target_id uuid
-  old_data jsonb
-  new_data jsonb
-  ip_address varchar(45)
+  action varchar
+  ip_address varchar
   user_agent text
   
   created_at timestamp [default: `now()`]
 }
 
 // --- NHÓM 2: ĐỊA LÝ (GEOGRAPHY) - CẤU TRÚC 3 CẤP VIỆT NAM ---
+Enum destination_level_enum {
+  PROVINCE
+  WARD
+  PLACE
+}
 
 Table destinations {
   id uuid [primary key, default: `gen_random_uuid()`]
   
-  // Quan hệ đệ quy (Self-reference) cho cây Tỉnh -> Huyện -> Xã
+  // Quan hệ đệ quy (Self-reference) cho cây Tỉnh -> Phường -> Điểm đến
   parent_id uuid [ref: > destinations.id, note: 'Trỏ đến ID của cấp cha']
   
+  level destination_level_enum [not null]
+  
   name varchar(255) [not null]
-  slug varchar(255) [unique, not null, note: 'Dùng cho URL SEO']
-  
-  level integer [not null, note: '1: Tỉnh/TP, 2: Quận/Huyện, 3: Phường/Xã']
   administrative_code varchar(20) [unique, note: 'Mã hành chính chuẩn VN']
-  
   description text
   image_url text
-  
+
   // Tích hợp bản đồ (FR-AD-007)
   lat decimal(10, 8)
   lng decimal(11, 8)
-  
-  // Trạng thái & Marketing
+
+  slug varchar(255) [unique, not null, note: 'Dùng cho URL SEO']
+
   is_featured boolean [default: false, note: 'Hiển thị ở mục Điểm đến nổi bật']
   
-  // Audit & Soft Delete
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
   deleted_at timestamp

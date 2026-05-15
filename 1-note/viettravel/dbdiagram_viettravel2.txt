@@ -1,0 +1,329 @@
+// --- NHÓM 1: HỆ THỐNG RBAC (UUID + ENUM + SOFT DELETE) ---
+Enum user_status_enum {
+  ACTIVE
+  LOCKED
+  DELETED
+}
+
+Table roles {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(100) [not null, unique]
+  description text
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+Table permissions {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(100) [not null]
+  code varchar(100) [unique, not null, note: 'Example: agent.approve, tour.create']
+  description text
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+Table users {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  role_id uuid [ref: > roles.id, not null]
+  
+  email varchar(255) [unique, not null]
+  username varchar(255) [unique, not null]
+  password varchar(255) [not null]
+  name varchar(255)
+  phone varchar(20) [unique]
+  avatar_url text
+  
+  status user_status_enum [default: 'ACTIVE']
+  is_affiliate boolean [default: false]
+    
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+Table role_permissions {
+  role_id uuid [ref: > roles.id, not null]
+  permission_id uuid [ref: > permissions.id, not null]
+  
+  indexes {
+    (role_id, permission_id) [pk]
+  }
+}
+
+Table user_roles {
+  user_id uuid [ref: > users.id, not null]
+  role_id uuid [ref: > roles.id, not null]
+  
+  indexes {
+    (user_id, role_id) [pk]
+  }
+}
+
+Enum agent_status_enum {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+Table agents {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  user_id uuid [ref: > users.id, unique, not null]
+
+  business_name varchar(255)
+  license_url text [note: 'Link ảnh/PDF giấy phép kinh doanh']
+  agent_code varchar(20) [unique, not null, note: 'Format: AG-YYYYMM-XXXXX']
+  tax_code varchar(50) [unique, not null]
+  
+  // Thông tin người đại diện - Dạng Text (Để search & verify)
+  representative_name varchar(255)
+  representative_id_number varchar(20) [unique, note: 'Số CCCD']
+  
+  bussiness_address varchar
+  bussiness_phone varchar(20)
+  description text
+
+  status agent_status_enum [default: 'PENDING']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+Table agent_activities {
+  agent_id uuid [ref: > agents.id, not null]
+  activity_field_id uuid [ref: > activity_fields.id, not null]
+  
+  indexes {
+    (agent_id, activity_field_id) [pk]
+  }
+}
+
+Table staff_audit_logs {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  user_id uuid [ref: > users.id]
+  action varchar
+  ip_address varchar
+  user_agent text
+  
+  created_at timestamp [default: `now()`]
+}
+
+// --- NHÓM 2: ĐỊA LÝ (GEOGRAPHY) - CẤU TRÚC 3 CẤP VIỆT NAM ---
+Enum destination_level_enum {
+  PROVINCE
+  WARD
+  PLACE
+}
+
+Table destinations {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  
+  // Quan hệ đệ quy (Self-reference) cho cây Tỉnh -> Phường -> Điểm đến
+  parent_id uuid [ref: > destinations.id, note: 'Trỏ đến ID của cấp cha']
+  
+  level destination_level_enum [not null]
+  
+  name varchar(255) [not null]
+  administrative_code varchar(20) [unique, note: 'Mã hành chính chuẩn VN']
+  description text
+  image_url text
+
+  // Tích hợp bản đồ (FR-AD-007)
+  lat decimal(10, 8)
+  lng decimal(11, 8)
+
+  slug varchar(255) [unique, not null, note: 'Dùng cho URL SEO']
+
+  is_featured boolean [default: false, note: 'Hiển thị ở mục Điểm đến nổi bật']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+// --- Quản lý Danh mục ---
+// 0. Bảng danh mục lĩnh vực hoạt động của đại lý
+Table activity_fields {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(255) [not null, unique, note: 'Tên lĩnh vực hoạt động']
+  slug varchar(255) [unique, not null]
+  description text
+  
+  // Theo BR-18: Không xóa, chỉ chuyển trạng thái
+  is_active boolean [default: true] 
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+// 1. Loại tour (Hotel, Resort, Villa...)
+Table tour_types {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(255) [not null, unique]
+  slug varchar(255) [unique, not null]
+  description text
+  icon_url text
+  sort_order integer [default: 1]
+  is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp 
+}
+
+// 2. Loại khách sạn (Hotel, Resort, Villa...)
+Table hotel_types {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(255) [not null, unique]
+  slug varchar(255) [unique, not null]
+  description text
+  icon_url text
+  sort_order integer [default: 1]
+  is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp 
+}
+
+// 2. Hạng sao (1 sao -> 5 sao)
+Table star_ratings {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(50) [not null]
+  star_number integer [unique, not null, note: 'Giá trị số: 1, 2, 3, 4, 5']
+  slug varchar(255) [unique, not null]
+  description text
+  is_active boolean [default: true]
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp 
+}
+
+// 3. Loại phòng (Standard, Deluxe, Suite...)
+Table room_types {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(255) [not null, unique]
+  slug varchar(255) [unique, not null]
+  description text
+  icon_url text
+  sort_order integer [default: 1]
+  is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp 
+}
+
+// 4. Tiện nghi Khách sạn (Wifi, Bể bơi, Gym...)
+Table hotel_amenities {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(255) [not null, unique]
+  slug varchar(255) [unique, not null]
+  description text
+  icon_url text
+  sort_order integer [default: 1]
+  is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp 
+}
+
+// 5. Tiện nghi Phòng (Smart TV, Điều hòa, Minibar...)
+Table room_amenities {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(255) [not null, unique]
+  slug varchar(255) [unique, not null]
+  description text
+  icon_url text
+  sort_order integer [default: 1]
+  is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp 
+}
+
+
+// --- NHÓM 3: KHÁCH SẠN & LOẠI PHÒNG ---
+
+// Định nghĩa Enum cho Khách sạn
+Enum hotel_status_enum {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  REJECTED
+  PAUSED
+  ARCHIVED
+}
+
+
+
+// 1. Thông tin chung của Khách sạn
+Table hotels {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  agent_id uuid [ref: > agents.id, not null, note: 'Đại lý sở hữu']
+  destination_id uuid [ref: > destinations.id, not null, note: 'Vị trí (Phường/Xã)']
+  
+  name varchar(255) [not null]
+  slug varchar(255) [unique, not null]
+  hotel_type varchar(50) [note: 'Hotel, Resort, Homestay...']
+  star_rating integer [note: '1-5 sao']
+  
+  address text [not null]
+  lat decimal(10, 8)
+  lng decimal(11, 8)
+  
+  description text
+  amenities jsonb [note: 'Lưu mảng ID tiện nghi: [wifi_id, pool_id...]']
+  
+  check_in_time time [default: '14:00']
+  check_out_time time [default: '12:00']
+  
+  policies jsonb [note: 'Chính sách hủy, trẻ em, thú cưng...']
+  status hotel_status_enum [default: 'DRAFT']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+// 2. Hình ảnh khách sạn
+Table hotel_images {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  hotel_id uuid [ref: > hotels.id]
+  image_url text [not null]
+  is_primary boolean [default: false]
+  sort_order integer [default: 0]
+  created_at timestamp [default: `now()`]
+}
+
+// 3. Loại phòng (Phụ thuộc vào Hotel)
+Table room_types {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  hotel_id uuid [ref: > hotels.id, not null]
+  
+  name varchar(255) [not null, note: 'VD: Deluxe Sea View']
+  description text
+  
+  max_occupancy integer [default: 2, note: 'Số người lớn tối đa']
+  max_children integer [default: 0]
+  area_m2 decimal(5, 2)
+  bed_type varchar(100)
+  
+  amenities jsonb [note: 'Tiện nghi riêng của phòng']
+  total_rooms integer [not null, note: 'Tổng số phòng loại này khách sạn có']
+  base_price decimal(15, 2) [not null, note: 'Giá cơ bản để tham khảo']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
