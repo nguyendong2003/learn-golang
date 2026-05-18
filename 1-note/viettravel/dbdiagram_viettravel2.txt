@@ -73,19 +73,34 @@ Enum agent_status_enum {
 Table agents {
   id uuid [primary key, default: `gen_random_uuid()`]
   user_id uuid [ref: > users.id, unique, not null]
-
-  business_name varchar(255)
-  license_url text [note: 'Link ảnh/PDF giấy phép kinh doanh']
   agent_code varchar(20) [unique, not null, note: 'Format: AG-YYYYMM-XXXXX']
-  tax_code varchar(50) [unique, not null]
-  
-  // Thông tin người đại diện - Dạng Text (Để search & verify)
-  representative_name varchar(255)
+
+  // 1. Nhóm thông tin pháp lý (BR-60: Sửa là phải Admin duyệt lại)
+  business_name varchar(255)
+  tax_code varchar(50) [unique, not null, note: 'Mã số thuế']
+  license_url text [note: 'Link ảnh/PDF giấy phép kinh doanh']
+  representative_name varchar(255) [note: 'Tên người đại diện']
   representative_id_number varchar(20) [unique, note: 'Số CCCD']
   
-  bussiness_address varchar
-  bussiness_phone varchar(20)
-  description text
+  // 2. Nhóm thông tin giới thiệu & truyền thông (BR-61: Auto update, không cần duyệt)
+  logo_url text [note: 'Ảnh logo vuông, tối thiểu 500x500']
+  cover_url text [note: 'Ảnh bìa tỷ lệ 1920x400']
+  description text [note: 'Giới thiệu công ty (Rich text)']
+  
+  established_year integer [note: 'Năm thành lập']
+  company_size varchar(50) [note: 'Quy mô nhân sự (Ví dụ: 10-50 nhân viên)']
+  working_hours varchar(255) [note: 'Giờ làm việc (Ví dụ: 08:00 - 17:00)']
+  website_url varchar(255)
+  
+  // Mạng xã hội tách cột rõ ràng để dễ validate ở FE/BE
+  facebook_url varchar(255)
+  zalo_url varchar(255)
+  instagram_url varchar(255)
+
+  // 3. Thông tin liên hệ vận hành
+  business_address text
+  business_phone varchar(20) [note: 'Hotline hỗ trợ']
+  support_email varchar(255) [note: 'Email hỗ trợ khách hàng']
 
   status agent_status_enum [default: 'PENDING']
   
@@ -94,12 +109,27 @@ Table agents {
   deleted_at timestamp
 }
 
-Table agent_activities {
+Table agent_activity_fields {
   agent_id uuid [ref: > agents.id, not null]
-  activity_field_id uuid [ref: > activity_fields.id, not null]
+  activity_field_id uuid [ref: > activity_field_categories.id, not null]
   
   indexes {
     (agent_id, activity_field_id) [pk]
+  }
+}
+
+Table agent_images {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  agent_id uuid [ref: > agents.id, not null]
+  image_url text [not null]
+  sort_order integer [default: 1, not null, note: 'Mặc định từ 1. Ảnh có sort_order = 1 là ảnh đại diện']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    (agent_id, sort_order)
   }
 }
 
@@ -148,7 +178,7 @@ Table destinations {
 
 // --- Quản lý Danh mục ---
 // 0. Bảng danh mục lĩnh vực hoạt động của đại lý
-Table activity_fields {
+Table activity_field_categories {
   id uuid [primary key, default: `gen_random_uuid()`]
   name varchar(255) [not null, unique, note: 'Tên lĩnh vực hoạt động']
   slug varchar(255) [unique, not null]
@@ -162,8 +192,24 @@ Table activity_fields {
   deleted_at timestamp
 }
 
+// 0. Loại giường
+Table bed_categories {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(100) [not null, note: 'Tên hiển thị: Giường King, Giường Đơn...']
+  code varchar(50) [unique, not null, note: 'SINGLE, DOUBLE, TWIN, KING, QUEEN, BUNK_BED']
+  
+  // Sức chứa mặc định của loại giường
+  capacity integer [default: 2, note: 'Ví dụ: King = 2 người, Single = 1 người']
+  
+  is_active boolean [default: true]
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
 // 1. Loại tour (Hotel, Resort, Villa...)
-Table tour_types {
+Table tour_categories {
   id uuid [primary key, default: `gen_random_uuid()`]
   name varchar(255) [not null, unique]
   slug varchar(255) [unique, not null]
@@ -178,7 +224,7 @@ Table tour_types {
 }
 
 // 2. Loại khách sạn (Hotel, Resort, Villa...)
-Table hotel_types {
+Table hotel_categories {
   id uuid [primary key, default: `gen_random_uuid()`]
   name varchar(255) [not null, unique]
   slug varchar(255) [unique, not null]
@@ -192,8 +238,8 @@ Table hotel_types {
   deleted_at timestamp 
 }
 
-// 2. Hạng sao (1 sao -> 5 sao)
-Table star_ratings {
+// 3. Hạng sao (1 sao -> 5 sao)
+Table star_rating_categories {
   id uuid [primary key, default: `gen_random_uuid()`]
   name varchar(50) [not null]
   star_number integer [unique, not null, note: 'Giá trị số: 1, 2, 3, 4, 5']
@@ -206,8 +252,8 @@ Table star_ratings {
   deleted_at timestamp 
 }
 
-// 3. Loại phòng (Standard, Deluxe, Suite...)
-Table room_types {
+// 4. Loại phòng (Standard, Deluxe, Suite...)
+Table room_categories {
   id uuid [primary key, default: `gen_random_uuid()`]
   name varchar(255) [not null, unique]
   slug varchar(255) [unique, not null]
@@ -221,8 +267,8 @@ Table room_types {
   deleted_at timestamp 
 }
 
-// 4. Tiện nghi Khách sạn (Wifi, Bể bơi, Gym...)
-Table hotel_amenities {
+// 5. Tiện nghi Khách sạn (Wifi, Bể bơi, Gym...)
+Table hotel_facility_categories {
   id uuid [primary key, default: `gen_random_uuid()`]
   name varchar(255) [not null, unique]
   slug varchar(255) [unique, not null]
@@ -236,8 +282,8 @@ Table hotel_amenities {
   deleted_at timestamp 
 }
 
-// 5. Tiện nghi Phòng (Smart TV, Điều hòa, Minibar...)
-Table room_amenities {
+// 6. Tiện nghi Phòng (Smart TV, Điều hòa, Minibar...)
+Table room_facility_categories {
   id uuid [primary key, default: `gen_random_uuid()`]
   name varchar(255) [not null, unique]
   slug varchar(255) [unique, not null]
@@ -245,6 +291,36 @@ Table room_amenities {
   icon_url text
   sort_order integer [default: 1]
   is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp 
+}
+
+// 7. Phương tiện tour (Xe khách, Xe limousine, Máy bay, Tàu thủy...)
+Table transportation_categories {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(255) [not null, unique, note: 'VD: Xe limousine, Máy bay...']
+  slug varchar(255) [unique, not null]
+  description text
+  icon_url text
+  sort_order integer [default: 1]
+  is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp 
+}
+
+// 8. Loại bữa ăn (Sáng, Trưa, Tối, Buffet, Set menu...)
+Table meal_categories {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(255) [not null, unique, note: 'VD: Buffet, Set menu, Ăn sáng...']
+  slug varchar(255) [unique, not null]
+  description text
+  icon_url text
+  sort_order integer [default: 1]
+  is_active boolean [default: true]
 
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
@@ -254,7 +330,6 @@ Table room_amenities {
 
 // --- NHÓM 3: KHÁCH SẠN & LOẠI PHÒNG ---
 
-// Định nghĩa Enum cho Khách sạn
 Enum hotel_status_enum {
   DRAFT
   PENDING_REVIEW
@@ -265,35 +340,50 @@ Enum hotel_status_enum {
   ARCHIVED
 }
 
-
-
 // 1. Thông tin chung của Khách sạn
 Table hotels {
   id uuid [primary key, default: `gen_random_uuid()`]
   agent_id uuid [ref: > agents.id, not null, note: 'Đại lý sở hữu']
-  destination_id uuid [ref: > destinations.id, not null, note: 'Vị trí (Phường/Xã)']
-  
+  destination_id uuid [ref: > destinations.id, not null, note: 'Vị trí chốt cấp Phường/Xã']
+  hotel_category_id uuid [ref: > hotel_categories.id, not null]
+  star_rating_id uuid [ref: > star_rating_categories.id, not null]
+
   name varchar(255) [not null]
   slug varchar(255) [unique, not null]
-  hotel_type varchar(50) [note: 'Hotel, Resort, Homestay...']
-  star_rating integer [note: '1-5 sao']
   
-  address text [not null]
-  lat decimal(10, 8)
-  lng decimal(11, 8)
+  address text [not null, note: 'Số nhà, tên đường']
+  lat decimal(10, 8) [not null, note: 'Vĩ độ - Check BR-63 nằm trong VN']
+  lng decimal(11, 8) [not null, note: 'Kinh độ - Check BR-63 nằm trong VN']
   
-  description text
-  amenities jsonb [note: 'Lưu mảng ID tiện nghi: [wifi_id, pool_id...]']
+  description text [note: 'Mô tả tổng quan (Rich text, min 200 ký tự)']
+  video_url varchar(255) [note: 'URL Video giới thiệu YouTube (Optional)']
   
-  check_in_time time [default: '14:00']
-  check_out_time time [default: '12:00']
+  check_in_time time [default: '14:00', not null]
+  check_out_time time [default: '12:00', not null]
   
-  policies jsonb [note: 'Chính sách hủy, trẻ em, thú cưng...']
+  cancellation_policy jsonb [note: 'Chính sách hủy']
+  child_policy jsonb [note: 'Chính sách hủy']
+  pet_policy jsonb [note: 'Chính sách thú cưng']
+  languages jsonb [note: 'Mảng ngôn ngữ phục vụ. Ví dụ: ["vi", "en", "zh"]']
+
   status hotel_status_enum [default: 'DRAFT']
+
+  // Phí VAT + phí dịch vụ của khách sạn (BR-65)
+  tax_percent decimal(5, 2) [default: 10.00, not null, note: 'Thuế VAT (Ví dụ: 10%)']
+  service_fee_percent decimal(5, 2) [default: 5.00, not null, note: 'Phí dịch vụ khách sạn (Ví dụ: 5%)']
   
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
   deleted_at timestamp
+}
+
+Table hotel_facilities {
+  hotel_id uuid [ref: > hotels.id, not null]
+  hotel_facility_category_id uuid [ref: > hotel_facility_categories.id, not null]
+  
+  indexes {
+    (hotel_id, hotel_facility_category_id) [pk]
+  }
 }
 
 // 2. Hình ảnh khách sạn
@@ -301,12 +391,18 @@ Table hotel_images {
   id uuid [primary key, default: `gen_random_uuid()`]
   hotel_id uuid [ref: > hotels.id]
   image_url text [not null]
-  is_primary boolean [default: false]
-  sort_order integer [default: 0]
+  sort_order integer [default: 1, not null, note: 'Mặc định từ 1. Ảnh có sort_order = 1 là ảnh đại diện']
+  
   created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    (hotel_id, sort_order)
+  }
 }
 
-// 3. Loại phòng (Phụ thuộc vào Hotel)
+// 3. Loại phòng
 Table room_types {
   id uuid [primary key, default: `gen_random_uuid()`]
   hotel_id uuid [ref: > hotels.id, not null]
@@ -314,16 +410,367 @@ Table room_types {
   name varchar(255) [not null, note: 'VD: Deluxe Sea View']
   description text
   
-  max_occupancy integer [default: 2, note: 'Số người lớn tối đa']
-  max_children integer [default: 0]
-  area_m2 decimal(5, 2)
-  bed_type varchar(100)
+  max_occupancy integer [default: 2, note: 'Số khách tối đa (Người lớn + trẻ em)']
+  area decimal(5, 2)
   
-  amenities jsonb [note: 'Tiện nghi riêng của phòng']
-  total_rooms integer [not null, note: 'Tổng số phòng loại này khách sạn có']
-  base_price decimal(15, 2) [not null, note: 'Giá cơ bản để tham khảo']
+  total_room integer [not null, note: 'Tổng số phòng loại này khách sạn có']
+  view_room text
   
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
   deleted_at timestamp
 }
+
+Table room_facilities {
+  room_id uuid [ref: > room_types.id, not null]
+  room_facility_category_id uuid [ref: > room_facility_categories.id, not null]
+  
+  indexes {
+    (room_id, room_facility_category_id) [pk]
+  }
+}
+
+// Giường của loại phòng khách sạn (1 phòng có thể có nhiều loại giường)
+Table room_type_beds {
+  room_type_id uuid [ref: > room_types.id, not null]
+  bed_category_id uuid [ref: > bed_categories.id, not null]
+  
+  indexes {
+    (room_type_id, bed_category_id) [pk]
+  }
+}
+
+
+// 4. Hình ảnh khách sạn
+Table room_images {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  room_type_id uuid [ref: > room_types.id]
+  image_url text [not null]
+  sort_order integer [default: 1, not null, note: 'Mặc định từ 1. Ảnh có sort_order = 1 là ảnh đại diện']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    (room_type_id, sort_order)
+  }
+}
+
+// // 5. Phòng (bỏ bảng rooms đi do FR-AG-006)
+// Enum room_status_enum {
+//   AVAILABLE    [note: 'Phòng trống sẵn sàng đón khách']
+//   OCCUPIED     [note: 'Phòng đang có khách ở']
+//   CLEANING     [note: 'Phòng đang dọn dẹp']
+//   MAINTENANCE  [note: 'Phòng đang sửa chữa/bảo trì - KHÔNG ĐƯỢC BÁN']
+// }
+
+// Table rooms {
+//   id uuid [primary key, default: `gen_random_uuid()`]
+//   room_type_id uuid [ref: > room_types.id, not null, note: 'Thuộc loại phòng nào']
+  
+//   room_number varchar(50) [not null, note: 'Số phòng hoặc tên phòng (VD: 101, 202, P-VIP)']
+//   floor varchar(50) [note: 'Vị trí tầng (VD: Tầng 1, Tầng Phủ Tổng Thống)']
+  
+//   status room_status_enum [default: 'AVAILABLE', not null, note: 'Trạng thái vận hành thực tế']
+//   note text [note: 'Ghi chú riêng về phòng (VD: Hỏng vòi hoa sen, view bị che...)']
+
+//   created_at timestamp [default: `now()`]
+//   updated_at timestamp [default: `now()`]
+//   deleted_at timestamp
+
+//   // Partial Index
+//   indexes {
+//     (room_type_id, room_number) [name: "idx_rooms_type_number_active", note: "Chỉ UNIQUE khi WHERE deleted_at IS NULL"]
+//   }
+// }
+
+// =================================================================
+// --- NHÓM 4: CẤU HÌNH QUẢN LÝ GIÁ PHÒNG & PHỤ THU (FR-AG-005) ---
+// =================================================================
+
+// Danh mục phân loại các luật giá đặc biệt để chạy logic ưu tiên của BR-64
+Enum rate_type_enum {
+  SEASONAL     [note: 'Giá theo mùa (Mùa cao điểm/thấp điểm)']
+  WEEKEND      [note: 'Giá cuối tuần (Thứ 6, 7, CN)']
+  HOLIDAY      [note: 'Giá ngày lễ Tết']
+  PROMOTIONAL  [note: 'Giá khuyến mãi đặc biệt']
+}
+
+// 1. Bảng Cấu hình Giá & Phụ thu cơ bản (Quan hệ 1:1 với loại phòng)
+Table room_price_settings {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  room_type_id uuid [ref: > room_types.id, not null, note: 'Liên kết 1:1 với loại phòng']
+  
+  // Giá cơ bản khi không dính luật đặc biệt nào
+  base_price decimal(15, 2) [not null, note: 'Giá phòng mặc định/đêm (Cấu hình tại tab Giá)']
+  
+  // Các khoản phụ thu cố định
+  extra_adult_fee decimal(15, 2) [default: 0, note: 'Phụ thu thêm người lớn quá số lượng tiêu chuẩn']
+  extra_bed_fee decimal(15, 2) [default: 0, note: 'Phụ thu tiền thêm giường phụ (Extra bed)']
+  breakfast_fee decimal(15, 2) [default: 0, note: 'Phụ thu tiền ăn sáng bán lẻ tính theo người/đêm']
+  
+  // Phụ phí trẻ em 6-12 tuổi (phụ phí) (extra_child_fee = extra_adult_fee * (1 - extra_child_fee_percent) / 100.0)
+  extra_child_fee_percent decimal(5, 2) [default: 0, note: 'Phần trăm giá người lớn áp dụng cho trẻ em']
+  
+  is_active boolean [default: true, not null]
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  // Partial Index
+  indexes {
+    room_type_id [
+      name: "idx_room_price_settings_type_unique_active", 
+      note: "Partial Unique Index: Chỉ UNIQUE khi WHERE deleted_at IS NULL"
+    ]
+  }
+}
+
+// 2. Luật điều chỉnh giá linh hoạt theo thời điểm
+Table room_price_rules {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  room_type_id uuid [ref: > room_types.id, not null, note: 'Áp dụng cho loại phòng nào']
+  
+  name varchar(255) [not null, note: 'Tên đợt cấu hình (VD: Tết Nguyên Đán 2026, Mùa hè cao điểm)']
+  rate_type rate_type_enum [not null, note: 'Thứ tự ưu tiên tính toán: PROMOTIONAL > HOLIDAY > WEEKEND > SEASONAL']
+  
+  // Áp dụng cho cấu hình theo khoảng ngày (Mùa, Lễ, Khuyến mãi)
+  start_date date [note: 'Ngày bắt đầu áp dụng luật (Bỏ trống nếu là cấu hình cuối tuần cố định)']
+  end_date date [note: 'Ngày kết thúc áp dụng luật']
+  
+  // Áp dụng riêng cho cấu hình Cuối tuần (Lưu mảng JSON số ngày trong tuần. VD: [4, 5, 6] tương ứng Thứ 6, Thứ 7, Chủ Nhật)
+  days_of_week integer[] [note: 'Mảng các ngày trong tuần áp dụng cho rule WEEKEND']
+  
+  // Số tiền thực tế sẽ bán cho mỗi đêm khi dính luật này
+  price_value decimal(15, 2) [not null, note: 'Mức giá phòng áp dụng thực tế cho mỗi đêm']
+  
+  is_active boolean [default: true, not null]
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    (room_type_id, rate_type)
+    (start_date, end_date)
+    // Partial index để check các rule đang active hiệu quả hơn
+    (room_type_id, start_date, end_date) [name: "idx_price_rules_perf", note: "Tăng tốc độ quét luật giá theo ngày"]
+  }
+}
+
+// =================================================================
+// --- NHÓM 5: QUẢN LÝ PHÒNG TRỐNG & LỊCH TỒN KHO (FR-AG-006) ---
+// =================================================================
+
+// Bảng quản lý số lượng phòng trống thực tế bán ra theo từng ngày
+Table room_type_inventories {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  room_type_id uuid [ref: > room_types.id, not null, note: 'Thuộc loại phòng nào']
+  inventory_date date [not null, note: 'Ngày cụ thể trong lịch (VD: 2026-06-01)']
+  
+  booked_room integer [default: 0, not null, note: 'Số phòng đã bị khách đặt (Trạng thái CONFIRMED)']
+  available_room integer [not null, note: 'Số phòng trống thực tế còn lại để bán (Có thể override thủ công)']
+  
+  is_closed boolean [default: false, not null, note: 'Cờ khóa phòng hàng loạt (Stop Sale) của BR-68']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  // Đảm bảo mỗi loại phòng chỉ có duy nhất 1 bản ghi tồn kho cho 1 ngày
+  indexes {
+    (room_type_id, inventory_date) [unique, name: "idx_room_inventory_date_unique"]
+  }
+}
+
+// =================================================================
+// --- NHÓM 6: MODULE QUẢN LÝ TOUR DU LỊCH LINH HOẠT ---
+// =================================================================
+Enum tour_status_enum {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  REJECTED
+  PAUSED
+  ARCHIVED
+}
+
+// Trạng thái tự động cập nhật của từng Đợt khởi hành cụ thể (FR-AG-008)
+Enum departure_status_enum {
+  OPEN             [note: 'Đang mở bán bình thường']
+  LOW_AVAILABILITY [note: 'Còn ít chỗ (Dưới 5 chỗ)']
+  SOLD_OUT         [note: 'Đã hết chỗ - Chốt sổ']
+  CLOSED           [note: 'Đóng bán chủ động bởi Đại lý']
+}
+
+Table tours {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  agent_id uuid [ref: > agents.id, not null, note: 'Đại lý sở hữu']
+  
+  // --- Wizard Bước 1: Thông tin cơ bản ---
+  name varchar(255) [not null, note: 'VD: Hà Nội - Sapa - Fansipan 3N2Đ']
+  code varchar(50) [unique, not null, note: 'Mã tour độc nhất (Hệ thống tự sinh hoặc nhập)']
+  
+  departure_id uuid [ref: > destinations.id, not null, note: 'ID Tỉnh/TP khởi hành']
+  
+  duration_days integer [not null, note: 'Số ngày (VD: 3)']
+  duration_nights integer [not null, note: 'Số đêm (VD: 2)']
+  
+  min_guests integer [not null, note: 'Số khách tối thiểu để khởi hành']
+  max_guests integer [not null, note: 'Số khách tối đa của đoàn']
+  
+  description text [not null, note: 'Mô tả tổng quan (Min 300 ký tự)']
+  highlights text[] [note: 'Mảng danh sách điểm nổi bật. VD: ["Đỉnh Fansipan", "Bản Cát Cát"]']
+
+  // --- Wizard Bước 3: Bao gồm / Không bao gồm / Chính sách ---
+  inclusions text[] [not null, note: 'Mảng những thứ bao gồm: vé tham quan, HDV, xe đưa đón...']
+  exclusions text[] [not null, note: 'Mảng những thứ KHÔNG bao gồm: tip, chi phí cá nhân...']
+  important_note text [note: 'Lưu ý quan trọng (Rich text)']
+  cancellation_policy text [not null, note: 'Chính sách hủy (Dạng text tự nhập hoặc lấy từ template)']
+
+  // --- Wizard Bước 4: Hình ảnh, video, brochure ---
+  video_url varchar(255) [note: 'URL Video giới thiệu YouTube']
+  brochure_pdf_url varchar(255) [note: 'Đường dẫn file PDF tải lịch trình']
+
+  status tour_status_enum [default: 'DRAFT']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    code
+    status
+    agent_id
+    (departure_id, status)
+  }
+}
+
+Table tour_category_relations {
+  tour_id uuid [ref: > tours.id, not null]
+  tour_category_id uuid [ref: > tour_categories.id, not null]
+  
+  indexes {
+    (tour_id, tour_category_id) [pk]
+  }
+}
+
+Table tour_destinations {
+  tour_id uuid [ref: > tours.id, not null]
+  destination_id uuid [ref: > destinations.id, not null, note: 'Điểm đến chốt cấp Tỉnh/TP hoặc Phường/Xã']
+  sort_order integer [default: 1, note: 'Thứ tự điểm đến đi qua']
+
+  indexes {
+    (tour_id, destination_id) [pk]
+  }
+}
+
+Table tour_transportations {
+  tour_id uuid [ref: > tours.id, not null]
+  transportation_category_id uuid [ref: > transportation_categories.id, not null, note: 'Điểm đến chốt cấp Tỉnh/TP hoặc Phường/Xã']
+  sort_order integer [default: 1, note: 'Thứ tự điểm đến đi qua']
+
+  indexes {
+    (tour_id, transportation_category_id) [pk]
+  }
+}
+
+Table tour_images {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  tour_id uuid [ref: > tours.id, not null]
+  image_url text [not null]
+  sort_order integer [default: 1, not null, note: 'Ảnh có sort_order = 1 là ảnh đại diện đại diện']
+  
+  indexes {
+    (tour_id, sort_order)
+  }
+}
+
+// BẢNG ĐỢT KHỞI HÀNH: Quản lý lịch chạy, số lượng chỗ và giá bán (FR-AG-008 / Wizard Bước 5)
+Table tour_departures {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  tour_id uuid [ref: > tours.id, not null]
+  
+  departure_date date [not null, note: 'Ngày khởi hành cụ thể']
+  return_date date [not null, note: 'Ngày kết thúc (Backend tự tính toán = departure_date + tours.duration_days + tours.duration_nights)']
+  
+  // Quản lý số lượng chỗ (Allotment)
+  total_slots integer [not null, note: 'Tổng số chỗ mở bán của đợt này']
+  booked_slots integer [default: 0, not null, note: 'Số chỗ đã đặt thành công (Hệ thống tự tính theo BR-69)']
+  
+  // Ma trận cấu hình bảng giá phân loại theo độ tuổi khách hàng
+  adult_price decimal(15, 2) [not null, note: 'Giá người lớn']
+  child_price_5_10 decimal(15, 2) [not null, note: 'Giá trẻ em từ 5 đến 10 tuổi']
+  child_price_2_4 decimal(15, 2) [not null, note: 'Giá trẻ em từ 2 đến 4 tuổi']
+  infant_price decimal(15, 2) [default: 0, not null, note: 'Giá em bé dưới 2 tuổi']
+  extra_single_room_fee decimal(15, 2) [default: 0, note: 'Phụ thu nếu khách muốn ở phòng đơn một mình']
+  
+  status departure_status_enum [default: 'OPEN', not null]
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    (tour_id, departure_date)
+    departure_date
+    status
+    // Index để quét nhanh các đợt khởi hành còn giá trị phục vụ tìm kiếm (BR-71)
+    (departure_date, status) [name: "idx_tour_departures_search_active"]
+  }
+}
+
+// BẢNG LỊCH TRÌNH CHI TIẾT: Soạn lịch trình từng ngày (FR-AG-009 / Wizard Bước 2)
+Table tour_itineraries {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  tour_id uuid [ref: > tours.id, not null]
+  
+  day_number integer [not null, note: 'Ngày thứ mấy (VD: 1, 2, 3...) - Dùng để kéo thả sắp xếp trên FE']
+  title varchar(255) [not null, note: 'Tiêu đề ngày. VD: Ngày 1: Hà Nội - Sapa']
+  description text [not null, note: 'Mô tả hoạt động chi tiết từng giờ (Rich text)']
+  
+  // Chế độ ăn uống (Bắt buộc)
+  has_breakfast boolean [default: false, not null]
+  has_lunch boolean [default: false, not null]
+  has_dinner boolean [default: false, not null]
+  
+  // Thông tin lưu trú lẻ từng ngày
+  hotel_name varchar(255) [note: 'Tên khách sạn nghỉ đêm']
+  hotel_stars integer [note: 'Hạng sao khách sạn (VD: 3, 4, 5)']
+  
+  // Tọa độ định vị để vẽ bản đồ tự động ngoài Web khách hàng (FR-CO-001)
+  lat decimal(10, 8) [not null, note: 'Vĩ độ GPS']
+  lng decimal(11, 8) [not null, note: 'Kinh độ GPS']
+  
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  // Partial Unique
+  indexes {
+    (tour_id, day_number) [
+      name: "idx_tour_itinerary_day_unique_active", 
+      note: "Partial Unique Index: Chỉ UNIQUE khi WHERE deleted_at IS NULL"
+    ]
+  }
+}
+
+// BẢNG HÌNH ẢNH CHI TIẾT THEO NGÀY
+Table tour_itinerary_images {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  tour_itinerary_id uuid [ref: > tour_itineraries.id, not null, note: 'Liên kết đến ngày lịch trình cụ thể']
+  image_url text [not null, note: 'Đường dẫn ảnh lưu trên CDN / S3']
+  sort_order integer [default: 1, not null, note: 'Thứ tự hiển thị ảnh trong ngày (1 đến 5)']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    (tour_itinerary_id, sort_order)
+  }
+}
+
