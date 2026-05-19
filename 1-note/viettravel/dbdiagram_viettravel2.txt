@@ -289,6 +289,18 @@ Table bed_categories {
   deleted_at timestamp
 }
 
+// 0. Loại blog
+Table blog_categories {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(255) [not null, note: 'VD: Cẩm nang du lịch, Ẩm thực bốn phương']
+  slug varchar(255) [unique, not null]
+  description text
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
 // 1. Loại tour (Hotel, Resort, Villa...)
 Table tour_categories {
   id uuid [primary key, default: `gen_random_uuid()`]
@@ -1033,7 +1045,7 @@ Enum booking_status_enum {
 }
 
 // Phân loại hình thức đặt hàng để làm bộ lọc (FR-AG-011)
-Enum booking_type_enum {
+Enum product_type_enum {
   HOTEL
   TOUR
   COMBO
@@ -1077,7 +1089,7 @@ Table bookings {
   corporate_id uuid [ref: > corporates.id, note: 'Gắn ID nếu người đặt nằm trong bảng corporate_employees']
   corporate_discount decimal(15, 2) [default: 0, note: 'Số tiền chiết khấu riêng theo Hợp đồng doanh nghiệp']
 
-  type booking_type_enum [not null, note: 'Loại sản phẩm đặt để chạy filter']
+  type product_type_enum [not null, note: 'Loại sản phẩm đặt để chạy filter']
   status booking_status_enum [default: 'PENDING_CONFIRMATION', not null]
   
   // --- BẢNG TÍNH TOÁN DÒNG TIỀN PHỤC VỤ ĐỐI SOÁT ---
@@ -1091,13 +1103,17 @@ Table bookings {
   agent_promotion_id uuid [ref: > agent_promotions.id, note: 'Ghi nhận chiến dịch đại lý áp dụng']
   agent_promotion_discount decimal(15, 2) [default: 0, not null, note: 'Số tiền được giảm từ đại lý']
 
+  // 3. Sử dụng điểm tích lũy loyalty và TÍCH ĐIỂM LOYALTY (FR-AD-020) ---
+  points_redeemed integer [default: 0, not null, note: 'Số điểm khách quyết định tiêu xài cho đơn này']
+  points_discount decimal(15, 2) [default: 0, not null, note: 'Số tiền được giảm trừ trực tiếp quy đổi từ số điểm tiêu']
+  points_earned integer [default: 0, not null, note: 'Số điểm khách dự kiến nhận được từ đơn này sau khi đi về (Tính theo hệ số Hạng thành viên)']
+  
   // Số tiền cuối cùng khách phải quẹt thẻ thanh toán
-  // CÔNG THỨC BACKEND: final_amount = total_amount - system_voucher_discount - agent_promotion_discount
+  // final_amount = total_amount - system_voucher_discount - agent_promotion_discount - corporate_discount - points_discount
   final_amount decimal(15, 2) [not null, note: 'Số tiền thực tế khách phải chuyển khoản']
   
   // -- Snapshot thuế VAT --
   tax_percent decimal(5, 2) [not null, note: 'Snapshot % thuế VAT của KS lúc đặt (Ví dụ: 10.00)']
-
 
   special_request text [note: 'Yêu cầu đặc biệt từ phía khách hàng (FR-AG-012)']
   agent_note text [note: 'Ghi chú nội bộ của đại lý']
@@ -1107,6 +1123,9 @@ Table bookings {
   confirmation_deadline_at timestamp [not null, note: 'Thời hạn đại lý phải bấm duyệt (created_at + 24h) - Check BR-76']
   payment_deadline_at timestamp [note: 'Thời hạn khách phải hoàn tất chuyển khoản (confirmed_at + 72h) - Check BR-79']
   
+  // --- Affiliate giới thiệu (hoa hồng) --
+  affiliate_id uuid [ref: > affiliate_profiles.id, note: 'Ghi nhận ID của CTV đứng sau giới thiệu đơn hàng này']
+
   // --- GHI CHÚ NỘI BỘ DÀNH RIÊNG CHO ADMIN / CS (FR-AD-014) ---
   system_internal_note text [note: 'Ghi chú nội bộ của Admin hệ thống khi can thiệp xử lý, Đại lý và Khách không xem được trường này']
 
@@ -1302,7 +1321,7 @@ Table system_vouchers {
   max_discount_amount decimal(15, 2) [note: 'Chặn trần số tiền giảm cho loại hình %']
   min_order_value decimal(15, 2) [default: 0, not null, note: 'Giá trị đơn hàng tối thiểu để kích hoạt']
   
-  product_type booking_type_enum [note: 'Nullable. Nếu chọn sẽ chỉ cho áp vào đúng loại: TOUR/HOTEL/COMBO. NULL = Tất cả']
+  product_type product_type_enum [note: 'Nullable. Nếu chọn sẽ chỉ cho áp vào đúng loại: TOUR/HOTEL/COMBO. NULL = Tất cả']
   audience_type voucher_audience_enum [default: 'ALL']
   
   // Quản lý số lượng phát hành (BR-48: Hết số lượng tự ẩn)
@@ -1473,7 +1492,7 @@ Table product_moderation_requests {
   moderator_id uuid [ref: > users.id]
   agent_id uuid [ref: > agents.id, not null]
   
-  product_type booking_type_enum [not null]
+  product_type product_type_enum [not null]
 
   // Bộ ba Khóa ngoại đa hình (Polymorphic Relation) - Chỉ 1 trong 3 cột được phép có dữ liệu tương ứng với product_type
   hotel_id uuid [ref: > hotels.id]
@@ -1523,7 +1542,7 @@ Table reviews {
   user_id uuid [ref: > users.id, not null, note: 'Người viết đánh giá']
   
   // Xác định Review thuộc sản phẩm nào để tính trung bình Sao
-  product_type booking_type_enum [not null]
+  product_type product_type_enum [not null]
   hotel_id uuid [ref: > hotels.id]
   tour_id uuid [ref: > tours.id]
   combo_id uuid [ref: > combos.id]
@@ -1555,13 +1574,79 @@ Table reviews {
 // 3. CẤU HÌNH TOÀN CỤC HỆ THỐNG (BR-33)
 // -----------------------------------------------------------------
 Table system_configs {
-  id uuid [primary key, default: `gen_random_uuid()`]
+  id integer [primary key, default: 1, note: 'Khóa cứng cố định bằng 1 để đảm bảo toàn hệ thống chỉ có đúng 1 dòng cấu hình']
   
   // --- 1. NHÓM CẤU HÌNH KIỂM DUYỆT ĐÁNH GIÁ (BR-33) ---
   is_review_auto_approve boolean [default: true, not null, note: 'true = Bật chế độ tự động duyệt review hậu kỳ, false = Bắt buộc Admin duyệt tiền kỳ']
 
-  description text
+  // --- 2. NHÓM CẤU HÌNH KIỂM DUYỆT KHUYẾN MÃI (FR-AD-013) ---
+  promotion_auto_approve_threshold_percent decimal(5, 2) [default: 50.00, not null, note: 'Ngưỡng phần trăm discount tối đa để tự động ACTIVE. Vượt quá số này bắt buộc duyệt thủ công (BR-34, BR-35)']
 
+  // --- 3. NHÓM CẤU HÌNH TÀI CHÍNH & PHÍ NỀN TẢNG (FR-AD-026) ---
+  default_platform_commission_percent decimal(5, 2) [default: 15.00, not null, note: '% Hoa hồng mặc định sàn thu từ Đại lý bán hàng']
+  default_affiliate_commission_percent decimal(5, 2) [default: 5.00, not null, note: '% Hoa hồng mặc định chi trả cho Cộng tác viên (Affiliate)']
+  default_vat_percent decimal(5, 2) [default: 10.00, not null, note: '% Thuế VAT mặc định của hệ thống']
+  default_service_fee_percent decimal(5, 2) [default: 5.00, not null, note: '% Phí dịch vụ mặc định của hệ thống']
+  
+  // --- 4. NHÓM CẤU HÌNH RÚT TIỀN AFFILIATE (FR-AD-026) ---
+  min_affiliate_withdrawal_amount decimal(15, 2) [default: 500000.00, not null, note: 'Ngưỡng số tiền tối thiểu để CTV được phép gửi yêu cầu rút (Ví dụ: 500.000đ)']
+
+  // --- 5. THAM SỐ CẤU HÌNH ĐỔI ĐIỂM LOYALTY (FR-AD-020) ---
+  spending_per_point_amount decimal(15, 2) [default: 10000.00, not null, note: 'Số tiền chi tiêu cơ bản để ăn 1 điểm. Mặc định 10.000đ = 1 điểm']
+  points_per_discount_block integer [default: 100, not null, note: 'Số khối điểm cần để quy đổi giảm giá. Mặc định 100 điểm']
+  discount_per_block_amount decimal(15, 2) [default: 10000.00, not null, note: 'Số tiền giảm tương ứng cho mỗi khối điểm. Mặc định đổi được 10.000đ']
+  
+  // Ngưỡng thăng hạng cứng (Né tránh hardcode BR-51)
+  tier_silver_threshold_amount decimal(15, 2) [default: 5000000.00, not null, note: 'Ngưỡng thăng hạng Bạc (5 triệu)']
+  tier_gold_threshold_amount decimal(15, 2) [default: 15000000.00, not null, note: 'Ngưỡng thăng hạng Vàng (15 triệu)']
+  tier_platinum_threshold_amount decimal(15, 2) [default: 50000000.00, not null, note: 'Ngưỡng thăng hạng Bạch kim (50 triệu)']
+
+
+  // --- 6. THÔNG TIN CORE WEBSITE (FR-AD-023) ---
+  site_name varchar(255) [default: 'Sàn Du Lịch Toàn Cầu']
+  site_logo_url text
+  site_favicon_url text
+  hotline varchar(20)
+  support_email varchar(255)
+    
+  // --- 9. MẠNG XÃ HỘI CHÂN TRANG ---
+  facebook_url varchar(255)
+  zalo_url varchar(255)
+  instagram_url varchar(255)
+  youtube_url varchar(255)
+  
+  // --- 10. TRACKING SCRIPT PIXELS ---
+  google_analytics_id varchar(50) [note: 'Mã G-XXXXXXX']
+  facebook_pixel_id varchar(50)
+  gtm_id varchar(50) [note: 'Mã GTM-XXXXXXX']
+
+  // --- 11. CẤU HÌNH HẠ TẦNG GOOGLE MAPS (FR-AD-024) ---
+  google_maps_api_key text
+  map_default_zoom integer [default: 6, note: 'Mức zoom bao quát bản đồ']
+  map_default_center_lat decimal(10, 8) [default: 16.047079, note: 'Tọa độ trung tâm Việt Nam']
+  map_default_center_lng decimal(11, 8) [default: 108.206230, note: 'Tọa độ trung tâm Việt Nam']
+  map_custom_style_json text [note: 'Custom JSON theme của bản đồ Google']
+  
+  enable_hotel_map boolean [default: true, not null]
+  enable_tour_map boolean [default: true, not null]
+  enable_search_map boolean [default: true, not null]
+  enable_directions_api boolean [default: true, not null]
+  enable_street_view boolean [default: true, not null]
+  enable_place_autocomplete boolean [default: true, not null]
+
+  // --- 12. CẤU HÌNH CỐT LÕI CHATBOT AI (FR-AD-025) ---
+  ai_provider varchar(50) [default: 'GEMINI', note: 'GEMINI / OPENAI / ANTHROPIC']
+  ai_api_key text
+  ai_model_name varchar(100) [default: 'gemini-1.5-flash']
+  ai_system_prompt text [note: 'Luật ứng xử, ép AI tuân thủ BR-52 (Không tự chốt giá/cam kết đơn)']
+  ai_daily_limit_per_user integer [default: 50, not null, note: 'Giới hạn số câu hỏi/user/ngày']
+  ai_max_tokens_per_response integer [default: 1000, not null, note: 'Token max/response']
+  ai_fallback_default_reply text [note: 'Câu trả lời mặc định khi hệ thống hoặc API bên thứ 3 lỗi']
+  ai_tone varchar(50) [default: 'FRIENDLY', note: 'FRIENDLY / PROFESSIONAL / HUMOROUS']
+  ai_enable_human_fallback boolean [default: true, not null, note: 'true = chuyển tiếp human agent khi bế tắc']
+
+  description text [note: 'Mô tả chung về đợt cập nhật cấu hình nếu cần']
+  
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
   deleted_at timestamp
@@ -1694,7 +1779,7 @@ Table dispute_messages {
   sender_id uuid [ref: > users.id, not null, note: 'ID người gõ tin nhắn']
   sender_type dispute_sender_type_enum [not null, note: 'Xác định vai trò hiển thị màu bong bóng chat ngoài UI']
   
-  message_text text [not null, note: 'Nội dung tin nhắn đối thoại giải trình']
+  message text [not null, note: 'Nội dung tin nhắn đối thoại giải trình']
   
   created_at timestamp [default: `now()`]
 
@@ -1751,7 +1836,7 @@ Table static_pages {
   og_image text
 
   published_at timestamp [note: 'Giờ hiển thị công khai (bằng NOW() nếu phát hành ngay hoặc bằng giờ lên lịch)']
-  created_by uuid [ref: > users.id]
+
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
   deleted_at timestamp
@@ -1788,6 +1873,12 @@ Table static_page_versions {
 // -----------------------------------------------------------------
 // 2. QUẢN LÝ BANNER & MARKETING SLIDER (FR-AD-009)
 // -----------------------------------------------------------------
+Enum banner_audience_enum {
+  ALL              [note: 'Áp dụng cho tất cả người dùng']
+  USER             [note: 'Chỉ áp dụng cho người dùng đã đăng nhập']
+  MEMBER_RANK      [note: 'Áp dụng theo hạng thành viên (Bạc, Vàng, Kim Cương...)']
+}
+
 Table banners {
   id uuid [primary key, default: `gen_random_uuid()`]
   title varchar(255) [not null]
@@ -1798,7 +1889,7 @@ Table banners {
   
   position banner_position_enum [not null]
   sort_order integer [default: 1, not null, note: 'Thứ tự hiển thị số nhỏ xếp trước']
-  audience_type voucher_audience_enum [default: 'ALL', note: 'Tập đối tượng được xem banner (Tái sử dụng bộ Enum nhóm 9)']
+  audience_type banner_audience_enum [default: 'ALL', note: 'Tập đối tượng được xem banner']
   
   // --- QUẢN LÝ THỜI GIAN HIỆU LỰC (BR-24) ---
   start_date timestamp [not null]
@@ -1809,7 +1900,6 @@ Table banners {
   impressions_count integer [default: 0, not null, note: 'Số lần hiển thị']
   clicks_count integer [default: 0, not null, note: 'Số lần click']
   
-  created_by uuid [ref: > users.id]
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
   deleted_at timestamp
@@ -1825,17 +1915,7 @@ Table banners {
 // -----------------------------------------------------------------
 // 3. QUẢN LÝ BLOG, TIN TỨC VÀ BÌNH LUẬN (FR-AD-010)
 // -----------------------------------------------------------------
-Table blog_categories {
-  id uuid [primary key, default: `gen_random_uuid()`]
-  name varchar(255) [not null, note: 'VD: Cẩm nang du lịch, Ẩm thực bốn phương']
-  slug varchar(255) [unique, not null]
-  description text
-  
-  created_at timestamp [default: `now()`]
-  deleted_at timestamp
-}
-
-Table blog_posts {
+Table blogs {
   id uuid [primary key, default: `gen_random_uuid()`]
   category_id uuid [ref: > blog_categories.id, not null]
   author_id uuid [ref: > users.id, not null, note: 'Admin/Mod viết bài']
@@ -1855,6 +1935,7 @@ Table blog_posts {
   seo_keywords varchar(255)
   
   published_at timestamp
+
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
   deleted_at timestamp
@@ -1867,25 +1948,24 @@ Table blog_posts {
 }
 
 // Bảng liên kết phẳng các sản phẩm liên quan (Gánh luật BR-26 - Giới hạn max 5 dòng)
-Table blog_related_products {
+Table blog_products {
   id uuid [primary key, default: `gen_random_uuid()`]
-  post_id uuid [ref: > blog_posts.id, not null]
+  blog_id uuid [ref: > blogs.id, not null]
   
-  product_type booking_type_enum [not null]
+  product_type product_type_enum [not null]
   hotel_id uuid [ref: > hotels.id]
   tour_id uuid [ref: > tours.id]
   combo_id uuid [ref: > combos.id]
   
   indexes {
-    post_id
+    blog_id
   }
 }
 
 Table blog_comments {
   id uuid [primary key, default: `gen_random_uuid()`]
-  post_id uuid [ref: > blog_posts.id, not null]
-  user_id uuid [ref: > users.id, not null, note: 'Tài khoản khách để lại bình luận']
-  parent_id uuid [ref: > blog_comments.id, note: 'Hỗ trợ tính năng Reply lồng nhau đa cấp']
+  blog_id uuid [ref: > blogs.id, not null]
+  user_id uuid [ref: > users.id, not null, note: 'Tài khoản để lại bình luận']
   
   content text [not null]
   status comment_status_enum [default: 'PENDING', not null]
@@ -1895,8 +1975,205 @@ Table blog_comments {
   deleted_at timestamp
 
   indexes {
-    post_id
+    blog_id
     status
+  }
+}
+
+// =================================================================
+// --- NHÓM 14: HỆ THỐNG MARKETING AFFILIATE / CTV (FR-AD-004) ---
+// =================================================================
+
+// Vòng đời phê duyệt hồ sơ đăng ký CTV của User/Đại lý (FR-AD-004)
+Enum affiliate_status_enum {
+  PENDING        [note: 'Đơn mới đăng ký, nằm trong hàng chờ duyệt của Admin']
+  ACTIVE         [note: 'Admin đã duyệt, tài khoản được cấp quyền tạo link tiếp thị']
+  REJECTED       [note: 'Hồ sơ bị từ chối duyệt công nhận CTV']
+  SUSPENDED      [note: 'Tài khoản CTV bị đóng băng do phát hiện gian lận/trục lợi']
+}
+
+// Luồng đối soát dòng tiền hoa hồng giam giữ 7 ngày theo BR-44
+Enum affiliate_commission_status_enum {
+  PENDING        [note: 'Khách mua qua link đã thanh toán, đơn hàng chờ đi về']
+  HOLDING        [note: 'Khách đi về (COMPLETED), giam tiền 7 ngày đối soát (BR-44)']
+  AVAILABLE      [note: 'Qua 7 ngày, tiền được bung vào ví khả dụng để rút']
+  WITHDRAWN      [note: 'Tiền hoa hồng này đã nằm trong một lệnh rút thành công']
+  CANCELLED      [note: 'Hủy hoa hồng do đơn bị hoàn hủy, tự mua (BR-15), hoặc gian lận (BR-45)']
+}
+
+// Trạng thái phiếu yêu cầu rút tiền tài chính của CTV (FR-AD-017)
+Enum withdrawal_status_enum {
+  PENDING        [note: 'CTV vừa gửi yêu cầu, chờ Kế toán duyệt']
+  APPROVED       [note: 'Kế toán đã duyệt, đang thao tác chuyển khoản']
+  PAID           [note: 'Đã chuyển khoản ngoài hệ thống xong, chốt sổ tài chính']
+  REJECTED       [note: 'Từ chối rút (Có thể do sai STK hoặc phát hiện gian lận)']
+}
+
+// 1. BẢNG TRUNG TÂM: HỒ SƠ & TRẠNG THÁI DUYỆT CTV
+Table affiliate_profiles {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  
+  // BR-13: Trỏ thẳng về users.id để gom cả User cá nhân lẫn User chủ Đại lý vào làm một
+  user_id uuid [ref: > users.id, unique, not null, note: 'Liên kết tài khoản gốc đăng ký CTV']
+  
+  // Mã tracking độc nhất găm vào đuôi URL. Ví dụ: dongvui.com?aff=NGUYENTRUNGDONG
+  affiliate_code varchar(50) [unique, not null, note: 'Mã tiếp thị viết hoa, không dấu, độc nhất toàn sàn']
+  
+  // Dữ liệu đầu vào phục vụ Admin xét duyệt hồ sơ
+  promotion_channels text [not null, note: 'Kênh quảng bá tự khai lúc đăng ký. VD: Facebook cá nhân, Group cộng đồng...']
+  
+  // Luồng xử lý phê duyệt của hệ thống
+  status affiliate_status_enum [default: 'PENDING', not null, note: 'Mặc định khi đăng ký là PENDING']
+  status_note text [note: 'Lý do từ chối duyệt hồ sơ hoặc lý do khóa/phạt tài khoản']
+  
+  // Cấu hình tỷ lệ hoa hồng linh hoạt (FR-AD-004)
+  custom_commission_percent decimal(5, 2) [note: 'Tỷ lệ hoa hồng cấu hình riêng cho CTV này. Nếu NULL sẽ dùng mặc định sàn']
+  
+  // --- BỘ ĐẾM THỐNG KÊ HIỆU SUẤT TỔ CHỨC (FR-AD-004) ---
+  clicks_count integer [default: 0, not null, note: 'Tổng số lượt click vào link giới thiệu']
+  conversions_count integer [default: 0, not null, note: 'Tổng số đơn hàng được chuyển đổi thành công']
+  
+  // --- KÉT SẮT QUẢN LÝ DÒNG TIỀN KHÁCH HÀNG ---
+  available_balance decimal(15, 2) [default: 0, not null, note: 'Số dư hiện tại khả dụng, dùng để rút']
+  withdrawn_amount decimal(15, 2) [default: 0, not null, note: 'Tổng số tiền đã giải ngân thành công về ngân hàng']
+  total_earned decimal(15, 2) [default: 0, not null, note: 'Tổng tiền tích lũy trọn đời (Doanh thu lịch sử)']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    user_id
+    affiliate_code
+    status
+  }
+}
+
+// 2. BẢNG CHI TIẾT: SỔ CÁI BIẾN ĐỘNG HOA HỒNG THEO ĐƠN HÀNG
+Table affiliate_commissions {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  affiliate_id uuid [ref: > affiliate_profiles.id, not null]
+  booking_id uuid [ref: > bookings.id, not null, note: 'Đơn hàng phát sinh từ link tiếp thị']
+  
+  total_amount decimal(15, 2) [not null, note: 'Giá trị thô đơn hàng làm căn cứ tính']
+  commission_percent decimal(5, 2) [not null, note: 'Tỷ lệ % chốt tại thời điểm khách bấm đặt phòng/tour']
+  commission_amount decimal(15, 2) [not null, note: 'Số tiền hoa hồng CTV thực nhận']
+  
+  status affiliate_commission_status_enum [default: 'PENDING', not null]
+  status_note text [note: 'Ghi chú đối soát kế toán']
+  
+  // --- KHÓA HẸN GIỜ ĐỐI SOÁT TÀI CHÍNH (BR-44) ---
+  available_at timestamp [note: 'Thời điểm tiền được bung xích khóa (Bằng giờ Booking COMPLETED + 7 ngày)']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    affiliate_id
+    booking_id
+    status
+    (status, available_at) [name: "idx_commission_release_job"]
+  }
+}
+
+// 3. BẢNG QUẢN LÝ PHIẾU YÊU CẦU RÚT TIỀN HOA HỒNG (FR-AD-017)
+Table affiliate_withdrawals {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  affiliate_id uuid [ref: > affiliate_profiles.id, not null]
+  
+  amount decimal(15, 2) [not null, note: 'Số tiền yêu cầu rút']
+  
+  // Thông tin tài khoản đích tiếp nhận dòng tiền
+  bank_name varchar(100) [not null, note: 'Tên ngân hàng. VD: Vietcombank']
+  bank_account_number varchar(50) [not null, note: 'Số tài khoản nhận tiền']
+  bank_account_name varchar(255) [not null, note: 'Tên chủ tài khoản viết hoa không dấu']
+  
+  status withdrawal_status_enum [default: 'PENDING', not null]
+  
+  // Thông tin xử lý hậu cần kế toán
+  processed_by uuid [ref: > users.id, note: 'Kế toán/Admin xử lý phê duyệt lệnh này']
+  transaction_reference varchar(255) [note: 'Mã số giao dịch ngân hàng thực tế sau khi chuyển tiền']
+  admin_note text [note: 'Lý do từ chối giải ngân nếu có']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    affiliate_id
+    status
+  }
+}
+
+// =================================================================
+// --- NHÓM 15: HỆ THỐNG TÍCH ĐIỂM & HẠNG THÀNH VIÊN (FR-AD-020) ---
+// =================================================================
+
+// Phân cấp danh vị Hạng thành viên của khách hàng
+Enum membership_tier_enum {
+  BRONZE      [note: 'Hạng Đồng (< 5 triệu)']
+  SILVER      [note: 'Hạng Bạc (5 - 15 triệu) - Hệ số tích điểm x1.2']
+  GOLD        [note: 'Hạng Vàng (15 - 50 triệu) - Hệ số tích điểm x1.5']
+  PLATINUM    [note: 'Hạng Bạch kim (> 50 triệu) - Hệ số tích điểm x2.0']
+}
+
+// Phân loại bản chất các giao dịch biến động điểm trong ví
+Enum point_transaction_type_enum {
+  EARN        [note: 'Tích điểm khi đơn hàng hoàn thành thành công (BR-49)']
+  REDEEM      [note: 'Tiêu xài đổi điểm lấy tiền giảm giá khi đặt hàng']
+  EXPIRE      [note: 'Hệ thống thu hồi điểm do quá hạn 12 tháng (BR-50)']
+  REFUND      [note: 'Hoàn trả lại điểm tiêu cho khách khi đơn hàng bị hủy bỏ']
+}
+
+// -----------------------------------------------------------------
+// 1. VÍ TIỀN & HỒ SƠ LOYALTY THÀNH VIÊN (FR-AD-020)
+// -----------------------------------------------------------------
+Table user_loyalty_profiles {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  user_id uuid [ref: > users.id, unique, not null, note: 'Liên kết 1:1 với tài khoản người dùng cá nhân']
+  
+  current_tier membership_tier_enum [default: 'BRONZE', not null]
+  
+  // Quản lý số dư điểm
+  current_points integer [default: 0, not null, note: 'Số điểm khả dụng hiện tại khách có thể mang đi tiêu']
+  total_accumulated_points integer [default: 0, not null, note: 'Tổng số điểm khách đã tích lũy trọn đời (Lịch sử làm thương hiệu)']
+  
+  // Số tiền tích lũy phục vụ tính toán thăng hạng đầu tháng (BR-51)
+  rolling_12m_spending decimal(15, 2) [default: 0, not null, note: 'Tổng tiền chi tiêu chốt trong 12 tháng gần nhất làm căn cứ xét hạng']
+  
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    user_id
+    current_tier
+  }
+}
+
+// -----------------------------------------------------------------
+// 2. SỔ CÁI NHẬT KÝ ĐIỂM CHI TIẾT (Trọng tâm xử lý BR-50 & Thuật toán FIFO)
+// -----------------------------------------------------------------
+Table user_point_logs {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  user_id uuid [ref: > users.id, not null]
+  booking_id uuid [ref: > bookings.id, note: 'Gắn ID đơn hàng phát sinh biến động điểm (nếu có)']
+  
+  type point_transaction_type_enum [not null]
+  points integer [not null, note: 'Số điểm biến động. Số dương cho EARN/REFUND, Số âm cho REDEEM/EXPIRE']
+  
+  // --- CỘT TỐI ƯU CHO BR-50 ---
+  points_available integer [default: 0, not null, note: 'Chỉ áp dụng cho dòng EARN: Số điểm còn lại chưa bị xài của đợt tích này. Sẽ giảm dần về 0 khi khách tiêu điểm']
+  
+  description text [note: 'Nội dung hiển thị cho khách xem ở ví. VD: Tích điểm cho đơn hàng BK-2026-001']
+  
+  // --- QUẢN LÝ THỜI HẠN (BR-50) ---
+  expired_at timestamp [note: 'Hạn chót của đợt điểm tích này (Bằng ngày tích created_at + 12 tháng). Dòng REDEEM/EXPIRE để NULL']
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    user_id
+    type
+    expired_at
+    // Tăng tốc cho CronJob quét điểm hết hạn và thuật toán FIFO trừ điểm
+    (user_id, points_available) [name: "idx_user_points_fifo_tracking"]
   }
 }
 
