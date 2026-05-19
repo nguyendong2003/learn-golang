@@ -1,4 +1,6 @@
-// --- NHÓM 1: HỆ THỐNG RBAC (UUID + ENUM + SOFT DELETE) ---
+// =================================================================
+// --- NHÓM 1: HỆ THỐNG RBAC ---
+// =================================================================
 Enum user_status_enum {
   ACTIVE
   LOCKED
@@ -65,9 +67,10 @@ Table user_roles {
 
 Enum agent_status_enum {
   PENDING
+  REVISION_REQUEST [note: 'Yêu cầu đại lý bổ sung thêm tài liệu (GPKD mờ, sai MST...)']
   ACTIVE
-  SUSPENDED
-  BANNED
+  SUSPENDED        [note: 'Tạm khóa do vi phạm (BR-07)']
+  BANNED           [note: 'Cấm vĩnh viễn (BR-07)']
 }
 
 Table agents {
@@ -103,6 +106,7 @@ Table agents {
   support_email varchar(255) [note: 'Email hỗ trợ khách hàng']
 
   status agent_status_enum [default: 'PENDING']
+  status_note text [note: 'Lý do từ chối, yêu cầu sửa đổi hồ sơ, hoặc lý do khóa/cấm tài khoản']
   
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
@@ -143,6 +147,81 @@ Table staff_audit_logs {
   created_at timestamp [default: `now()`]
 }
 
+// =================================================================
+// -- FR-AD-005: Quản lý tài khoản doanh nghiệp (Corporate) --
+// =================================================================
+Enum corporate_status_enum {
+  PENDING
+  REVISION_REQUEST
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+// Bảng định danh tổ chức Doanh nghiệp mua hàng
+Table corporates {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  corporate_code varchar(50) [unique, not null, note: 'Format: CP-YYYYMM-XXXXX']
+  
+  business_name varchar(255) [not null]
+  tax_code varchar(50) [unique, not null, note: 'MST Doanh nghiệp mua hàng']
+  license_url text [note: 'Giấy phép kinh doanh']
+  
+  representative_name varchar(255) [not null]
+  address text
+  contact_email varchar(255) [not null]
+  contact_phone varchar(20) [not null]
+  
+  status corporate_status_enum [default: 'PENDING']
+  status_note text [note: 'Ghi chú kiểm duyệt của Admin']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+// Phân quyền nhân sự thuộc Doanh nghiệp (Mua hộ / Duyệt đơn)
+Table corporate_employees {
+  corporate_id uuid [ref: > corporates.id, not null]
+  user_id uuid [ref: > users.id, unique, not null, note: 'Mỗi user chỉ được thuộc 1 Doanh nghiệp']
+  
+  is_approver boolean [default: false, not null, note: 'Cờ cấp quyền: true = Người đại diện có quyền duyệt booking của NV khác']
+  
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    (corporate_id, user_id) [pk]
+  }
+}
+
+// Bảng Hợp đồng (Quản lý hạn mức, công nợ, thời hạn)
+Table corporate_contracts {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  corporate_id uuid [ref: > corporates.id, not null]
+  contract_number varchar(100) [unique, not null, note: 'Số hợp đồng ký kết giấy']
+  
+  // --- CẤU HÌNH TÀI CHÍNH HỢP ĐỒNG ---
+  discount_percent decimal(5, 2) [default: 0, not null, note: 'Mức chiết khấu riêng trên giá niêm yết (VD: 10%)']
+  credit_limit decimal(15, 2) [default: 0, not null, note: 'Hạn mức tín dụng cho phép mua nợ (VD: 100 triệu)']
+  used_credit decimal(15, 2) [default: 0, not null, note: 'Số công nợ hiện tại đang ghi nhận (Tính năng: Xem công nợ)']
+  payment_term_days integer [default: 30, not null, note: 'Hạn thanh toán trả sau: 15, 30, 60 (NET 30)']
+  
+  // --- QUẢN LÝ THỜI HẠN (BR-17) ---
+  start_date date [not null]
+  end_date date [not null, note: 'BR-17: Hết hạn cần gia hạn (Ký hợp đồng mới)']
+  
+  is_active boolean [default: true, not null]
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    corporate_id
+    (start_date, end_date)
+  }
+}
+
+
 // --- NHÓM 2: ĐỊA LÝ (GEOGRAPHY) - CẤU TRÚC 3 CẤP VIỆT NAM ---
 Enum destination_level_enum {
   PROVINCE
@@ -176,7 +255,9 @@ Table destinations {
   deleted_at timestamp
 }
 
+// =================================================================
 // --- Quản lý Danh mục ---
+// =================================================================
 // 0. Bảng danh mục lĩnh vực hoạt động của đại lý
 Table activity_field_categories {
   id uuid [primary key, default: `gen_random_uuid()`]
@@ -327,8 +408,9 @@ Table meal_categories {
   deleted_at timestamp 
 }
 
-
+// =================================================================
 // --- NHÓM 3: KHÁCH SẠN & LOẠI PHÒNG ---
+// =================================================================
 
 Enum hotel_status_enum {
   DRAFT
@@ -381,6 +463,9 @@ Table hotel_facilities {
   hotel_id uuid [ref: > hotels.id, not null]
   hotel_facility_category_id uuid [ref: > hotel_facility_categories.id, not null]
   
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
   indexes {
     (hotel_id, hotel_facility_category_id) [pk]
   }
@@ -425,6 +510,9 @@ Table room_facilities {
   room_id uuid [ref: > room_types.id, not null]
   room_facility_category_id uuid [ref: > room_facility_categories.id, not null]
   
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
   indexes {
     (room_id, room_facility_category_id) [pk]
   }
@@ -434,6 +522,9 @@ Table room_facilities {
 Table room_type_beds {
   room_type_id uuid [ref: > room_types.id, not null]
   bed_category_id uuid [ref: > bed_categories.id, not null]
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   
   indexes {
     (room_type_id, bed_category_id) [pk]
@@ -570,6 +661,7 @@ Table room_type_inventories {
   room_type_id uuid [ref: > room_types.id, not null, note: 'Thuộc loại phòng nào']
   inventory_date date [not null, note: 'Ngày cụ thể trong lịch (VD: 2026-06-01)']
   
+  total_room integer [not null, note: '(Snapshot) Tổng số phòng có thể bán tại ngày này (Mặc định lấy từ room_types.total_room)']
   booked_room integer [default: 0, not null, note: 'Số phòng đã bị khách đặt (Trạng thái CONFIRMED)']
   available_room integer [not null, note: 'Số phòng trống thực tế còn lại để bán (Có thể override thủ công)']
   
@@ -651,6 +743,9 @@ Table tours {
 Table tour_category_relations {
   tour_id uuid [ref: > tours.id, not null]
   tour_category_id uuid [ref: > tour_categories.id, not null]
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   
   indexes {
     (tour_id, tour_category_id) [pk]
@@ -662,6 +757,9 @@ Table tour_destinations {
   destination_id uuid [ref: > destinations.id, not null, note: 'Điểm đến chốt cấp Tỉnh/TP hoặc Phường/Xã']
   sort_order integer [default: 1, note: 'Thứ tự điểm đến đi qua']
 
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
   indexes {
     (tour_id, destination_id) [pk]
   }
@@ -671,6 +769,9 @@ Table tour_transportations {
   tour_id uuid [ref: > tours.id, not null]
   transportation_category_id uuid [ref: > transportation_categories.id, not null, note: 'Điểm đến chốt cấp Tỉnh/TP hoặc Phường/Xã']
   sort_order integer [default: 1, note: 'Thứ tự điểm đến đi qua']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
 
   indexes {
     (tour_id, transportation_category_id) [pk]
@@ -683,6 +784,10 @@ Table tour_images {
   image_url text [not null]
   sort_order integer [default: 1, not null, note: 'Ảnh có sort_order = 1 là ảnh đại diện đại diện']
   
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
   indexes {
     (tour_id, sort_order)
   }
@@ -694,7 +799,7 @@ Table tour_departures {
   tour_id uuid [ref: > tours.id, not null]
   
   departure_date date [not null, note: 'Ngày khởi hành cụ thể']
-  return_date date [not null, note: 'Ngày kết thúc (Backend tự tính toán = departure_date + tours.duration_days + tours.duration_nights)']
+  return_date date [not null, note: 'Ngày kết thúc (Backend tự tính toán = departure_date + tours.duration_days - 1 day)']
   
   // Quản lý số lượng chỗ (Allotment)
   total_slots integer [not null, note: 'Tổng số chỗ mở bán của đợt này']
@@ -771,6 +876,1027 @@ Table tour_itinerary_images {
 
   indexes {
     (tour_itinerary_id, sort_order)
+  }
+}
+
+// =================================================================
+// --- NHÓM 7: MODULE QUẢN LÝ COMBO TRỌN GÓI (FR-AG-010) ---
+// =================================================================
+
+// Trạng thái phê duyệt khung Combo sản phẩm của Đại lý
+Enum combo_status_enum {
+  DRAFT          [note: 'Combo lưu nháp, chưa gửi duyệt']
+  PENDING_REVIEW [note: 'Chờ Admin hệ thống phê duyệt']
+  APPROVED       [note: 'Đã duyệt, sẵn sàng lên lịch khởi hành']
+  PUBLISHED      [note: 'Đã mở bán công khai ngoài Website']
+  REJECTED       [note: 'Bị hệ thống từ chối duyệt']
+  PAUSED         [note: 'Tạm dừng bán combo']
+  ARCHIVED       [note: 'Combo cũ lưu kho lịch sử']
+}
+
+// Phân loại hình thức đóng gói thành phần bên trong Combo
+Enum combo_type_enum {
+  TOUR_HOTEL         [note: 'Combo gồm Tour và Khách sạn']
+  HOTEL_FLIGHT       [note: 'Combo gồm Khách sạn và Vé máy bay']
+  TOUR_HOTEL_FLIGHT  [note: 'Combo trọn gói cả 3 thành phần']
+}
+
+// Hạng ghế máy bay hiển thị tham khảo cho khách hàng
+Enum ticket_class_enum {
+  ECONOMY  [note: 'Hạng phổ thông / Hạng tiết kiệm']
+  BUSINESS [note: 'Hạng thương gia']
+}
+
+// Trạng thái vận hành tự động của từng đợt chạy Combo cụ thể
+Enum combo_departure_status_enum {
+  OPEN             [note: 'Đang mở bán bình thường']
+  LOW_AVAILABILITY [note: 'Còn ít chỗ để đặt (Dưới 5 chỗ)']
+  SOLD_OUT         [note: 'Đã hết chỗ bán (Hệ thống tự khóa theo BR-70)']
+  CLOSED           [note: 'Đại lý chủ động đóng bán chuyến này']
+}
+
+// 1. BẢNG CHÍNH: Khung thông tin cấu hình Combo sản phẩm (Wizard Bước 1 -> Bước 4)
+Table combos {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  agent_id uuid [ref: > agents.id, not null, note: 'Đại lý sở hữu sản phẩm']
+  
+  name varchar(255) [not null, note: 'VD: Combo Phú Quốc 3N2Đ - Bay Vietjet + KS 4 sao']
+  description text [not null, note: 'Mô tả chi tiết nội dung Combo (Rich text)']
+  type combo_type_enum [not null, note: 'Xác định bộ lọc thành phần cấu thành']
+  
+  // --- THÀNH PHẦN LIÊN KẾT GỐC (Phục vụ check-kho và trừ kho tự động BR-74) ---
+  tour_id uuid [ref: > tours.id, note: 'Nullable - Chỉ gắn khi combo chứa thành phần Tour']
+  hotel_id uuid [ref: > hotels.id, note: 'Nullable - Chỉ gắn khi combo chứa thành phần Khách sạn']
+  room_type_id uuid [ref: > room_types.id, note: 'Nullable - Loại phòng cụ thể bắt buộc để khóa kho']
+
+  // --- THÔNG TIN VÉ MÁY BAY DẠNG PHẲNG THAM KHẢO (BR-72 & BR-75) ---
+  airline varchar(100) [note: 'Hãng hàng không. VD: Bamboo Airways']
+  outbound_route varchar(50) [note: 'Chặng bay đi (Chỉ nội địa BR-72). VD: HAN -> PQC']
+  inbound_route varchar(50) [note: 'Chặng bay về (Chỉ nội địa BR-72). VD: PQC -> HAN']
+  ticket_class ticket_class_enum [default: 'ECONOMY']
+  baggage_hand_kg integer [default: 7, note: 'Trọng lượng hành lý xách tay tiêu chuẩn (kg)']
+  baggage_checked_kg integer [default: 0, note: 'Trọng lượng hành lý ký gửi kèm theo (kg)']
+
+  // --- THÔNG TIN THỜI LƯỢNG & GIỚI HẠN ĐOÀN ---
+  duration_days integer [not null, note: 'Số ngày áp dụng']
+  duration_nights integer [not null, note: 'Số đêm áp dụng']
+  min_guests integer [not null, default: 1, note: 'Số khách tối thiểu để áp dụng mức giá combo']
+  max_guests integer [not null, note: 'Số khách tối đa phục vụ của gói combo']
+  
+  // --- ĐIỀU KHOẢN VÀ CHÍNH SÁCH (Sử dụng cấu trúc Mảng phẳng của Postgres) ---
+  inclusions text[] [not null, note: 'Mảng danh sách dịch vụ bao gồm']
+  exclusions text[] [not null, note: 'Mảng danh sách dịch vụ không bao gồm']
+  cancellation_policy text [not null, note: 'Chính sách hủy đổi áp dụng riêng cho gói combo này']
+
+  status combo_status_enum [default: 'DRAFT']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    type
+    status
+    agent_id
+  }
+}
+
+// 2. BẢNG ĐỢT KHỞI HÀNH COMBO: Lưu lịch chạy chi tiết và bảng tính toán dòng tiền (Wizard Bước 5)
+Table combo_departures {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  combo_id uuid [ref: > combos.id, not null, note: 'Thuộc khung combo nào']
+  
+  departure_date date [not null, note: 'Ngày khởi hành (Đồng thời là ngày cất cánh chặng đi)']
+  return_date date [not null, note: 'Ngày kết thúc chuyến đi (BE tự động tính toán = departure_date + combos.duration_days - 1)']
+  
+  // Biến động giờ bay dự kiến theo từng đợt chạy thực tế thực tế
+  outbound_flight_time varchar(50) [note: 'Khung giờ bay đi dự kiến. VD: 06:15 hoặc Sáng']
+  inbound_flight_time varchar(50) [note: 'Khung giờ bay về dự kiến. VD: 18:30 hoặc Tối']
+  
+  // Quản lý số lượng Allotment phân phối bán lẻ lẻ
+  total_slots integer [not null, note: 'Tổng số suất combo đại lý tung ra bán lẻ']
+  booked_slots integer [default: 0, not null, note: 'Số suất đã được khách mua thành công']
+  
+  // --- HỆ THỐNG QUẢN LÝ DOANH THU & GIÁ KHUYẾN MÃI (BR-73) ---
+  original_price decimal(15, 2) [not null, note: 'Giá gốc tự động tính từ tổng các thành phần tại ngày khởi hành']
+  combo_price decimal(15, 2) [not null, note: 'Giá khuyến mãi bán thực tế cho khách hàng']
+  discount_percent decimal(5, 2) [not null, note: 'Tỷ lệ phần trăm giảm giá tự động tính toán hiển thị tiếp thị']
+  
+  status combo_departure_status_enum [default: 'OPEN', not null]
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  // Đảm bảo một gói combo không thể tạo 2 đợt khởi hành trùng khít cùng 1 ngày
+  indexes {
+    (combo_id, departure_date) [unique, name: "idx_combo_departure_date_unique"]
+    departure_date
+    status
+  }
+}
+
+// 3. BẢNG ALBUM ẢNH COMBO (Đảm bảo tối thiểu 3 ảnh tại tầng ứng dụng)
+Table combo_images {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  combo_id uuid [ref: > combos.id, not null]
+  
+  image_url text [not null, note: 'Đường dẫn ảnh lưu trữ CDN S3']
+  sort_order integer [default: 1, not null, note: 'Ảnh mang sort_order = 1 là ảnh bìa đại diện sản phẩm']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    (combo_id, sort_order)
+  }
+}
+
+// =================================================================
+// --- NHÓM 8: MODULE ĐẶT CHỖ & XỬ LÝ ĐƠN HÀNG (FR-AG-011 -> 015) ---
+// =================================================================
+
+// Vòng đời trạng thái của một Booking trong hệ thống
+Enum booking_status_enum {
+  PENDING_CONFIRMATION   [note: 'Booking mới chờ đại lý duyệt (FR-AG-012)']
+  CONFIRMED              [note: 'Đại lý đã duyệt, hệ thống gửi thông tin CK']
+  WAITING_PAYMENT        [note: 'Đang trong thời gian chờ khách chuyển khoản']
+  PAID                   [note: 'Đại lý đã xác nhận nhận đủ tiền (FR-AG-013)']
+  IN_PROGRESS            [note: 'Khách đang sử dụng dịch vụ/Đã check-in']
+  COMPLETED              [note: 'Đã hoàn thành chuyến đi/Đã check-out']
+  CANCELLED_BY_CUSTOMER  [note: 'Khách hàng chủ động hủy đơn']
+  CANCELLED_BY_AGENT     [note: 'Đại lý từ chối đơn hàng (FR-AG-012)']
+  CANCELLED_BY_SYSTEM    [note: 'Hệ thống tự động hủy do quá hạn deadline (BR-76, BR-79)']
+  REFUND_REQUESTED
+  REFUNDED
+}
+
+// Phân loại hình thức đặt hàng để làm bộ lọc (FR-AG-011)
+Enum booking_type_enum {
+  HOTEL
+  TOUR
+  COMBO
+}
+
+// Giới tính hành khách đoàn
+Enum passenger_gender_enum {
+  MALE
+  FEMALE
+  OTHER
+}
+
+// 1. TÀI KHOẢN NGÂN HÀNG ĐẠI LÝ (Giải quyết triệt để BR-78)
+Table agent_bank_accounts {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  agent_id uuid [ref: > agents.id, not null, note: 'Thuộc đại lý nào']
+  
+  bank_name varchar(100) [not null, note: 'Tên ngân hàng công ty. VD: Vietcombank']
+  account_number varchar(50) [not null, note: 'Số tài khoản nhận tiền']
+  account_name varchar(150) [not null, note: 'Tên chủ tài khoản viết hoa không dấu']
+  is_default boolean [default: true, not null, note: 'Tài khoản ưu tiên hiển thị ở mail hướng dẫn CK']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    (agent_id, is_default)
+  }
+}
+
+// 2. BẢNG TRUNG TÂM: Quản lý thông tin Booking cốt lõi (FR-AG-011 & FR-AG-012)
+Table bookings {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  booking_code varchar(50) [unique, not null, note: 'Mã code độc nhất. Format: BK-YYYYMM-XXXXX']
+  
+  user_id uuid [ref: > users.id, not null, note: 'Tài khoản khách hàng đặt đơn']
+  agent_id uuid [ref: > agents.id, not null, note: 'Đại lý chịu trách nhiệm xử lý đơn']
+  
+  // --- LIÊN KẾT DOANH NGHIỆP VÀ BÓC TÁCH CHIẾT KHẤU (FR-AD-005) ---
+  corporate_id uuid [ref: > corporates.id, note: 'Gắn ID nếu người đặt nằm trong bảng corporate_employees']
+  corporate_discount decimal(15, 2) [default: 0, note: 'Số tiền chiết khấu riêng theo Hợp đồng doanh nghiệp']
+
+  type booking_type_enum [not null, note: 'Loại sản phẩm đặt để chạy filter']
+  status booking_status_enum [default: 'PENDING_CONFIRMATION', not null]
+  
+  // --- BẢNG TÍNH TOÁN DÒNG TIỀN PHỤC VỤ ĐỐI SOÁT ---
+  total_amount decimal(15, 2) [not null, note: 'Tổng tiền gốc của các dịch vụ cộng lại']
+
+  // 1. Nhánh dữ liệu của Voucher Hệ Thống Sàn (BR-46: Chỉ cho phép lưu tối đa 1 mã sàn)
+  system_voucher_id uuid [ref: > system_vouchers.id, note: 'Ghi nhận mã sàn áp dụng']
+  system_voucher_discount decimal(15, 2) [default: 0, not null, note: 'Số tiền được giảm từ voucher sàn']
+  
+  // 2. Nhánh dữ liệu của Khuyến mãi / Voucher của riêng Đại lý
+  agent_promotion_id uuid [ref: > agent_promotions.id, note: 'Ghi nhận chiến dịch đại lý áp dụng']
+  agent_promotion_discount decimal(15, 2) [default: 0, not null, note: 'Số tiền được giảm từ đại lý']
+
+  // Số tiền cuối cùng khách phải quẹt thẻ thanh toán
+  // CÔNG THỨC BACKEND: final_amount = total_amount - system_voucher_discount - agent_promotion_discount
+  final_amount decimal(15, 2) [not null, note: 'Số tiền thực tế khách phải chuyển khoản']
+  
+  // -- Snapshot thuế VAT --
+  tax_percent decimal(5, 2) [not null, note: 'Snapshot % thuế VAT của KS lúc đặt (Ví dụ: 10.00)']
+
+
+  special_request text [note: 'Yêu cầu đặc biệt từ phía khách hàng (FR-AG-012)']
+  agent_note text [note: 'Ghi chú nội bộ của đại lý']
+  cancellation_reason text [note: 'Lý do đại lý từ chối hoặc hệ thống hủy đơn']
+  
+  // --- HỆ THỐNG QUẢN LÝ DEADLINE TỰ ĐỘNG (BẮT BUỘC CHO BIÊN PHÁP BR-76 & BR-79) ---
+  confirmation_deadline_at timestamp [not null, note: 'Thời hạn đại lý phải bấm duyệt (created_at + 24h) - Check BR-76']
+  payment_deadline_at timestamp [note: 'Thời hạn khách phải hoàn tất chuyển khoản (confirmed_at + 72h) - Check BR-79']
+  
+  // --- GHI CHÚ NỘI BỘ DÀNH RIÊNG CHO ADMIN / CS (FR-AD-014) ---
+  system_internal_note text [note: 'Ghi chú nội bộ của Admin hệ thống khi can thiệp xử lý, Đại lý và Khách không xem được trường này']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    booking_code
+    status
+    type
+    agent_id
+    user_id
+    (agent_id, status, type) [name: "idx_agent_booking_filters", note: 'Tối ưu bộ lọc tìm kiếm tab Admin']
+  }
+}
+
+// 3. CHI TIẾT ĐẶT PHÒNG KHÁCH SẠN (Gánh nghiệp vụ FR-AG-014)
+Table booking_hotel_details {
+  booking_id uuid [primary key, ref: - bookings.id, note: 'Quan hệ 1:1 mở rộng từ bảng Booking gốc']
+  hotel_id uuid [ref: > hotels.id, not null]
+  room_type_id uuid [ref: > room_types.id, not null]
+  
+  check_in_date date [not null, note: 'Ngày nhận phòng dự kiến']
+  check_out_date date [not null, note: 'Ngày trả phòng dự kiến']
+  room_count integer [not null, default: 1, note: 'Số lượng phòng đặt thuê']
+  
+  // --- SNAPSHOT TÀI CHÍNH BẮT BUỘC ĐỂ KHÓA ĐƠN THEO BR-65 ---
+  base_price decimal(15, 2) [not null, note: 'Giá phòng trung bình mỗi đêm tại thời điểm đặt']
+  service_fee_percent decimal(5, 2) [not null, note: 'Snapshot % phí dịch vụ của KS lúc đặt (Ví dụ: 5.00)']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+// Quản lý vận hành Check-in/Check-out chi tiết phòng (FR-AG-014)
+Table booking_hotel_room_operations {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  booking_id uuid [ref: > booking_hotel_details.booking_id, not null, note: 'Liên kết đến chi tiết đặt phòng (Quan hệ 1:N)']
+  
+  room_index integer [not null, default: 1, note: 'Thứ tự phòng trong đơn hàng (Ví dụ: Phòng số 1, Phòng số 2...)']
+  assigned_room_number varchar(50) [note: 'Số phòng thực tế được gán lúc đón khách tại quầy. VD: Phòng 301']
+  
+  // --- TRẠNG THÁI VẬN HÀNH THỰC TẾ TẠI QUẦY (FR-AG-014) ---
+  actual_check_in_at timestamp [note: 'Giờ bấm nút Đã check-in']
+  actual_check_out_at timestamp [note: 'Giờ bấm nút Đã check-out']
+  
+  // Ghi chú chi tiết cho từng phòng lẻ: ghi nhận sự cố, hư hỏng, đánh giá khách...
+  stay_incident_note text [note: 'Ghi chú vận hành lẻ (VD: Phòng 1 hỏng điều hòa, khách làm vỡ cốc...)']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  // Đảm bảo tính toàn vẹn: Mỗi phòng lẻ trong đơn chỉ có duy nhất 1 dòng vận hành hoạt động
+  indexes {
+    (booking_id, room_index) [unique, name: "idx_booking_room_op_unique_active"]
+  }
+}
+
+// 4. CHI TIẾT ĐẶT TOUR DU LỊCH
+Table booking_tour_details {
+  booking_id uuid [primary key, ref: - bookings.id]
+  tour_id uuid [ref: > tours.id, not null]
+  departure_id uuid [ref: > tour_departures.id, not null, note: 'Gắn chuyến khởi hành cụ thể']
+  
+  // --- SNAPSHOT THÔNG TIN & NGÀY ĐI (Chống Agent sửa master data làm lệch lịch sử đơn) ---
+  tour_name varchar(255) [not null, note: 'Tên tour chốt tại thời điểm đặt']
+  tour_code varchar(50) [not null, note: 'Mã tour chốt tại thời điểm đặt']
+  departure_date date [not null, note: 'Ngày khởi hành chốt tại thời điểm đặt']
+  return_date date [not null, note: 'Ngày kết thúc chốt tại thời điểm đặt']
+
+  // --- SỐ LƯỢNG ĐOÀN KHÁCH ---
+  adult_count integer [not null, default: 1]
+  child_count_5_10 integer [not null, default: 0]
+  child_count_2_4 integer [not null, default: 0]
+  infant_count integer [not null, default: 0]
+  has_single_room boolean [default: false, not null, note: 'true = có đăng ký phụ thu phòng đơn']
+
+  // --- SNAPSHOT GIÁ TẠI THỜI ĐIỂM ĐẶT CHỖ ---
+  adult_price decimal(15, 2) [not null, note: ' Snapshot giá người lớn lúc book']
+  child_price_5_10 decimal(15, 2) [not null, note: 'Snapshot giá trẻ em 5-10t lúc book']
+  child_price_2_4 decimal(15, 2) [not null, note: 'Snapshot giá trẻ em 2-4t lúc book']
+  infant_price decimal(15, 2) [not null, note: 'Snapshot giá em bé lúc book']
+  extra_single_room_fee decimal(15, 2) [default: 0, not null, note: 'Snapshot phí phòng đơn lúc book']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+// 5. CHI TIẾT ĐẶT COMBO TRỌN GÓI
+Table booking_combo_details {
+  booking_id uuid [primary key, ref: - bookings.id]
+  combo_id uuid [ref: > combos.id, not null]
+  departure_id uuid [ref: > combo_departures.id, not null, note: 'Gắn đợt chạy combo cụ thể']
+  
+  // --- SỐ LƯỢNG ĐẶT MUA ---
+  quantity integer [not null, default: 1, note: 'Số lượng suất combo khách gõ chọn đặt mua']
+
+  // --- SNAPSHOT THÔNG TIN & HÀNH TRÌNH CHỐT LÚC ĐẶT ---
+  combo_name varchar(255) [not null, note: 'Tên combo chốt tại thời điểm đặt']
+  departure_date date [not null, note: 'Ngày khởi hành chốt tại thời điểm đặt']
+  return_date date [not null, note: 'Ngày kết thúc chốt tại thời điểm đặt']
+  
+  // --- SNAPSHOT LỊCH BAY THAM KHẢO CHỐT LÚC ĐẶT (BR-75) ---
+  outbound_flight_time varchar(50) [note: 'Khung giờ bay đi dự kiến chốt lúc đặt']
+  inbound_flight_time varchar(50) [note: 'Khung giờ bay về dự kiến chốt lúc đặt']
+  
+  // --- SNAPSHOT DOANH THU & GIÁ BÁN CHỐT LÚC ĐẶT (BR-73) ---
+  original_price decimal(15, 2) [not null, note: 'Giá gốc tổng các thành phần cấu thành lúc đặt']
+  combo_price decimal(15, 2) [not null, note: 'Giá khuyến mãi bán thực tế lúc đặt']
+  discount_percent decimal(5, 2) [not null, note: 'Tỷ lệ phần trăm giảm giá hiển thị lúc đặt']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+// 6. DANH SÁCH KHÁCH ĐOÀN ĐI TOUR/COMBO (Phục vụ triệt để FR-AG-015)
+Table booking_passengers {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  booking_id uuid [ref: > bookings.id, not null, note: 'Thuộc mã đơn hàng nào']
+  
+  full_name varchar(255) [not null, note: 'Họ và tên hành khách đi đoàn']
+  identity_number varchar(50) [note: 'Số CCCD hoặc Passport để in phiếu đoàn']
+  phone varchar(20)
+  gender passenger_gender_enum [not null, default: 'MALE']
+  date_of_birth date [not null]
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    booking_id
+    identity_number
+  }
+}
+
+// 7. LỊCH SỬ XÁC NHẬN GIAO DỊCH THANH TOÁN (Phục vụ FR-AG-013 & BR-80)
+Table booking_payments {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  booking_id uuid [ref: > bookings.id, not null]
+  
+  amount_paid decimal(15, 2) [not null, note: 'Số tiền đại lý thực nhận qua sao kê ngân hàng']
+  payment_reference varchar(100) [not null, note: 'Mã số tham chiếu / Mã giao dịch ngân hàng (BẮT BUỘC THEO BR-80)']
+  received_at timestamp [not null, note: 'Ngày giờ thực tế tiền tinh tinh vào tài khoản đại lý']
+  
+  staff_id uuid [ref: > users.id, note: 'ID nhân viên đại lý đứng ra bấm nút duyệt dòng tiền']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    booking_id
+    payment_reference
+  }
+}
+
+// =================================================================
+// --- NHÓM 9: MODULE MARKETING, VOUCHER & KHUYẾN MÃI TỔNG HỢP ---
+// =================================================================
+
+// Loại hình cấu hình giảm giá của hệ thống
+Enum voucher_discount_type_enum {
+  PERCENTAGE       [note: 'Giảm theo % đơn hàng']
+  FLAT_AMOUNT      [note: 'Giảm số tiền cố định']
+  FREE_SERVICE     [note: 'Miễn phí dịch vụ đi kèm']
+}
+
+// Phân loại tập khách hàng áp dụng của Voucher sàn (FR-AD-019)
+Enum voucher_audience_enum {
+  ALL              [note: 'Áp dụng cho tất cả người dùng']
+  NEW_USER         [note: 'Chỉ áp dụng cho tài khoản mới đặt đơn lần đầu']
+  MEMBER_RANK      [note: 'Áp dụng theo hạng thành viên (Bạc, Vàng, Kim Cương...)']
+  SPECIFIC_ACCOUNTS [note: 'Chỉ đích danh danh sách ID tài khoản được tặng riêng']
+}
+
+// -----------------------------------------------------------------
+// SUB-MODULE 1: VOUCHER TOÀN SÀN CỦA ADMIN (FR-AD-019)
+// -----------------------------------------------------------------
+Table system_vouchers {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  
+  code varchar(50) [unique, not null, note: 'Mã code viết hoa độc nhất. VD: ANHVUI304']
+  name varchar(255) [not null, note: 'Tên chương trình công khai']
+  
+  discount_type voucher_discount_type_enum [not null]
+  discount_value decimal(15, 2) [not null, note: 'Số % hoặc số tiền giảm lẻ']
+  max_discount_amount decimal(15, 2) [note: 'Chặn trần số tiền giảm cho loại hình %']
+  min_order_value decimal(15, 2) [default: 0, not null, note: 'Giá trị đơn hàng tối thiểu để kích hoạt']
+  
+  product_type booking_type_enum [note: 'Nullable. Nếu chọn sẽ chỉ cho áp vào đúng loại: TOUR/HOTEL/COMBO. NULL = Tất cả']
+  audience_type voucher_audience_enum [default: 'ALL']
+  
+  // Quản lý số lượng phát hành (BR-48: Hết số lượng tự ẩn)
+  total_quantity integer [not null, note: 'Tổng số lượt mã phát hành ra']
+  used_count integer [default: 0, not null, note: 'Số lượt thực tế khách đã dùng thành công']
+  per_user_limit integer [default: 1, not null, note: 'Giới hạn số lần sử dụng trên mỗi tài khoản']
+  
+  start_date timestamp [not null]
+  end_date timestamp [not null, note: 'Quá ngày này hệ thống tự ẩn theo BR-48']
+  
+  is_active boolean [default: true, not null, note: 'Cờ bật tắt chủ động của Admin']
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    code
+    is_active
+    (start_date, end_date)
+  }
+}
+
+// Bảng liên kết Voucher Sàn với Địa bàn áp dụng (FR-AD-019: Toàn quốc hoặc Tỉnh cụ thể)
+Table system_voucher_destinations {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  voucher_id uuid [ref: > system_vouchers.id, not null]
+  destination_id uuid [ref: > destinations.id, not null, note: 'Chốt ID Tỉnh thành được áp dụng mã']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+// Bảng liên kết Voucher Sàn với tài khoản cụ thể (Nếu audience_type = SPECIFIC_ACCOUNTS)
+Table system_voucher_target_users {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  voucher_id uuid [ref: > system_vouchers.id, not null]
+  user_id uuid [ref: > users.id, not null]
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+
+// -----------------------------------------------------------------
+// SUB-MODULE 2: KHUYẾN MÃI & VOUCHER RIÊNG CỦA ĐẠI LÝ (FR-AG-016)
+// -----------------------------------------------------------------
+Enum promotion_type_enum {
+  PERCENTAGE       [note: 'Giảm theo phần trăm giá phòng/gói']
+  FLAT_AMOUNT      [note: 'Giảm theo số tiền cố định']
+  EARLY_BIRD       [note: 'Đặt trước X ngày nhận ưu đãi']
+  LAST_MINUTE      [note: 'Đặt sát ngày chốt phòng nhận ưu đãi']
+  FLASH_SALE       [note: 'Giảm mạnh theo khung giờ vàng trong ngày']
+  MULTI_NIGHT      [note: 'Đặt X đêm tặng Y đêm miễn phí (Khách sạn)']
+  BOGO             [note: 'Mua X tặng Y suất']
+}
+
+Enum promotion_status_enum {
+  DRAFT            [note: 'Lưu nháp']
+  PENDING_REVIEW   [note: 'Chờ Admin duyệt do discount > 50% (BR-82)']
+  ACTIVE           [note: 'Đang chạy phát hành công khai']
+  REJECTED         [note: 'Admin từ chối duyệt giá']
+  PAUSED           [note: 'Đại lý chủ động dừng']
+  EXPIRED          [note: 'Hết hạn thời gian chạy']
+}
+
+Table agent_promotions {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  agent_id uuid [ref: > agents.id, not null, note: 'Đại lý sở hữu']
+  
+  name varchar(255) [not null]
+  description text
+  
+  // Nếu là chương trình tự động giảm (Flash sale/Early bird) thì để trống code, nếu là voucher nhập tay thì điền vào
+  voucher_code varchar(50) [note: 'Mã code đại lý tự đặt. VD: KSNAME10']
+  
+  type promotion_type_enum [not null]
+  status promotion_status_enum [default: 'DRAFT']
+  
+  discount_value decimal(15, 2) [not null, note: 'Lưu tỷ lệ % hoặc số tiền mặt lẻ']
+  max_discount_amount decimal(15, 2)
+  min_order_value decimal(15, 2) [default: 0, not null]
+  
+  // --- THAM SỐ PHẲNG PHỤC VỤ CÁC LUẬT MARKETING ĐẶC THÙ ---
+  early_bird_days integer [note: 'Số ngày bắt buộc đặt trước đối với luật EARLY_BIRD']
+  last_minute_days integer [default: 3, note: 'Số ngày tối đa sát nút đối với luật LAST_MINUTE']
+  
+  flash_start_time time [note: 'Khung giờ vàng bắt đầu (FLASH_SALE). VD: 12:00:00']
+  flash_end_time time [note: 'Khung giờ vàng kết thúc (FLASH_SALE). VD: 14:00:00']
+  
+  stay_min_nights integer [note: 'Số đêm tối thiểu (MULTI_NIGHT)']
+  stay_free_nights integer [note: 'Số đêm được tặng (MULTI_NIGHT)']
+  
+  buy_quantity integer [note: 'Số lượng mua (BOGO)']
+  get_quantity integer [note: 'Số lượng tặng (BOGO)']
+
+  // --- QUẢN LÝ THỜI GIAN VÀ SỐ LƯỢT CHẠY ---
+  start_date timestamp [not null]
+  end_date timestamp [not null]
+  total_usage_limit integer
+  used_count integer [default: 0, not null]
+  per_user_limit integer [default: 1, not null]
+
+  // --- CẤU HÌNH CỘNG DỒN CHIẾN LƯỢC (BR-83) ---
+  is_stackable boolean [default: false, not null, note: 'true = Cho phép cộng dồn với voucher hệ thống sàn']
+
+  // --- KIỂM DUYỆT KHUYẾN MÃI (FR-AD-013 & BR-35) ---
+  high_discount_reason text [note: 'BR-35: Bắt buộc nhập khi discount > 50%']
+  moderator_id uuid [ref: > users.id, note: 'Admin duyệt mã này']
+  moderation_note text [note: 'Lý do admin từ chối mã khuyến mãi']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    voucher_code
+    status
+    agent_id
+    (start_date, end_date)
+  }
+}
+
+// Phạm vi giới hạn sản phẩm áp dụng của riêng Đại lý đó
+Table agent_promotion_targets {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  promotion_id uuid [ref: > agent_promotions.id, not null]
+  
+  // Nếu cả 3 đều NULL = Tự động hiểu áp dụng cho TOÀN BỘ sản phẩm thuộc quyền sở hữu của Đại lý đó
+  hotel_id uuid [ref: > hotels.id]
+  tour_id uuid [ref: > tours.id]
+  combo_id uuid [ref: > combos.id]
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+// =================================================================
+// --- NHÓM 10: HỆ THỐNG KIỂM DUYỆT & ĐÁNH GIÁ (FR-AD-011 -> 013) ---
+// =================================================================
+
+// -----------------------------------------------------------------
+// 1. KIỂM DUYỆT SẢN PHẨM (FR-AD-011)
+// -----------------------------------------------------------------
+// Mức độ ưu tiên xử lý của sản phẩm trong hàng chờ
+Enum moderation_priority_enum {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// Trạng thái chi tiết của một Ticket kiểm duyệt nội dung
+Enum moderation_status_enum {
+  PENDING        [note: 'Đang nằm trong hàng chờ duyệt công khai']
+  UNDER_REVIEW   [note: 'Moderator đang mở xem chi tiết và thẩm định']
+  APPROVED       [note: 'Đã thông qua, cho phép sản phẩm mở bán công khai']
+  REVISION_REQ   [note: 'Yêu cầu chỉnh sửa, trả sản phẩm về DRAFT kèm feedback']
+  REJECTED       [note: 'Từ chối thẳng sản phẩm, chuyển trạng thái sang REJECTED']
+}
+
+Table product_moderation_requests {
+  id uuid [primary key, default: `gen_random_uuid()`]
+
+  // Định danh nhân sự và đại lý tham gia vào luồng
+  moderator_id uuid [ref: > users.id]
+  agent_id uuid [ref: > agents.id, not null]
+  
+  product_type booking_type_enum [not null]
+
+  // Bộ ba Khóa ngoại đa hình (Polymorphic Relation) - Chỉ 1 trong 3 cột được phép có dữ liệu tương ứng với product_type
+  hotel_id uuid [ref: > hotels.id]
+  tour_id uuid [ref: > tours.id]
+  combo_id uuid [ref: > combos.id]
+  
+  priority moderation_priority_enum [default: 'MEDIUM']
+  status moderation_status_enum [default: 'PENDING', not null]
+  
+  // Checklist phẳng
+  is_info_complete boolean [default: false, not null]
+  is_image_valid boolean [default: false, not null]
+  is_price_reasonable boolean [default: false, not null]
+  is_policy_clear boolean [default: false, not null]
+  is_content_safe boolean [default: false, not null]
+  is_gps_accurate boolean [default: false, not null]
+  
+  feedback_note text
+  sla_deadline timestamp [not null, note: 'BR-27: SLA duyệt 48 giờ']
+  
+  resolved_at timestamp
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    (product_type, status)
+    status
+    agent_id
+  }
+}
+
+// -----------------------------------------------------------------
+// 2. QUẢN LÝ ĐÁNH GIÁ CỦA KHÁCH HÀNG (FR-AD-012)
+// -----------------------------------------------------------------
+Enum review_status_enum {
+  PENDING   [note: 'Chờ duyệt']
+  APPROVED  [note: 'Đã duyệt công khai']
+  REJECTED  [note: 'Từ chối (không hợp lệ)']
+  HIDDEN    [note: 'Ẩn do vi phạm sau khi đã pubilsh']
+}
+
+Table reviews {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  booking_id uuid [ref: > bookings.id, not null, note: 'Ràng buộc đơn hàng để đánh giá']
+  user_id uuid [ref: > users.id, not null, note: 'Người viết đánh giá']
+  
+  // Xác định Review thuộc sản phẩm nào để tính trung bình Sao
+  product_type booking_type_enum [not null]
+  hotel_id uuid [ref: > hotels.id]
+  tour_id uuid [ref: > tours.id]
+  combo_id uuid [ref: > combos.id]
+  
+  // Nội dung đánh giá
+  rating integer [not null, note: 'Từ 1 đến 5 sao']
+  content text [not null]
+  
+  // Luồng kiểm duyệt
+  status review_status_enum [default: 'PENDING', not null]
+  is_auto_flagged boolean [default: false, not null, note: 'BR-32: Tự động bắt cờ nếu chứa SĐT/Link']
+  
+  moderator_id uuid [ref: > users.id, note: 'Người kiểm duyệt review này']
+  moderation_note text [note: 'Ghi chú nội bộ: tại sao ẩn/từ chối']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  // BỘ CẬP NHẬT INDEX SINH TỬ
+  indexes {
+    // BR-31: Ràng buộc tuyệt đối 1 User chỉ được viết 1 Review cho 1 Booking
+    (user_id, booking_id) [unique, name: "idx_user_booking_review_unique"]
+    (product_type, status)
+  }
+}
+
+// -----------------------------------------------------------------
+// 3. CẤU HÌNH TOÀN CỤC HỆ THỐNG (BR-33)
+// -----------------------------------------------------------------
+Table system_configs {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  
+  // --- 1. NHÓM CẤU HÌNH KIỂM DUYỆT ĐÁNH GIÁ (BR-33) ---
+  is_review_auto_approve boolean [default: true, not null, note: 'true = Bật chế độ tự động duyệt review hậu kỳ, false = Bắt buộc Admin duyệt tiền kỳ']
+
+  description text
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+// =================================================================
+// --- NHÓM 11: MODULE ĐIỀU PHỐI BOOKING & XỬ LÝ TRANH CHẤP (5.4. Module Quản lý đặt chỗ) ---
+// =================================================================
+
+// Mức độ nghiêm trọng và ưu tiên xử lý của Ticket khiếu nại (BR-40)
+Enum dispute_priority_enum {
+  LOW
+  MEDIUM
+  HIGH
+  EMERGENCY      [note: 'Khiếu nại an toàn/khẩn cấp - Hạn xử lý 24h (BR-40)']
+}
+
+// Vòng đời trạng thái của một ca tranh chấp
+Enum dispute_status_enum {
+  OPEN           [note: 'Ticket mới tạo, chờ Admin/CS tiếp nhận']
+  IN_PROGRESS    [note: 'Admin đang mở phòng chat, làm việc với các bên']
+  RESOLVED       [note: 'Admin đã ra phán quyết xử lý đơn hàng']
+  CLOSED         [note: '2 bên đã bấm nút xác nhận đồng ý đóng ticket (FR-AD-015)']
+}
+
+// Phán quyết cuối cùng của Admin hệ thống để chốt dòng tiền
+Enum dispute_decision_enum {
+  REFUND_FULL          [note: 'Hoàn tiền toàn bộ 100% cho khách hàng']
+  REFUND_PARTIAL       [note: 'Hoàn tiền một phần theo tỷ lệ thỏa thuận']
+  VOUCHER_COMPENSATION [note: 'Đền bù cho khách bằng Voucher/Điểm thưởng toàn sàn']
+  REJECTED             [note: 'Từ chối khiếu nại, giữ nguyên tiền cho Đại lý']
+  AGENT_PENALTY        [note: 'Phạt tiền / Cảnh cáo trừ điểm uy tín Đại lý']
+}
+
+// Phân loại người gửi tin nhắn trong phòng chat tranh chấp 3 bên
+Enum dispute_sender_type_enum {
+  ADMIN
+  CUSTOMER
+  AGENT
+}
+
+// -----------------------------------------------------------------
+// 1. TIMELINE & LỊCH SỬ THAY ĐỔI TRẠNG THÁI BOOKING (FR-AD-014 & BR-36)
+// -----------------------------------------------------------------
+Table booking_status_logs {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  booking_id uuid [ref: > bookings.id, not null, note: 'Thuộc đơn hàng nào']
+  
+  old_status booking_status_enum [not null]
+  new_status booking_status_enum [not null]
+  
+  changed_by uuid [ref: > users.id, not null, note: 'ID người thực hiện bấm nút (Admin, Khách, Đại lý hoặc Hệ thống tự động)']
+  
+  // Giải quyết triệt để BR-37 (Bắt buộc ghi lý do khi Admin can thiệp)
+  change_reason text [not null, note: 'Lý do thay đổi trạng thái đơn hàng']
+  
+  created_at timestamp [default: `now()` ]
+
+  indexes {
+    booking_id
+    created_at
+  }
+}
+
+// -----------------------------------------------------------------
+// 2. BẢNG TRUNG TÂM: TICKETS XỬ LÝ TRANH CHẤP & KHIẾU NẠI (FR-AD-015 & BR-38)
+// -----------------------------------------------------------------
+Table dispute_tickets {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  
+  // BR-38: Mã ticket ID độc nhất, lưu trữ vĩnh viễn không cài Soft Delete
+  ticket_code varchar(50) [unique, not null, note: 'Format: DP-YYYYMM-XXXXX']
+  booking_id uuid [ref: > bookings.id, not null, note: 'Liên kết trực tiếp tới Booking dính phốt']
+  
+  creator_id uuid [ref: > users.id, not null, note: 'Người đứng ra mở ticket khiếu nại (User hoặc Đại lý)']
+  handler_id uuid [ref: > users.id, note: 'Nhân viên Customer Support / Admin chịu trách nhiệm xử lý phân giải']
+  
+  title varchar(255) [not null, note: 'Tiêu đề vụ khiếu nại (VD: Phòng khách sạn không giống ảnh quảng cáo)']
+  description text [not null, note: 'Nội dung mô tả chi tiết sự việc phát sinh']
+  
+  priority dispute_priority_enum [default: 'MEDIUM']
+  status dispute_status_enum [default: 'OPEN', not null]
+  
+  // --- QUẢN LÝ DEADLINE THEO SLA SÀN (BR-39 & BR-40) ---
+  sla_deadline timestamp [not null, note: 'Hạn chót giải quyết. Mặc định 72h (BR-39), nếu EMERGENCY là 24h (BR-40)']
+  
+  // --- KẾT QUẢ PHÁN QUYẾT CỦA ADMIN ---
+  final_decision dispute_decision_enum
+  refund_amount decimal(15, 2) [default: 0, note: 'Số tiền thực tế thực hiện lệnh hoàn (nếu có phán quyết hoàn tiền)']
+  compensation_note text [note: 'Ghi chú chi tiết về hình thức phạt đại lý hoặc tặng mã voucher bồi thường']
+
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  closed_at timestamp [note: 'Thời điểm 2 bên đồng thuận bấm nút đóng hồ sơ']
+
+  indexes {
+    ticket_code
+    status
+    priority
+    booking_id
+    (status, sla_deadline) [name: "idx_dispute_sla_tracking", note: 'Tối ưu luồng quét cảnh báo trễ hạn xử lý ca khiếu nại']
+  }
+}
+
+// -----------------------------------------------------------------
+// 3. KHO TÀI LIỆU, CHỨNG CỨ TRANH CHẤP (FR-AD-015 - Ảnh, file, biên lai)
+// -----------------------------------------------------------------
+Table dispute_evidences {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  dispute_id uuid [ref: > dispute_tickets.id, not null]
+  
+  uploaded_by uuid [ref: > users.id, not null, note: 'Người nộp chứng cứ']
+  file_url text [not null, note: 'Đường dẫn lưu file chứng cứ trên CDN S3']
+  file_type varchar(50) [note: 'Định dạng file: image/png, application/pdf,...']
+  
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    dispute_id
+  }
+}
+
+// -----------------------------------------------------------------
+// 4. PHÒNG CHAT TRANH CHẤP 3 BÊN (FR-AD-015 - Lưu toàn bộ nội dung đối thoại)
+// -----------------------------------------------------------------
+Table dispute_messages {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  dispute_id uuid [ref: > dispute_tickets.id, not null]
+  
+  sender_id uuid [ref: > users.id, not null, note: 'ID người gõ tin nhắn']
+  sender_type dispute_sender_type_enum [not null, note: 'Xác định vai trò hiển thị màu bong bóng chat ngoài UI']
+  
+  message_text text [not null, note: 'Nội dung tin nhắn đối thoại giải trình']
+  
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    dispute_id
+    created_at
+  }
+}
+
+// =================================================================
+// --- NHÓM 12: HỆ THỐNG CMS, MARKETING BANNER & BLOG TIN TỨC (FR-AD-008, FR-AD-009, FR-AD-010) ---
+// =================================================================
+
+// Trạng thái xuất bản của bài viết hoặc trang tĩnh
+Enum content_status_enum {
+  DRAFT            [note: 'Lưu nháp nội bộ']
+  SCHEDULED        [note: 'Lên lịch chờ giờ đẹp tự động xuất bản']
+  PUBLISHED        [note: 'Đã xuất bản công khai ngoài trang chủ']
+}
+
+// Vị trí hiển thị Banner được định vị cứng theo UI để kiểm tra kích thước (BR-25)
+Enum banner_position_enum {
+  HOME_HERO_SLIDER   [note: 'Kích thước chuẩn: 1920x600 px']
+  SEARCH_SIDEBAR     [note: 'Kích thước chuẩn: 300x250 px']
+  PROMO_POPUP        [note: 'Kích thước chuẩn: 600x400 px']
+  PRODUCT_PAGE       [note: 'Banner hiển thị tại trang chi tiết Tour/KS']
+  FOOTER             [note: 'Banner nằm ở chân trang']
+}
+
+// Trạng thái phê duyệt bình luận blog tránh spam độc hại
+Enum comment_status_enum {
+  PENDING
+  APPROVED
+  SPAM
+}
+
+// -----------------------------------------------------------------
+// 1. QUẢN LÝ TRANG TĨNH & PHÂN CHIA PHIÊN BẢN (FR-AD-008)
+// -----------------------------------------------------------------
+Table static_pages {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  slug varchar(255) [unique, not null, note: 'BR-23: Đường dẫn URL tùy chỉnh, không được trùng nhau']
+  title varchar(255) [not null, note: 'Tiêu đề trang tĩnh. VD: Điều khoản sử dụng']
+  content text [not null, note: 'Lưu toàn bộ mã HTML/Rich text từ bộ soạn thảo WYSIWYG']
+  
+  status content_status_enum [default: 'DRAFT']
+  
+  // --- CẤU HÌNH SEO METADATA CHUẨN ---
+  seo_title varchar(255)
+  seo_description text
+  seo_keywords varchar(255)
+  og_title varchar(255)
+  og_description text
+  og_image text
+
+  published_at timestamp [note: 'Giờ hiển thị công khai (bằng NOW() nếu phát hành ngay hoặc bằng giờ lên lịch)']
+  created_by uuid [ref: > users.id]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    slug
+    status
+  }
+}
+
+// Bảng lưu vết lịch sử phiên bản để phục vụ nút Rollback (BR-22)
+Table static_page_versions {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  page_id uuid [ref: > static_pages.id, not null, note: 'Liên kết tới trang tĩnh gốc']
+  version_number integer [not null, note: 'Số tăng tuần tự: 1, 2, 3... để kiểm soát luồng rollback']
+  
+  title varchar(255) [not null]
+  content text [not null, note: 'Snapshot nội dung HTML cũ']
+  
+  seo_title varchar(255)
+  seo_description text
+  seo_keywords varchar(255)
+  og_image text
+
+  created_by uuid [ref: > users.id, note: 'Nhân sự thực hiện chỉnh sửa phiên bản này']
+  created_at timestamp [default: `now()`, note: 'Thời điểm lưu vết log']
+
+  indexes {
+    (page_id, version_number) [unique, name: "idx_page_version_unique"]
+  }
+}
+
+
+// -----------------------------------------------------------------
+// 2. QUẢN LÝ BANNER & MARKETING SLIDER (FR-AD-009)
+// -----------------------------------------------------------------
+Table banners {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  title varchar(255) [not null]
+  description text
+  image_url text [not null, note: 'Link ảnh lưu trữ trên CDN']
+  cta_text varchar(100) [note: 'Nhãn của nút kêu gọi hành động. VD: Đặt ngay']
+  target_url text [not null, note: 'Đường dẫn deep-link khi click vào banner']
+  
+  position banner_position_enum [not null]
+  sort_order integer [default: 1, not null, note: 'Thứ tự hiển thị số nhỏ xếp trước']
+  audience_type voucher_audience_enum [default: 'ALL', note: 'Tập đối tượng được xem banner (Tái sử dụng bộ Enum nhóm 9)']
+  
+  // --- QUẢN LÝ THỜI GIAN HIỆU LỰC (BR-24) ---
+  start_date timestamp [not null]
+  end_date timestamp [not null, note: 'Quá ngày này hệ thống tự ẩn']
+  is_active boolean [default: true, not null, note: 'Cờ bật tắt chủ động của Marketing']
+  
+  // --- BỘ ĐẾM THỐNG KÊ HIỆU NĂNG TÍNH TOÁN CTR ---
+  impressions_count integer [default: 0, not null, note: 'Số lần hiển thị']
+  clicks_count integer [default: 0, not null, note: 'Số lần click']
+  
+  created_by uuid [ref: > users.id]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    position
+    is_active
+    (start_date, end_date)
+  }
+}
+
+
+// -----------------------------------------------------------------
+// 3. QUẢN LÝ BLOG, TIN TỨC VÀ BÌNH LUẬN (FR-AD-010)
+// -----------------------------------------------------------------
+Table blog_categories {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(255) [not null, note: 'VD: Cẩm nang du lịch, Ẩm thực bốn phương']
+  slug varchar(255) [unique, not null]
+  description text
+  
+  created_at timestamp [default: `now()`]
+  deleted_at timestamp
+}
+
+Table blog_posts {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  category_id uuid [ref: > blog_categories.id, not null]
+  author_id uuid [ref: > users.id, not null, note: 'Admin/Mod viết bài']
+  
+  title varchar(255) [not null]
+  slug varchar(255) [unique, not null]
+  summary text [not null, note: 'Đoạn trích dẫn ngắn hiển thị ngoài danh sách bài viết']
+  content text [not null, note: 'Nội dung chi tiết bài viết (Rich text)']
+  featured_image text [not null, note: 'Ảnh đại diện bài viết']
+  
+  status content_status_enum [default: 'DRAFT']
+  views_count integer [default: 0, not null, note: 'Tổng số lượt đọc bài viết']
+  
+  // SEO Meta
+  seo_title varchar(255)
+  seo_description text
+  seo_keywords varchar(255)
+  
+  published_at timestamp
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    status
+    category_id
+    published_at
+  }
+}
+
+// Bảng liên kết phẳng các sản phẩm liên quan (Gánh luật BR-26 - Giới hạn max 5 dòng)
+Table blog_related_products {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  post_id uuid [ref: > blog_posts.id, not null]
+  
+  product_type booking_type_enum [not null]
+  hotel_id uuid [ref: > hotels.id]
+  tour_id uuid [ref: > tours.id]
+  combo_id uuid [ref: > combos.id]
+  
+  indexes {
+    post_id
+  }
+}
+
+Table blog_comments {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  post_id uuid [ref: > blog_posts.id, not null]
+  user_id uuid [ref: > users.id, not null, note: 'Tài khoản khách để lại bình luận']
+  parent_id uuid [ref: > blog_comments.id, note: 'Hỗ trợ tính năng Reply lồng nhau đa cấp']
+  
+  content text [not null]
+  status comment_status_enum [default: 'PENDING', not null]
+  
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp
+
+  indexes {
+    post_id
+    status
   }
 }
 

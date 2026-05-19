@@ -631,6 +631,7 @@ Port ssh: 22
 
 ### 17. Link API
 https://ebvn.top/api/bookmark_service/swagger/index.html
+https://ebvn.top/api/user_service/swagger/index.html
 
 ### 18. Clear all data in docker
 ```
@@ -690,7 +691,7 @@ tar xzf ./actions-runner-linux-x64-2.333.1.tar.gz
 - Đây là bước quan trọng nhất. Bạn cần quay lại trình duyệt (phần Settings > Actions > Runners trên GitHub) để lấy Token mới (vì Token cũ thường hết hạn sau vài phút).
 
 ```bash
-./config.sh --url https://github.com/nguyendong2003/bookmark-management --token <TOKEN_MOI_NHAT>
+./config.sh --url https://github.com/nguyendong2003/bookmark-service --token <TOKEN_MOI_NHAT>
 ```
 
 5. Bước 5: Chạy Runner
@@ -751,3 +752,20 @@ git push origin v1.1.0
 ### 21. DevSecOps
 - Dùng `SonarQube` để cài đặt tool thêm Security vào luồng CI-CD
 
+### 22. Gorm
+
+- Tạo mock sqldb (khi test) -> cài đặt driver sqlite mà không cần cài đặt postgres
+```
+go get -u gorm.io/driver/sqlite
+```
+
+### JWT - Authentication and Authorization
+- Thư viện: 
+```
+go get -u github.com/golang-jwt/jwt/v5
+```
+- Câu lệnh generate public key và private key:
+```
+openssl genpkey -algorithm RSA -out private.pem -pkeyopt rsa_keygen_bits:2048
+openssl rsa -pubout -in private.pem -out public.pem
+```
