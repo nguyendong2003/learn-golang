@@ -10,10 +10,11 @@ Enum user_status_enum {
 Table roles {
   id uuid [primary key, default: `gen_random_uuid()`]
   name varchar(100) [not null, unique]
+  code varchar(100) [unique, not null, note: 'Example: ADMIN, USER']
   description text
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -23,8 +24,8 @@ Table permissions {
   code varchar(100) [unique, not null, note: 'Example: agent.approve, tour.create']
   description text
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -34,15 +35,15 @@ Table users {
   email varchar(255) [unique, not null]
   username varchar(255) [unique, not null]
   password varchar(255) [not null]
-  name varchar(255)
+  name varchar(255) [not null]
   phone varchar(20) [unique]
   avatar_url text
   
-  status user_status_enum [default: 'ACTIVE']
-  is_affiliate boolean [default: false]
+  status user_status_enum [not null, default: 'ACTIVE']
+  is_affiliate boolean [not null, default: false]
     
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -107,8 +108,8 @@ Table agents {
   status agent_status_enum [default: 'PENDING']
   status_note text [note: 'Lý do từ chối, yêu cầu sửa đổi hồ sơ, hoặc lý do khóa/cấm tài khoản']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -127,8 +128,8 @@ Table agent_images {
   image_url text [not null]
   sort_order integer [default: 1, not null, note: 'Mặc định từ 1. Ảnh có sort_order = 1 là ảnh đại diện']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -143,7 +144,7 @@ Table staff_audit_logs {
   ip_address varchar
   user_agent text
   
-  created_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
 }
 
 // =================================================================
@@ -174,8 +175,8 @@ Table corporates {
   status corporate_status_enum [default: 'PENDING']
   status_note text [note: 'Ghi chú kiểm duyệt của Admin']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -186,7 +187,7 @@ Table corporate_employees {
   
   is_approver boolean [default: false, not null, note: 'Cờ cấp quyền: true = Người đại diện có quyền duyệt booking của NV khác']
   
-  created_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
   
   indexes {
     (corporate_id, user_id) [pk]
@@ -211,8 +212,8 @@ Table corporate_contracts {
   
   is_active boolean [default: true, not null]
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
 
   indexes {
     corporate_id
@@ -249,8 +250,8 @@ Table destinations {
 
   is_featured boolean [default: false, note: 'Hiển thị ở mục Điểm đến nổi bật']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -267,8 +268,8 @@ Table activity_field_categories {
   // Theo BR-18: Không xóa, chỉ chuyển trạng thái
   is_active boolean [default: true] 
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -283,8 +284,8 @@ Table bed_categories {
   
   is_active boolean [default: true]
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -295,8 +296,8 @@ Table blog_categories {
   slug varchar(255) [unique, not null]
   description text
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -310,8 +311,8 @@ Table tour_categories {
   sort_order integer [default: 1]
   is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp 
 }
 
@@ -325,8 +326,8 @@ Table hotel_categories {
   sort_order integer [default: 1]
   is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp 
 }
 
@@ -339,8 +340,8 @@ Table star_rating_categories {
   description text
   is_active boolean [default: true]
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp 
 }
 
@@ -354,8 +355,8 @@ Table room_categories {
   sort_order integer [default: 1]
   is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp 
 }
 
@@ -369,8 +370,8 @@ Table hotel_facility_categories {
   sort_order integer [default: 1]
   is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp 
 }
 
@@ -384,8 +385,8 @@ Table room_facility_categories {
   sort_order integer [default: 1]
   is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp 
 }
 
@@ -399,8 +400,8 @@ Table transportation_categories {
   sort_order integer [default: 1]
   is_active boolean [default: true, note: 'Trạng thái Active/Inactive (FR-AD-006)']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp 
 }
 
@@ -414,8 +415,8 @@ Table meal_categories {
   sort_order integer [default: 1]
   is_active boolean [default: true]
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp 
 }
 
@@ -465,8 +466,8 @@ Table hotels {
   tax_percent decimal(5, 2) [default: 10.00, not null, note: 'Thuế VAT (Ví dụ: 10%)']
   service_fee_percent decimal(5, 2) [default: 5.00, not null, note: 'Phí dịch vụ khách sạn (Ví dụ: 5%)']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -474,8 +475,8 @@ Table hotel_facilities {
   hotel_id uuid [ref: > hotels.id, not null]
   hotel_facility_category_id uuid [ref: > hotel_facility_categories.id, not null]
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
 
   indexes {
     (hotel_id, hotel_facility_category_id) [pk]
@@ -489,8 +490,8 @@ Table hotel_images {
   image_url text [not null]
   sort_order integer [default: 1, not null, note: 'Mặc định từ 1. Ảnh có sort_order = 1 là ảnh đại diện']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -512,8 +513,8 @@ Table room_types {
   total_room integer [not null, note: 'Tổng số phòng loại này khách sạn có']
   view_room text
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -521,8 +522,8 @@ Table room_facilities {
   room_id uuid [ref: > room_types.id, not null]
   room_facility_category_id uuid [ref: > room_facility_categories.id, not null]
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   
   indexes {
     (room_id, room_facility_category_id) [pk]
@@ -534,8 +535,8 @@ Table room_type_beds {
   room_type_id uuid [ref: > room_types.id, not null]
   bed_category_id uuid [ref: > bed_categories.id, not null]
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   
   indexes {
     (room_type_id, bed_category_id) [pk]
@@ -550,8 +551,8 @@ Table room_images {
   image_url text [not null]
   sort_order integer [default: 1, not null, note: 'Mặc định từ 1. Ảnh có sort_order = 1 là ảnh đại diện']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -577,8 +578,8 @@ Table room_images {
 //   status room_status_enum [default: 'AVAILABLE', not null, note: 'Trạng thái vận hành thực tế']
 //   note text [note: 'Ghi chú riêng về phòng (VD: Hỏng vòi hoa sen, view bị che...)']
 
-//   created_at timestamp [default: `now()`]
-//   updated_at timestamp [default: `now()`]
+//   created_at timestamp [not null, default: `now()`]
+//   updated_at timestamp [not null, default: `now()`]
 //   deleted_at timestamp
 
 //   // Partial Index
@@ -617,8 +618,8 @@ Table room_price_settings {
   
   is_active boolean [default: true, not null]
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   // Partial Index
@@ -650,8 +651,8 @@ Table room_price_rules {
   
   is_active boolean [default: true, not null]
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -678,8 +679,8 @@ Table room_type_inventories {
   
   is_closed boolean [default: false, not null, note: 'Cờ khóa phòng hàng loạt (Stop Sale) của BR-68']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
 
   // Đảm bảo mỗi loại phòng chỉ có duy nhất 1 bản ghi tồn kho cho 1 ngày
   indexes {
@@ -739,8 +740,8 @@ Table tours {
 
   status tour_status_enum [default: 'DRAFT']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -755,8 +756,8 @@ Table tour_category_relations {
   tour_id uuid [ref: > tours.id, not null]
   tour_category_id uuid [ref: > tour_categories.id, not null]
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   
   indexes {
     (tour_id, tour_category_id) [pk]
@@ -768,8 +769,8 @@ Table tour_destinations {
   destination_id uuid [ref: > destinations.id, not null, note: 'Điểm đến chốt cấp Tỉnh/TP hoặc Phường/Xã']
   sort_order integer [default: 1, note: 'Thứ tự điểm đến đi qua']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
 
   indexes {
     (tour_id, destination_id) [pk]
@@ -781,8 +782,8 @@ Table tour_transportations {
   transportation_category_id uuid [ref: > transportation_categories.id, not null, note: 'Điểm đến chốt cấp Tỉnh/TP hoặc Phường/Xã']
   sort_order integer [default: 1, note: 'Thứ tự điểm đến đi qua']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
 
   indexes {
     (tour_id, transportation_category_id) [pk]
@@ -795,8 +796,8 @@ Table tour_images {
   image_url text [not null]
   sort_order integer [default: 1, not null, note: 'Ảnh có sort_order = 1 là ảnh đại diện đại diện']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -825,8 +826,8 @@ Table tour_departures {
   
   status departure_status_enum [default: 'OPEN', not null]
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -861,8 +862,8 @@ Table tour_itineraries {
   lng decimal(11, 8) [not null, note: 'Kinh độ GPS']
   
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   // Partial Unique
@@ -881,8 +882,8 @@ Table tour_itinerary_images {
   image_url text [not null, note: 'Đường dẫn ảnh lưu trên CDN / S3']
   sort_order integer [default: 1, not null, note: 'Thứ tự hiển thị ảnh trong ngày (1 đến 5)']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -961,8 +962,8 @@ Table combos {
 
   status combo_status_enum [default: 'DRAFT']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -995,8 +996,8 @@ Table combo_departures {
   
   status combo_departure_status_enum [default: 'OPEN', not null]
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   // Đảm bảo một gói combo không thể tạo 2 đợt khởi hành trùng khít cùng 1 ngày
@@ -1015,8 +1016,8 @@ Table combo_images {
   image_url text [not null, note: 'Đường dẫn ảnh lưu trữ CDN S3']
   sort_order integer [default: 1, not null, note: 'Ảnh mang sort_order = 1 là ảnh bìa đại diện sản phẩm']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -1067,8 +1068,8 @@ Table agent_bank_accounts {
   account_name varchar(150) [not null, note: 'Tên chủ tài khoản viết hoa không dấu']
   is_default boolean [default: true, not null, note: 'Tài khoản ưu tiên hiển thị ở mail hướng dẫn CK']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -1128,8 +1129,8 @@ Table bookings {
   // --- GHI CHÚ NỘI BỘ DÀNH RIÊNG CHO ADMIN / CS (FR-AD-014) ---
   system_internal_note text [note: 'Ghi chú nội bộ của Admin hệ thống khi can thiệp xử lý, Đại lý và Khách không xem được trường này']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -1156,8 +1157,8 @@ Table booking_hotel_details {
   base_price decimal(15, 2) [not null, note: 'Giá phòng trung bình mỗi đêm tại thời điểm đặt']
   service_fee_percent decimal(5, 2) [not null, note: 'Snapshot % phí dịch vụ của KS lúc đặt (Ví dụ: 5.00)']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -1176,8 +1177,8 @@ Table booking_hotel_room_operations {
   // Ghi chú chi tiết cho từng phòng lẻ: ghi nhận sự cố, hư hỏng, đánh giá khách...
   stay_incident_note text [note: 'Ghi chú vận hành lẻ (VD: Phòng 1 hỏng điều hòa, khách làm vỡ cốc...)']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   // Đảm bảo tính toàn vẹn: Mỗi phòng lẻ trong đơn chỉ có duy nhất 1 dòng vận hành hoạt động
@@ -1212,8 +1213,8 @@ Table booking_tour_details {
   infant_price decimal(15, 2) [not null, note: 'Snapshot giá em bé lúc book']
   extra_single_room_fee decimal(15, 2) [default: 0, not null, note: 'Snapshot phí phòng đơn lúc book']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -1240,8 +1241,8 @@ Table booking_combo_details {
   combo_price decimal(15, 2) [not null, note: 'Giá khuyến mãi bán thực tế lúc đặt']
   discount_percent decimal(5, 2) [not null, note: 'Tỷ lệ phần trăm giảm giá hiển thị lúc đặt']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -1256,8 +1257,8 @@ Table booking_passengers {
   gender passenger_gender_enum [not null, default: 'MALE']
   date_of_birth date [not null]
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -1277,8 +1278,8 @@ Table booking_payments {
   
   staff_id uuid [ref: > users.id, note: 'ID nhân viên đại lý đứng ra bấm nút duyệt dòng tiền']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -1333,8 +1334,8 @@ Table system_vouchers {
   
   is_active boolean [default: true, not null, note: 'Cờ bật tắt chủ động của Admin']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -1350,8 +1351,8 @@ Table system_voucher_destinations {
   voucher_id uuid [ref: > system_vouchers.id, not null]
   destination_id uuid [ref: > destinations.id, not null, note: 'Chốt ID Tỉnh thành được áp dụng mã']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -1361,8 +1362,8 @@ Table system_voucher_target_users {
   voucher_id uuid [ref: > system_vouchers.id, not null]
   user_id uuid [ref: > users.id, not null]
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -1434,8 +1435,8 @@ Table agent_promotions {
   moderator_id uuid [ref: > users.id, note: 'Admin duyệt mã này']
   moderation_note text [note: 'Lý do admin từ chối mã khuyến mãi']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -1456,8 +1457,8 @@ Table agent_promotion_targets {
   tour_id uuid [ref: > tours.id]
   combo_id uuid [ref: > combos.id]
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -1514,8 +1515,8 @@ Table product_moderation_requests {
   
   resolved_at timestamp
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -1557,8 +1558,8 @@ Table reviews {
   moderator_id uuid [ref: > users.id, note: 'Người kiểm duyệt review này']
   moderation_note text [note: 'Ghi chú nội bộ: tại sao ẩn/từ chối']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   // BỘ CẬP NHẬT INDEX SINH TỬ
@@ -1646,8 +1647,8 @@ Table system_configs {
 
   description text [note: 'Mô tả chung về đợt cập nhật cấu hình nếu cần']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 }
 
@@ -1737,8 +1738,8 @@ Table dispute_tickets {
   refund_amount decimal(15, 2) [default: 0, note: 'Số tiền thực tế thực hiện lệnh hoàn (nếu có phán quyết hoàn tiền)']
   compensation_note text [note: 'Ghi chú chi tiết về hình thức phạt đại lý hoặc tặng mã voucher bồi thường']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   closed_at timestamp [note: 'Thời điểm 2 bên đồng thuận bấm nút đóng hồ sơ']
 
   indexes {
@@ -1761,7 +1762,7 @@ Table dispute_evidences {
   file_url text [not null, note: 'Đường dẫn lưu file chứng cứ trên CDN S3']
   file_type varchar(50) [note: 'Định dạng file: image/png, application/pdf,...']
   
-  created_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
 
   indexes {
     dispute_id
@@ -1780,7 +1781,7 @@ Table dispute_messages {
   
   message text [not null, note: 'Nội dung tin nhắn đối thoại giải trình']
   
-  created_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
 
   indexes {
     dispute_id
@@ -1836,8 +1837,8 @@ Table static_pages {
 
   published_at timestamp [note: 'Giờ hiển thị công khai (bằng NOW() nếu phát hành ngay hoặc bằng giờ lên lịch)']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -1899,8 +1900,8 @@ Table banners {
   impressions_count integer [default: 0, not null, note: 'Số lần hiển thị']
   clicks_count integer [default: 0, not null, note: 'Số lần click']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -1935,8 +1936,8 @@ Table blogs {
   
   published_at timestamp
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -1969,8 +1970,8 @@ Table blog_comments {
   content text [not null]
   status comment_status_enum [default: 'PENDING', not null]
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -2037,8 +2038,8 @@ Table affiliate_profiles {
   withdrawn_amount decimal(15, 2) [default: 0, not null, note: 'Tổng số tiền đã giải ngân thành công về ngân hàng']
   total_earned decimal(15, 2) [default: 0, not null, note: 'Tổng tiền tích lũy trọn đời (Doanh thu lịch sử)']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   deleted_at timestamp
 
   indexes {
@@ -2064,8 +2065,8 @@ Table affiliate_commissions {
   // --- KHÓA HẸN GIỜ ĐỐI SOÁT TÀI CHÍNH (BR-44) ---
   available_at timestamp [note: 'Thời điểm tiền được bung xích khóa (Bằng giờ Booking COMPLETED + 7 ngày)']
   
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
 
   indexes {
     affiliate_id
@@ -2094,8 +2095,8 @@ Table affiliate_withdrawals {
   transaction_reference varchar(255) [note: 'Mã số giao dịch ngân hàng thực tế sau khi chuyển tiền']
   admin_note text [note: 'Lý do từ chối giải ngân nếu có']
 
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
 
   indexes {
     affiliate_id
@@ -2139,7 +2140,7 @@ Table user_loyalty_profiles {
   // Số tiền tích lũy phục vụ tính toán thăng hạng đầu tháng (BR-51)
   rolling_12m_spending decimal(15, 2) [default: 0, not null, note: 'Tổng tiền chi tiêu chốt trong 12 tháng gần nhất làm căn cứ xét hạng']
   
-  updated_at timestamp [default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   
   indexes {
     user_id
@@ -2165,7 +2166,7 @@ Table user_point_logs {
   
   // --- QUẢN LÝ THỜI HẠN (BR-50) ---
   expired_at timestamp [note: 'Hạn chót của đợt điểm tích này (Bằng ngày tích created_at + 12 tháng). Dòng REDEEM/EXPIRE để NULL']
-  created_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
   
   indexes {
     user_id
