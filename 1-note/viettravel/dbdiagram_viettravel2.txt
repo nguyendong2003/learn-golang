@@ -30,7 +30,6 @@ Table permissions {
 
 Table users {
   id uuid [primary key, default: `gen_random_uuid()`]
-  role_id uuid [ref: > roles.id, not null]
   
   email varchar(255) [unique, not null]
   username varchar(255) [unique, not null]
