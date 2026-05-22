@@ -1,3 +1,7 @@
+# Phân chia task
+
+https://docs.google.com/spreadsheets/d/17ssGXK7ujJl5g54Z0nEf-Rjy9EncgGBi9Xum_VXOL6k/edit?gid=0#gid=0
+
 ⭐ FR-AG-006: Quản lý phòng trống (Inventory Calendar)
 
 - Giao diện
