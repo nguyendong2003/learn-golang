@@ -1,0 +1,51 @@
+## Install guide: https://www.youtube.com/watch?v=u6YQLcUk2Cc
+
+1. For waydroid certificates👇
+.
+sudo apt install curl ca-certificates -y
+
+2. For repositories👇
+.
+curl https://repo.waydro.id | sudo bash
+
+3. For install waydroid👇
+.
+sudo apt install waydroid -y
+
+4. For update packages👇
+.
+sudo apt update && sudo apt upgrade -y
+
+(Bổ sung: If GAPPS not Showing👇
+.
+sudo waydroid init -s GAPPS -c https://ota.waydro.id/system -v https://ota.waydro.id/vendor -f
+)
+
+5. To get Android I'd (1st Command)👇
+sudo waydroid shell
+
+- After entering password(2nd Command)👇 and then copy android_id
+ANDROID_RUNTIME_ROOT=/apex/com.android.runtime ANDROID_DATA=/data ANDROID_TZDATA_ROOT=/apex/com.android.tzdata ANDROID_I18N_ROOT=/apex/com.android.i18n sqlite3 /data/data/com.google.android.gsf/databases/gservices.db "select * from main where name = \"android_id\";"
+
+6. Go to this website and login with google account and then paste android_id from step 5
+google.com/android/uncertified
+
+7. Restart PC
+8. Command:
+sudo waydroid session stop
+9. Open waydroid
+
+
+```Quick copy
+sudo apt install curl ca-certificates -y
+curl https://repo.waydro.id | sudo bash
+sudo apt install waydroid -y
+sudo apt update && sudo apt upgrade -y
+```
+
+### If you want to uninstall waydroid- paste command step by step
+sudo waydroid session stop
+sudo waydroid container stop
+sudo apt remove waydroid
+sudo rm -rf /var/lib/waydroid /home/.waydroid ~/waydroid ~/.share/waydroid ~/.local/share/applications/aydroid ~/.local/share/waydroid
+
