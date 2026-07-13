@@ -372,3 +372,49 @@ eas build --platform ios --profile preview
 * Để cài được vào máy thật, bạn cần đăng ký mã định danh của điện thoại (gọi là UDID) với tài khoản Apple. Expo cũng sẽ tự động hướng dẫn bạn quét một mã QR trên iPhone để tự động lấy và đăng ký mã UDID này lên hệ thống của Apple luôn! Mọi thứ diễn ra hoàn toàn tự động.
 
 * Kết quả: Khi hoàn thành, bạn cũng sẽ nhận được một đường link/mã QR. Sử dụng chính chiếc iPhone đã đăng ký UDID quét mã để cài đặt app trực tiếp qua môi trường mạng (Ad-Hoc distribution).
+
+# Cách chạy react native cli trên máy android thật
+
+## Bước 1:
+
+- Bật Developer mode trên điện thoại và Vào mục Cài đặt cho nhà phát triển mới xuất hiện > Bật Gỡ lỗi USB (USB Debugging)
+- Cắm cáp USB vào máy
+- Mở khóa màn hình điện thoại. Lúc này sẽ có một bảng pop-up hiện lên hỏi: "Cho phép gỡ lỗi USB?" (Allow USB debugging?).
+
+- Tích chọn ô "Luôn cho phép từ máy tính này" (Always allow from this computer) rồi bấm Cho phép (Allow).
+
+## Bước 3: Kiểm tra kết nối trên máy tính
+
+- Mở Terminal/Command Prompt trên máy tính của bạn và gõ lệnh sau để chắc chắn máy tính đã nhận diện được điện thoại:
+
+```bash
+adb devices
+```
+
+- Kết quả đúng: Sẽ hiển thị một mã số kèm chữ device (Ví dụ: RFCTC0SJJTX device).
+- Nếu hiển thị unauthorized: Nghĩa là bạn chưa bấm "Cho phép" trên màn hình điện thoại ở Bước 1. Hãy rút cáp ra cắm lại để nó hiện lại bảng thông báo.
+
+## Bước 3:
+
+- Terminal 1:
+
+```bash
+npm start -- --reset-cache
+```
+
+- Terminal 2:
+
+```bash
+npm run android
+```
+
+# Cách chạy react native expo trên máy android thật
+
+## Bước 1:
+
+```bash
+npx expo start --localhost
+```
+
+- Sau đó bấm `Shift + A` để chọn `run on android device`
+- Sau đó chọn thiết bị muốn chạy

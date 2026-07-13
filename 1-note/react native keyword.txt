@@ -1,0 +1,105 @@
+Biểu đồ (Chart) trên Mobile	
+• Line chart với legend ở trên, trục X là ngày/tuần/tháng, trục Y là giá trị. 
+• Tap điểm: tooltip nổi lên (haptic feedback). Kéo ngón tay trên chart: highlight tracking line. 
+• Pinch to zoom: zoom vào khoảng thời gian cụ thể. Pan sau khi zoom. 
+• Long-press chart: hiện option 'Lưu ảnh' (Export chart PNG vào Photos).
+
+
+Push SLA – Khi app background	
+• Cả hai loại push (cảnh báo và vi phạm) phải hoạt động khi app bị kill hoặc background. 
+• iOS: Remote push qua APNs. Android: FCM high-priority message để wake device. 
+• Notification action: 'Xem ngay' (foreground open) và 'Bỏ qua' (dismiss). Không cần Undo với SLA alert.
+
+Offline
+• Lịch đã load + cache: xem offline hoàn toàn. Hiển thị banner 'Offline – dữ liệu có thể chưa cập nhật'. 
+• Tạo sự kiện offline: lưu local pending_sync, schedule notification. Sync khi có mạng. 
+• Lịch OS: vẫn đọc được offline (dữ liệu local từ OS). Không bị ảnh hưởng bởi offline CRM.
+
+Gesture Conflicts	
+• Pinch vs pan: UIGestureRecognizer simultaneous allowed. Pinch kích hoạt khi 2 ngón tay.
+
+
+Call Overlay – In-app vs CallKit	
+• App sử dụng in-app overlay tùy chỉnh (không dùng iOS CallKit / Android ConnectionService) vì cuộc gọi SIP cần điều khiển qua backend. 
+• Overlay không bị interrupt bởi OS phone call thông thường. Nếu có cuộc gọi SIM đến trong khi đang gọi Call Center: hiển thị cảnh báo. 
+• Floating call bar: PiP-style overlay (Picture-in-Picture), không block nội dung chính.
+
+
+
+Audio trong cuộc gọi	
+• Sử dụng AVAudioSession (iOS) / AudioFocus (Android) để ưu tiên audio cuộc gọi. 
+• Loa ngoài (speakerphone): AVAudioSession.overrideOutputAudioPort / STREAM_VOICE_CALL + setSpeakerphoneOn. 
+• Mute: stop capturing từ microphone, không dừng stream – người bên kia không nghe thấy nhưng kết nối vẫn duy trì.
+
+
+
+Chủ đề	Nội dung
+Call Overlay – In-app vs CallKit	• App sử dụng in-app overlay tùy chỉnh (không dùng iOS CallKit / Android ConnectionService) vì cuộc gọi SIP cần điều khiển qua backend. • Overlay không bị interrupt bởi OS phone call thông thường. Nếu có cuộc gọi SIM đến trong khi đang gọi Call Center: hiển thị cảnh báo. • Floating call bar: PiP-style overlay (Picture-in-Picture), không block nội dung chính.
+
+Audio trong cuộc gọi	
+• Sử dụng AVAudioSession (iOS) / AudioFocus (Android) để ưu tiên audio cuộc gọi. 
+• Loa ngoài (speakerphone): AVAudioSession.overrideOutputAudioPort / STREAM_VOICE_CALL + setSpeakerphoneOn. 
+• Mute: stop capturing từ microphone, không dừng stream – người bên kia không nghe thấy nhưng kết nối vẫn duy trì.
+Inbound Popup khi app background	• Push notification 'inbound_call' kích hoạt custom notification layout với nút Nghe/Từ chối ngay trên notification. • iOS: UNNotificationAction trong UNNotificationCategory. Android: notification với action buttons (PendingIntent). • Tap Nghe từ notification: mở app, kết nối cuộc gọi, hiển thị overlay. Tap Từ chối: reject không cần mở app.
+
+
+Audio Player ghi âm	
+• AVPlayer (iOS) / ExoPlayer (Android) stream từ signed URL. Buffer progressive – không cần tải xong mới nghe. • Tốc độ nghe: 1x / 1.5x / 2x. Seek bar với timestamp HH:MM:SS. • Tải về: lưu vào thư mục Downloads của thiết bị. Yêu cầu quyền Storage (Android < 10).
+
+
+Local Notification	
+
+• iOS: UNUserNotificationCenter – schedule UNTimeIntervalNotificationTrigger hoặc UNCalendarNotificationTrigger. 
+• Android: AlarmManager + BroadcastReceiver (exact alarm cho Android 12+, cần quyền SCHEDULE_EXACT_ALARM). 
+• Notification action buttons: 'Đã diễn ra' và 'Hoãn 15 phút' ngay trên notification không cần mở app. 
+• Khi app bị kill và reopen: kiểm tra notification scheduled còn hiệu lực, reschedule nếu cần.
+
+
+Mở app Bản đồ	
+• iOS: ưu tiên Apple Maps (maps://). Nếu Google Maps được cài: hiện action sheet chọn app. 
+• Android: mở intent ACTION_VIEW với URI geo:{lat},{lng}?q={address} → hệ thống chọn Maps app mặc định. 
+• Nếu địa chỉ là text (không có tọa độ): mã hóa URL text address để Maps app tự geocode.
+
+
+Quét OCR
+
+• Camera mở ở chế độ landscape-optimized với overlay hình chữ nhật hướng dẫn đặt card. 
+• Hỗ trợ chọn ảnh từ thư viện ảnh nếu không muốn chụp trực tiếp. 
+• Nén ảnh trước khi upload (max 1MB) để tiết kiệm băng thông. Gửi base64 hoặc multipart. 
+• Thời gian xử lý OCR: hiển thị loading spinner. Timeout 10s → thông báo và cho chọn lại.
+
+
+Click-to-call (SĐT)	
+
+• Mọi số điện thoại trong app đều là link tap-to-call. Không copy dán số tay. 
+• Popup chọn phương thức chỉ xuất hiện nếu user có tài khoản Call Center. Nếu không → trực tiếp OS Dialer. 
+• Call overlay (in-app) cho Call Center: nút Mute, Loa ngoài, Hold, Kết thúc. Hiển thị thời gian đang gọi.
+
+
+Pull-to-Refresh	
+• Cử chỉ pull-to-refresh chuẩn iOS (UIRefreshControl) và Android (SwipeRefreshLayout). 
+• Hiển thị loading indicator trong quá trình refresh. Disable kéo thêm khi đang refresh.
+
+
+Tiêu thụ pin & mạng	
+• Auto-refresh dừng hoàn toàn khi app background (AppState listener). 
+• Sử dụng HTTP cache headers (ETag, Last-Modified) để tránh tải lại data không đổi. 
+• Nén response bằng gzip; dùng partial fields (field selection) để giảm payload.
+
+
+Xử lý AppState (foreground / background / killed)	
+• Background: ghi nhận timestamp, che màn hình bằng splash/blur. 
+• Foreground: kiểm tra thời gian nền. Nếu > ngưỡng khóa => hiển thị màn hình khóa. 
+• Kill & reopen: nếu access token còn hạn → load lại; nếu không → refresh hoặc đăng nhập lại.
+
+
+Keyboard & Password AutoFill	
+• Trường mật khẩu: secureTextEntry, không autocomplete, không xuất hiện trong suggestion bar. 
+• Hỗ trợ Password AutoFill từ Keychain (IOS) và Autofill service (Android) để cải thiện UX. 
+• Nút đăng nhập disable khi hai trường chưa nhập để tránh submit rỗng.
+
+
+
+Phát hiện Jailbreak / Root	
+Kiểm tra khi khởi động. IOS: kiểm tra Cydia, symbolic link bất thường, sandbox escape. Android: kiểm tra su binary, test-keys build, SafetyNet/Play Integrity API. Hiển thị warning dialog; Admin có thể block hoàn toàn.
+
