@@ -44,7 +44,9 @@ Inbound Popup khi app background	• Push notification 'inbound_call' kích ho�
 
 
 Audio Player ghi âm	
-• AVPlayer (iOS) / ExoPlayer (Android) stream từ signed URL. Buffer progressive – không cần tải xong mới nghe. • Tốc độ nghe: 1x / 1.5x / 2x. Seek bar với timestamp HH:MM:SS. • Tải về: lưu vào thư mục Downloads của thiết bị. Yêu cầu quyền Storage (Android < 10).
+• AVPlayer (iOS) / ExoPlayer (Android) stream từ signed URL. Buffer progressive – không cần tải xong mới nghe. 
+• Tốc độ nghe: 1x / 1.5x / 2x. Seek bar với timestamp HH:MM:SS. 
+• Tải về: lưu vào thư mục Downloads của thiết bị. Yêu cầu quyền Storage (Android < 10).
 
 
 Local Notification	
